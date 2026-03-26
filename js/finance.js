@@ -30,9 +30,51 @@ if(dPayments.length){h+='<div style="margin-top:10px"><div style="font-size:10px
 h+=dPayments.slice(0,3).map(function(p){return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:11px"><span style="color:var(--text3)">'+fmtDate(p.date)+'</span><span style="flex:1;color:var(--text2)">'+(p.note||'')+'</span><span style="font-weight:600;color:var(--mint)">-'+fmtMoney(p.amount)+'</span><button style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;padding:0 2px" onclick="deleteDebtPayment(\''+p.id+'\')">×</button></div>'}).join('');
 if(dPayments.length>3)h+='<div style="font-size:10px;color:var(--text3);padding-top:2px">+ '+(dPayments.length-3)+' more</div>';
 h+='</div>'}
-h+='</div>';return h}).join('')}
-function renderDebtPayoffPlanner(){}
+h+='</div>';return h}).join('');
+renderDebtPlan()}
+function renderDebtPlan(){
+  var el=document.getElementById('debt-plan-panel');if(!el)return;
+  var debts=(STATE.debts||[]).filter(function(d){return Number(d.balance)>0});
+  if(!debts.length){el.innerHTML='';return}
+  var thisMonth=new Date().toISOString().slice(0,7);
+  var planned=(STATE.plannedPayments||[]).filter(function(p){return p.month===thisMonth});
+  var plannedTotal=planned.reduce(function(s,p){return s+Number(p.amount)},0);
+  var paidTotal=planned.filter(function(p){return p.paid}).reduce(function(s,p){return s+Number(p.amount)},0);
+  var h='<div class="card">';
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">';
+  h+='<div><div style="font-size:15px;font-weight:600">📋 '+new Date().toLocaleDateString('en-GB',{month:'long',year:'numeric'})+'</div>';
+  h+='<div style="font-size:11px;color:var(--text2)">Payment plan</div></div>';
+  h+='<button class="btn btn-sm btn-accent" onclick="openModal(\'addPlannedPayment\')">+ Add</button></div>';
+  if(planned.length){
+    h+='<div style="display:flex;gap:12px;margin-bottom:12px">';
+    h+='<div style="flex:1;text-align:center"><div style="font-family:var(--serif);font-size:20px;font-weight:600;color:var(--accent)">'+fmtMoney(plannedTotal)+'</div><div style="font-size:10px;color:var(--text3)">planned</div></div>';
+    h+='<div style="flex:1;text-align:center"><div style="font-family:var(--serif);font-size:20px;font-weight:600;color:var(--mint)">'+fmtMoney(paidTotal)+'</div><div style="font-size:10px;color:var(--text3)">paid</div></div>';
+    h+='<div style="flex:1;text-align:center"><div style="font-family:var(--serif);font-size:20px;font-weight:600;color:'+(plannedTotal-paidTotal>0?'var(--red)':'var(--mint)')+'">'+fmtMoney(Math.max(0,plannedTotal-paidTotal))+'</div><div style="font-size:10px;color:var(--text3)">left</div></div></div>';
+    var pct=Math.round(paidTotal/plannedTotal*100);
+    h+='<div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;margin-bottom:14px"><div style="height:100%;width:'+pct+'%;background:'+(pct>=100?'var(--mint)':'var(--accent)')+';border-radius:3px;transition:width .4s"></div></div>';
+    planned.sort(function(a,b){return (a.paid?1:0)-(b.paid?1:0)||(a.date||'').localeCompare(b.date||'')});
+    planned.forEach(function(pp){
+      var debt=debts.find(function(d){return d.id===pp.debtId})||{name:'?',color:'#999'};
+      h+='<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border)'+(pp.paid?';opacity:0.5':'')+'">';
+      h+='<div onclick="togglePlannedPayment(\''+pp.id+'\')" style="width:20px;height:20px;border-radius:5px;border:2px solid '+(pp.paid?'var(--mint)':'var(--border2)')+';background:'+(pp.paid?'var(--mint)':'var(--bg2)')+';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+(pp.paid?'<span style="color:#fff;font-size:11px;font-weight:700">✓</span>':'')+'</div>';
+      h+='<div style="width:6px;height:20px;border-radius:3px;background:'+(debt.color||'#fb7185')+';flex-shrink:0"></div>';
+      h+='<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500'+(pp.paid?';text-decoration:line-through;color:var(--text3)':'')+'">'+fmtMoney(pp.amount)+' → '+debt.name+'</div>';
+      if(pp.date||pp.note)h+='<div style="font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(pp.date?fmtDate(pp.date):'')+(pp.date&&pp.note?' · ':'')+(pp.note||'')+'</div>';
+      h+='</div>';
+      h+='<button style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:0 4px" onclick="deletePlannedPayment(\''+pp.id+'\')">×</button>';
+      h+='</div>';
+    });
+  } else {
+    h+='<div style="text-align:center;padding:24px 0;color:var(--text3)"><div style="font-size:28px;margin-bottom:8px">📝</div><div style="font-size:13px">Plan your payments for this month</div></div>';
+  }
+  h+='</div>';
+  el.innerHTML=h;
+}
+function renderDebtPayoffPlanner(){renderDebtPlan()}
 function renderDebtPaymentHistory(){}
+function togglePlannedPayment(id){var pp=(STATE.plannedPayments||[]).find(function(p){return p.id===id});if(!pp)return;pp.paid=!pp.paid;if(pp.paid&&!pp.wasPaid){pp.wasPaid=true;var debt=(STATE.debts||[]).find(function(d){return d.id===pp.debtId});if(debt){debt.balance=Math.max(0,Number(debt.balance)-Number(pp.amount));if(!STATE.debtPayments)STATE.debtPayments=[];STATE.debtPayments.push({id:g(),debtId:pp.debtId,amount:Number(pp.amount),date:new Date().toISOString().slice(0,10),note:'Planned: '+(pp.note||'')})}}else if(!pp.paid&&pp.wasPaid){pp.wasPaid=false;var debt2=(STATE.debts||[]).find(function(d){return d.id===pp.debtId});if(debt2)debt2.balance=Number(debt2.balance)+Number(pp.amount);STATE.debtPayments=(STATE.debtPayments||[]).filter(function(p){return !(p.debtId===pp.debtId&&p.note&&p.note.startsWith('Planned:')&&Number(p.amount)===Number(pp.amount))})}saveState();renderDebts();refreshRoadmapLiveCards()}
+function deletePlannedPayment(id){confirmDelete('Remove this planned payment?',function(){STATE.plannedPayments=(STATE.plannedPayments||[]).filter(function(p){return p.id!==id});saveState();renderDebts()})}
+function savePlannedPayment(){var debtId=(document.getElementById('m-ppdebt')||{}).value;var amount=Number((document.getElementById('m-ppamount')||{}).value)||0;if(!debtId||!amount)return;var date=(document.getElementById('m-ppdate')||{}).value||'';var note=(document.getElementById('m-ppnote')||{}).value||'';var month=new Date().toISOString().slice(0,7);if(date)month=date.slice(0,7);if(!STATE.plannedPayments)STATE.plannedPayments=[];STATE.plannedPayments.push({id:g(),debtId:debtId,amount:amount,date:date,note:note,month:month,paid:false});saveState();closeModal();renderDebts()}
 function renderSavingsGoals(){var goals=STATE.savingsGoals||[];var PC={High:'#fde8ea',Medium:'#fef3c7',Low:'#f0fdf4'};var PT={High:'#e11d48',Medium:'#d97706',Low:'#16a34a'};var el=document.getElementById('savings-goals-list');if(el)el.innerHTML=goals.length?'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">'+goals.map(function(sg){var p=sg.target>0?Math.min(100,Math.round(Number(sg.current||0)/Number(sg.target)*100)):0;var col=sg.color||'var(--accent)';var remaining=Math.max(0,sg.target-(sg.current||0));return '<div class="card" style="text-align:center;padding:24px 20px"><div style="display:flex;justify-content:flex-end;gap:4px;margin-bottom:8px"><button class="btn btn-sm btn-ghost" onclick="openModal(\'editSavingsGoal\',\''+sg.id+'\')">&#9998;</button><button class="btn btn-sm btn-danger" onclick="deleteSavingsGoal(\''+sg.id+'\')">&#215;</button></div><div class="thermo"><div class="thermo-tube"><div class="thermo-fill" style="height:'+p+'%;background:linear-gradient(to top,'+col+','+col+'cc)"></div></div><div class="thermo-bulb" style="background:'+col+';border-color:'+col+'"><span style="color:#fff">'+(sg.icon||'&#127919;')+'</span></div><div class="thermo-marks"><span class="thermo-mark">'+fmtMoney(sg.target)+'</span><span class="thermo-mark">'+fmtMoney(Math.round(sg.target*0.75))+'</span><span class="thermo-mark">'+fmtMoney(Math.round(sg.target*0.5))+'</span><span class="thermo-mark">'+fmtMoney(Math.round(sg.target*0.25))+'</span><span class="thermo-mark">£0</span></div></div><div class="thermo-pct" style="color:'+col+'">'+p+'%</div><div style="font-family:var(--serif);font-size:16px;font-weight:600;margin-top:8px">'+sg.name+'</div><div style="font-size:13px;color:var(--accent);font-weight:600;margin-top:4px">'+fmtMoney(sg.current||0)+' <span style="font-weight:400;color:var(--text3)">of '+fmtMoney(sg.target)+'</span></div>'+(sg.note?'<div style="font-size:11px;color:var(--text2);margin-top:4px">'+sg.note+'</div>':'')+(sg.deadline?'<div style="font-size:11px;color:var(--text3);margin-top:3px">&#128467; By '+fmtDate(sg.deadline)+'</div>':'')+'<div style="margin-top:6px"><span style="padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;background:'+(PC[sg.priority]||'#f0f0f0')+';color:'+(PT[sg.priority]||'#666')+'">'+sg.priority+'</span></div><div style="font-size:11px;color:var(--text3);margin-top:6px">'+fmtMoney(remaining)+' to go</div></div>'}).join('')+'</div>':'<div class="empty"><div class="empty-icon">&#127800;</div>No savings goals yet. Add one!</div>'}
 function deleteAccount(id){confirmDelete('Remove?',function(){STATE.accounts=(STATE.accounts||[]).filter(function(a){return a.id!==id});saveState();renderAccounts()})}
 function deleteDebt(id){confirmDelete('Remove?',function(){STATE.debts=(STATE.debts||[]).filter(function(d){return d.id!==id});saveState();renderDebts();refreshRoadmapLiveCards()})}
