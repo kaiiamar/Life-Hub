@@ -909,6 +909,19 @@
         <div id="insights-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
       </div>
 
+      <!-- Review trends -->
+      <div class="grid-2" style="margin-bottom:20px">
+        <div class="card">
+          <div class="card-label">📅 Monthly review ratings</div>
+          <div class="chart-wrap"><canvas id="insightReviewChart"></canvas></div>
+          <div id="review-trend-summary" style="margin-top:8px"></div>
+        </div>
+        <div class="card">
+          <div class="card-label">📝 Latest review snapshot</div>
+          <div id="review-latest-snapshot"></div>
+        </div>
+      </div>
+
       <!-- Countdowns + Debt insight -->
       <div class="grid-2" style="margin-bottom:20px">
         <div class="card">

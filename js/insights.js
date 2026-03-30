@@ -1,8 +1,8 @@
 // INSIGHTS
 // ============================================================
 function renderInsights(){
-var last30=Array.from({length:30},function(_,i){var d=new Date();d.setDate(d.getDate()-i);return d.toISOString().slice(0,10)});
-var todayKey=new Date().toISOString().slice(0,10);
+var last30=Array.from({length:30},function(_,i){var d=new Date();d.setDate(d.getDate()-i);return localDateKey(d)});
+var todayKey=localDateKey(new Date());
 
 // Pulse check
 var scores=[];
@@ -83,7 +83,31 @@ cards.push(mkInsightCard('🗓️','Roadmap progress',rmPct+'% of your overall p
 var grid=document.getElementById('insights-grid');
 if(grid)grid.innerHTML=cards.length?cards.join(''):'<div class="card" style="text-align:center;padding:40px;grid-column:1/-1"><div style="font-size:36px;margin-bottom:12px">🌿</div><div style="font-size:14px;color:var(--text2)">Start logging to unlock insights!</div></div>';
 
-renderDebtCalc();renderCountdowns()}
+renderDebtCalc();renderCountdowns();renderInsightReviewTrends()}
+
+function renderInsightReviewTrends(){
+var reviews=STATE.reviews&&STATE.reviews.monthly?STATE.reviews.monthly:{};
+var keys=Object.keys(reviews).sort().slice(-6);
+var chartEl=document.getElementById('insightReviewChart');
+var summaryEl=document.getElementById('review-trend-summary');
+var snapEl=document.getElementById('review-latest-snapshot');
+
+if(!keys.length){
+if(chartEl){var ctx=chartEl.getContext('2d');ctx.clearRect(0,0,chartEl.width,chartEl.height)}
+if(summaryEl)summaryEl.innerHTML='<div style="font-size:13px;color:var(--text3);text-align:center;padding:12px 0">Complete a monthly review to see trends here</div>';
+if(snapEl)snapEl.innerHTML='<div style="font-size:13px;color:var(--text3);text-align:center;padding:20px 0">No reviews yet</div>';
+return}
+
+var labels=keys.map(function(k){var p=k.split('-');return new Date(Number(p[0]),Number(p[1])-1).toLocaleDateString('en-GB',{month:'short'})});
+var datasets=RATING_CATS.map(function(cat){var colors={overall:'#a0522d',health:'#6b9e7a',finance:'#c9973a',career:'#5f9ea0',mindset:'#8b5cf6',social:'#ec4899'};return {label:cat.label,data:keys.map(function(k){return reviews[k].ratings?reviews[k].ratings[cat.id]||0:0}),borderColor:colors[cat.id]||'var(--accent)',backgroundColor:'transparent',tension:0.3,pointRadius:4,borderWidth:2}});
+
+if(window._reviewChart){window._reviewChart.destroy()}
+if(chartEl)window._reviewChart=new Chart(chartEl,{type:'line',data:{labels:labels,datasets:datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10},color:'#b89870'}}},scales:{x:{ticks:{color:'#b89870',font:{size:10}}},y:{min:0,max:10,ticks:{color:'#b89870',font:{size:10},stepSize:2}}}}});
+
+var latest=reviews[keys[keys.length-1]];
+if(summaryEl&&keys.length>=2){var prev=reviews[keys[keys.length-2]];var latestAvg=0,prevAvg=0;if(latest.ratings){var lv=Object.values(latest.ratings);latestAvg=lv.reduce(function(s,v){return s+v},0)/lv.length}if(prev.ratings){var pv=Object.values(prev.ratings);prevAvg=pv.reduce(function(s,v){return s+v},0)/pv.length}var diff=Math.round((latestAvg-prevAvg)*10)/10;var arrow=diff>0?'↑':diff<0?'↓':'→';var col=diff>0?'var(--mint)':diff<0?'var(--peach)':'var(--text3)';summaryEl.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center"><span style="color:'+col+';font-weight:600">'+arrow+' '+(diff>0?'+':'')+diff+'</span> vs previous month</div>'}
+
+if(snapEl&&latest){var avgR=0;if(latest.ratings){var vals=Object.values(latest.ratings);avgR=vals.length?Math.round(vals.reduce(function(s,v){return s+v},0)/vals.length*10)/10:0}var rCol=avgR>=7?'var(--mint)':avgR>=5?'var(--gold)':'var(--peach)';snapEl.innerHTML='<div style="text-align:center;padding:8px 0"><div style="font-family:var(--serif);font-size:36px;font-weight:700;color:'+rCol+'">'+avgR+'<span style="font-size:14px;color:var(--text3)">/10</span></div><div style="font-size:11px;color:var(--text3);margin-bottom:12px">Average rating</div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">'+RATING_CATS.map(function(cat){var v=latest.ratings?latest.ratings[cat.id]:0;var c=v>=7?'var(--mint)':v>=5?'var(--gold)':'var(--peach)';return '<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:8px 4px;text-align:center"><div style="font-size:9px;color:var(--text3)">'+cat.emoji+'</div><div style="font-size:16px;font-weight:700;color:'+c+'">'+v+'</div><div style="font-size:9px;color:var(--text3)">'+cat.label+'</div></div>'}).join('')+'</div>'+(latest.wins?'<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px"><div style="font-size:10px;font-weight:600;color:var(--accent);margin-bottom:3px">🏆 Wins</div><div style="font-size:12px;color:var(--text2);line-height:1.5;white-space:pre-line;max-height:80px;overflow:hidden">'+latest.wins+'</div></div>':'')+'<div style="margin-top:10px;text-align:center"><button onclick="nav(\'review\')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-weight:600;font-size:12px;font-family:var(--sans)">View all reviews →</button></div>'}}
 
 function renderInsightHabitChart(last30){
 var weeks=[[],[],[],[]];
@@ -97,7 +121,7 @@ if(ctx._insChart)ctx._insChart.destroy();
 ctx._insChart=new Chart(ctx,{type:'bar',data:{labels:labels,datasets:[{data:data,backgroundColor:data.map(function(v){return v>=70?'rgba(107,158,122,0.6)':v>=40?'rgba(201,151,58,0.6)':'rgba(192,57,43,0.4)'}),borderColor:data.map(function(v){return v>=70?'#6b9e7a':v>=40?'#c9973a':'#c0392b'}),borderWidth:1.5,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#b89870',font:{size:11}}},y:{max:100,ticks:{color:'#b89870',font:{size:10},callback:function(v){return v+'%'}}}}}})}
 
 function renderInsightMoodChart(){
-var days=Array.from({length:14},function(_,i){var d=new Date();d.setDate(d.getDate()-13+i);return d.toISOString().slice(0,10)});
+var days=Array.from({length:14},function(_,i){var d=new Date();d.setDate(d.getDate()-13+i);return localDateKey(d)});
 var moodData=days.map(function(d){var m=(STATE.mood||{})[d];return m&&m.mood?Number(m.mood):null});
 var energyData=days.map(function(d){var m=(STATE.mood||{})[d];return m&&m.energy?Number(m.energy):null});
 var ctx=document.getElementById('insightMoodChart');
