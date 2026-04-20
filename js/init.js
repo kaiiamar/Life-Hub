@@ -1,5 +1,5 @@
 // SIDEBAR QUOTE & INIT
-var quotes=['Be intentional 🤨','God\'s timing is perfect ✨','Make happiness the priority 🥳','Character energy only 👑','You are so much stronger than you think 💪','Debt free era loading… 💸','Future you says thanks 🤩','She believed she could, so she did 💪🏾'];
+var quotes=['Be intentional \u{1F928}','God\'s timing is perfect \u2728','Make happiness the priority \u{1F973}','Character energy only \u{1F451}','You are so much stronger than you think \u{1F4AA}','Debt free era loading\u2026 \u{1F4B8}','Future you says thanks \u{1F929}','She believed she could, so she did \u{1F4AA}\u{1F3FE}'];
 var qEl=document.getElementById('sidebar-quote');if(qEl)qEl.textContent=quotes[Math.floor(Math.random()*quotes.length)];
 
 if(_firebaseReady)setSyncStatus('saving');
@@ -8,9 +8,7 @@ loadFromCloud(function(){
   migrateKeys.forEach(function(k){if(!STATE[k])STATE[k]=JSON.parse(JSON.stringify(DEFAULT_STATE[k]))});
   if(!STATE.metrics.projectsDone)STATE.metrics.projectsDone=[];
   if(!STATE.reviews.monthly)STATE.reviews.monthly={};
-  /* Backfill startingBalance for existing debts */
   (STATE.debts||[]).forEach(function(d){if(!d.startingBalance){var dPaid=(STATE.debtPayments||[]).filter(function(p){return p.debtId===d.id}).reduce(function(s,p){return s+Number(p.amount)},0);d.startingBalance=Number(d.balance)+dPaid}});
-  /* Replace old gym templates with correct Tuesday/Thursday split */
   if(STATE.gymTemplates&&STATE.gymTemplates.length){var oldNames=['Push Day','Pull Day','Leg Day'];var hasOld=STATE.gymTemplates.some(function(t){return oldNames.indexOf(t.name)!==-1});if(hasOld){STATE.gymTemplates=JSON.parse(JSON.stringify(DEFAULT_STATE.gymTemplates));saveState()}}
   if(!STATE.reviews.quarterly)STATE.reviews.quarterly={};
   if(!STATE.roadmapChecklist)STATE.roadmapChecklist={};
@@ -21,20 +19,24 @@ loadFromCloud(function(){
 startClock();
 
 // ============================================================
-// SERVICE WORKER & NOTIFICATIONS
+// SERVICE WORKER & PUSH NOTIFICATIONS
 // ============================================================
+var NOTIF_API='';// Set to your Vercel URL after deploy, e.g. 'https://lifehub-notifications.vercel.app'
+var NOTIF_USER_ID='kai-lifehub';
+
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){})}
 
 function setupReminders(){
-  if(!('Notification' in window))return;
+  if(!('Notification' in window)){return}
   if(Notification.permission==='default'){
     var el=document.getElementById('dash-notification-prompt');
-    if(el)el.innerHTML='<div style="background:var(--accent-dim);border:1.5px solid var(--accent);border-radius:var(--radius-sm);padding:12px 16px;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="requestNotifPermission()"><span style="font-size:20px">🔔</span><div style="flex:1"><div style="font-size:13px;font-weight:500">Enable reminders</div><div style="font-size:11px;color:var(--text2)">Get daily nudges for habits, water & gratitude</div></div><button class="btn btn-accent btn-sm" onclick="event.stopPropagation();requestNotifPermission()">Enable</button></div>'
+    if(el)el.innerHTML='<div style="background:var(--accent-dim);border:1.5px solid var(--accent);border-radius:var(--radius-sm);padding:12px 16px;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="requestNotifPermission()"><span style="font-size:20px">\uD83D\uDD14</span><div style="flex:1"><div style="font-size:13px;font-weight:500">Enable push reminders</div><div style="font-size:11px;color:var(--text2)">Get notifications even when the app is closed</div></div><button class="btn btn-accent btn-sm" onclick="event.stopPropagation();requestNotifPermission()">Enable</button></div>'
   }
   if(Notification.permission==='granted'){
     var el2=document.getElementById('dash-notification-prompt');
-    if(el2)el2.innerHTML='<div style="display:flex;justify-content:flex-end;margin-bottom:4px"><button class="btn btn-ghost btn-sm" onclick="openModal(\'notifSettings\')" style="font-size:11px">🔔 Manage reminders</button></div>';
-    scheduleReminders()
+    if(el2)el2.innerHTML='<div style="display:flex;justify-content:flex-end;margin-bottom:4px"><button class="btn btn-ghost btn-sm" onclick="openModal(\'notifSettings\')" style="font-size:11px">\uD83D\uDD14 Manage reminders</button></div>';
+    subscribeToPush();
+    setupInAppReminders()
   }
 }
 function requestNotifPermission(){
@@ -42,30 +44,64 @@ function requestNotifPermission(){
     if(p==='granted'){setupReminders()}
   })
 }
+function subscribeToPush(){
+  if(!NOTIF_API||!navigator.serviceWorker)return;
+  navigator.serviceWorker.ready.then(function(reg){
+    fetch(NOTIF_API+'/api/vapid-key').then(function(r){return r.json()}).then(function(data){
+      if(!data.publicKey)return;
+      var key=urlBase64ToUint8Array(data.publicKey);
+      return reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key})
+    }).then(function(sub){
+      if(!sub)return;
+      return fetch(NOTIF_API+'/api/subscribe',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({subscription:sub.toJSON(),userId:NOTIF_USER_ID})
+      })
+    }).catch(function(e){console.log('Push subscribe failed:',e)})
+  })
+}
+function syncRemindersToBackend(){
+  if(!NOTIF_API)return;
+  var reminders=getReminders();
+  fetch(NOTIF_API+'/api/reminders',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({userId:NOTIF_USER_ID,reminders:reminders})
+  }).catch(function(){})
+}
+function urlBase64ToUint8Array(base64String){
+  var padding='='.repeat((4-base64String.length%4)%4);
+  var base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/');
+  var raw=atob(base64);var arr=new Uint8Array(raw.length);
+  for(var i=0;i<raw.length;i++)arr[i]=raw.charCodeAt(i);
+  return arr
+}
 function getReminders(){
   if(!STATE.reminders)STATE.reminders=[
-    {id:'morning',label:'Morning habits',emoji:'☀️',message:'Time to start ticking off those habits!',hour:7,minute:0,enabled:true,condition:'habits'},
-    {id:'water',label:'Water check',emoji:'💧',message:'Keep sipping! Stay hydrated.',hour:13,minute:0,enabled:true,condition:'water'},
-    {id:'gratitude',label:'Gratitude journal',emoji:'🙏',message:'Log your win and gratitude for today',hour:21,minute:0,enabled:true,condition:'gratitude'},
-    {id:'sleep',label:'Bedtime reminder',emoji:'😴',message:'Time to wind down. 10pm bedtime!',hour:21,minute:30,enabled:true,condition:'none'},
-    {id:'gym',label:'Gym reminder',emoji:'🏋️',message:'Don\'t skip today — get it done!',hour:6,minute:0,enabled:false,condition:'none'}
+    {id:'morning',label:'Morning habits',emoji:'\u2600\uFE0F',message:'Time to start ticking off those habits!',hour:7,minute:0,enabled:true,condition:'habits'},
+    {id:'water',label:'Water check',emoji:'\uD83D\uDCA7',message:'Keep sipping! Stay hydrated.',hour:13,minute:0,enabled:true,condition:'water'},
+    {id:'gratitude',label:'Gratitude journal',emoji:'\uD83D\uDE4F',message:'Log your win and gratitude for today',hour:21,minute:0,enabled:true,condition:'gratitude'},
+    {id:'sleep',label:'Bedtime reminder',emoji:'\uD83D\uDE34',message:'Time to wind down. 10pm bedtime!',hour:21,minute:30,enabled:true,condition:'none'},
+    {id:'gym',label:'Gym reminder',emoji:'\uD83C\uDFCB\uFE0F',message:'Don\'t skip today \u2014 get it done!',hour:6,minute:0,enabled:false,condition:'none'}
   ];
   return STATE.reminders
 }
 var _notifFired={};
-function scheduleReminders(){
+function setupInAppReminders(){
   setInterval(function(){
     var now=new Date();var h=now.getHours();var m=now.getMinutes();var today=localDateKey(now);
     getReminders().forEach(function(r){
-      if(!r.enabled)return;
-      if(h!==r.hour||m!==r.minute)return;
-      var firedKey=r.id+'-'+today;
-      if(_notifFired[firedKey])return;
+      if(!r.enabled||h!==r.hour||m!==r.minute)return;
+      var fk=r.id+'-'+today;if(_notifFired[fk])return;
       var skip=false;
-      if(r.condition==='habits'){var done=(STATE.habits||[]).filter(function(hab){return hab.logs[today]}).length;if(done>0)skip=true}
-      if(r.condition==='water'){var glasses=(STATE.water||{})[today]||0;if(glasses>=4)skip=true}
-      if(r.condition==='gratitude'){var has=(STATE.gratitude||[]).some(function(e){return e.date===today});if(has)skip=true}
-      if(!skip){new Notification(r.emoji+' '+r.label,{body:r.message,icon:'icon-192.png'});_notifFired[firedKey]=true}
+      if(r.condition==='habits'){if((STATE.habits||[]).filter(function(hab){return hab.logs[today]}).length>0)skip=true}
+      if(r.condition==='water'){if(((STATE.water||{})[today]||0)>=4)skip=true}
+      if(r.condition==='gratitude'){if((STATE.gratitude||[]).some(function(e){return e.date===today}))skip=true}
+      if(!skip){
+        if(Notification.permission==='granted')new Notification(r.emoji+' '+r.label,{body:r.message});
+        _notifFired[fk]=true
+      }
     })
   },60000)
 }
@@ -91,7 +127,6 @@ frame()}
 function showCelebrationToast(msg,emoji){
 var toast=document.createElement('div');
 toast.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#a0522d,#6b3a1f);color:#fffdf9;padding:12px 24px;border-radius:14px;font-family:var(--sans);font-size:14px;font-weight:600;z-index:10000;box-shadow:0 8px 32px rgba(107,58,31,0.35);animation:floatIn .3s ease;display:flex;align-items:center;gap:8px';
-toast.innerHTML='<span style="font-size:20px">'+(emoji||'🎉')+'</span> '+msg;
+toast.innerHTML='<span style="font-size:20px">'+(emoji||'\uD83C\uDF89')+'</span> '+msg;
 document.body.appendChild(toast);
 setTimeout(function(){toast.style.transition='opacity .4s,transform .4s';toast.style.opacity='0';toast.style.transform='translateX(-50%) translateY(-10px)';setTimeout(function(){toast.remove()},400)},2800)}
-

@@ -50,10 +50,10 @@ function deleteDebtPayment(pid){if(!confirm('Delete this payment?'))return;STATE
 
 function pickMood(btn){var rtype=btn.getAttribute('data-rtype');var val=parseInt(btn.getAttribute('data-val'));journalMoodVals[rtype]=val;btn.parentNode.querySelectorAll('button').forEach(function(b){var selected=parseInt(b.getAttribute('data-val'))===val;b.style.background=selected?'var(--accent-dim)':'var(--bg3)';b.style.borderColor=selected?'var(--accent)':'var(--border2)'})}
 
-function toggleReminder(idx,enabled){var r=getReminders();r[idx].enabled=enabled;STATE.reminders=r;saveState();openModal('notifSettings')}
-function updateReminderTime(idx,val){var r=getReminders();var parts=val.split(':');r[idx].hour=Number(parts[0]);r[idx].minute=Number(parts[1]);STATE.reminders=r;saveState()}
-function updateReminderMsg(idx,val){var r=getReminders();r[idx].message=val;STATE.reminders=r;saveState()}
-function addCustomReminder(){var label=((document.getElementById('notif-new-label')||{}).value||'').trim();if(!label)return;var time=(document.getElementById('notif-new-time')||{}).value||'08:00';var msg=((document.getElementById('notif-new-msg')||{}).value||'').trim()||label;var parts=time.split(':');var r=getReminders();r.push({id:'custom-'+Date.now(),label:label,emoji:'🔔',message:msg,hour:Number(parts[0]),minute:Number(parts[1]),enabled:true,condition:'none'});STATE.reminders=r;saveState();openModal('notifSettings')}
+function toggleReminder(idx,enabled){var r=getReminders();r[idx].enabled=enabled;STATE.reminders=r;saveState();syncRemindersToBackend();openModal('notifSettings')}
+function updateReminderTime(idx,val){var r=getReminders();var parts=val.split(':');r[idx].hour=Number(parts[0]);r[idx].minute=Number(parts[1]);STATE.reminders=r;saveState();syncRemindersToBackend()}
+function updateReminderMsg(idx,val){var r=getReminders();r[idx].message=val;STATE.reminders=r;saveState();syncRemindersToBackend()}
+function addCustomReminder(){var label=((document.getElementById('notif-new-label')||{}).value||'').trim();if(!label)return;var time=(document.getElementById('notif-new-time')||{}).value||'08:00';var msg=((document.getElementById('notif-new-msg')||{}).value||'').trim()||label;var parts=time.split(':');var r=getReminders();r.push({id:'custom-'+Date.now(),label:label,emoji:'\uD83D\uDD14',message:msg,hour:Number(parts[0]),minute:Number(parts[1]),enabled:true,condition:'none'});STATE.reminders=r;saveState();syncRemindersToBackend();openModal('notifSettings')}
 function saveMoodFromModal(date){if(!STATE.mood)STATE.mood={};STATE.mood[date]={mood:journalMoodVals.mood||0,energy:journalMoodVals.energy||0,sleep:Number((document.getElementById('m-sleep')||{}).value)||0};saveState();closeModal();if(document.getElementById('page-weekly').classList.contains('active'))renderWeeklyPlan();renderDashMoodCheckin()}
 
 // Workout helpers
