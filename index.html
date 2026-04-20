@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Kai's Life Hub">
 <meta name="theme-color" content="#a0522d">
+<link rel="manifest" href="manifest.json">
 <title>Kai's Life Hub 🤎</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -85,6 +86,7 @@
         </div>
       </div>
       <div style="background:linear-gradient(135deg,#fdf6e8,#f2e8d8);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 18px;margin-bottom:20px;font-size:14px;font-style:italic;color:var(--warm-brown);text-align:center;font-family:var(--serif)" id="dash-quote"></div>
+      <div id="dash-notification-prompt" style="margin-bottom:16px"></div>
       <div class="grid-3" style="margin-bottom:20px" id="dash-stats"></div>
       <div class="grid-2" style="margin-bottom:16px">
         <div class="card"><div class="card-label">📋 This week's priorities</div><div id="dash-priorities-preview"></div></div>
@@ -92,6 +94,9 @@
       </div>
       <div class="grid-2" style="margin-bottom:16px">
         <div class="card"><div class="card-label">🌡️ Today's check-in</div><div id="dash-mood-checkin"></div></div>
+        <div class="card"><div class="card-label">💧 Water today</div><div id="dash-water-tracker"></div></div>
+      </div>
+      <div class="grid-2" style="margin-bottom:16px">
         <div class="card"><div class="card-label">🙏 Gratitude & wins</div><div id="dash-gratitude-preview"></div></div>
       </div>
       <div class="grid-2" style="margin-bottom:16px">

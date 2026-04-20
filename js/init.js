@@ -21,6 +21,48 @@ loadFromCloud(function(){
 startClock();
 
 // ============================================================
+// SERVICE WORKER & NOTIFICATIONS
+// ============================================================
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){})}
+
+function setupReminders(){
+  if(!('Notification' in window))return;
+  if(Notification.permission==='default'){
+    var el=document.getElementById('dash-notification-prompt');
+    if(el)el.innerHTML='<div style="background:var(--accent-dim);border:1.5px solid var(--accent);border-radius:var(--radius-sm);padding:12px 16px;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="requestNotifPermission()"><span style="font-size:20px">🔔</span><div style="flex:1"><div style="font-size:13px;font-weight:500">Enable reminders</div><div style="font-size:11px;color:var(--text2)">Get daily nudges for habits, water & gratitude</div></div><button class="btn btn-accent btn-sm" onclick="event.stopPropagation();requestNotifPermission()">Enable</button></div>'
+  }
+  if(Notification.permission==='granted')scheduleReminders()
+}
+function requestNotifPermission(){
+  Notification.requestPermission().then(function(p){
+    if(p==='granted'){scheduleReminders();var el=document.getElementById('dash-notification-prompt');if(el)el.innerHTML=''}
+  })
+}
+function scheduleReminders(){
+  var now=new Date();var todayKey=localDateKey(now);
+  // Check every 30 mins
+  setInterval(function(){
+    var h=new Date().getHours();var m=new Date().getMinutes();
+    // 7am — morning reminder
+    if(h===7&&m<30){
+      var habitsToday=(STATE.habits||[]).filter(function(hab){return hab.logs[localDateKey(new Date())]}).length;
+      if(habitsToday===0)new Notification('Good morning ☀️',{body:'Time to start ticking off those habits!',icon:'icon-192.png'})
+    }
+    // 1pm — water check
+    if(h===13&&m<30){
+      var glasses=(STATE.water||{})[localDateKey(new Date())]||0;
+      if(glasses<4)new Notification('💧 Water check',{body:'Only '+glasses+' glasses so far. Keep sipping!',icon:'icon-192.png'})
+    }
+    // 9pm — gratitude reminder
+    if(h===21&&m<30){
+      var hasGrat=(STATE.gratitude||[]).some(function(e){return e.date===localDateKey(new Date())});
+      if(!hasGrat)new Notification('🙏 Gratitude time',{body:'Log your win and gratitude for today',icon:'icon-192.png'})
+    }
+  },1800000)
+}
+setupReminders();
+
+// ============================================================
 // CONFETTI CELEBRATION
 // ============================================================
 var confettiCanvas=null;
