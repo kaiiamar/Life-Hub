@@ -21,7 +21,7 @@ startClock();
 // ============================================================
 // SERVICE WORKER & PUSH NOTIFICATIONS
 // ============================================================
-var NOTIF_API='';// Set to your Vercel URL after deploy, e.g. 'https://lifehub-notifications.vercel.app'
+var NOTIF_API='https://lifehub-notifications.vercel.app';// Set to your Vercel URL after deploy, e.g. 'https://lifehub-notifications.vercel.app'
 var NOTIF_USER_ID='kai-lifehub';
 
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){})}
