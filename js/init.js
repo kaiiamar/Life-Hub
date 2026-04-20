@@ -4,7 +4,7 @@ var qEl=document.getElementById('sidebar-quote');if(qEl)qEl.textContent=quotes[M
 
 if(_firebaseReady)setSyncStatus('saving');
 loadFromCloud(function(){
-  var migrateKeys=['goals','habits','workouts','gymTemplates','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','projects','relationships','gratitude','wishlist','watchlist','debtPayments'];
+  var migrateKeys=['goals','habits','workouts','gymTemplates','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','projects','relationships','gratitude','wishlist','watchlist','debtPayments','reminders','water'];
   migrateKeys.forEach(function(k){if(!STATE[k])STATE[k]=JSON.parse(JSON.stringify(DEFAULT_STATE[k]))});
   if(!STATE.metrics.projectsDone)STATE.metrics.projectsDone=[];
   if(!STATE.reviews.monthly)STATE.reviews.monthly={};
@@ -68,7 +68,10 @@ function syncRemindersToBackend(){
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({userId:NOTIF_USER_ID,reminders:reminders})
-  }).catch(function(){})
+  }).then(function(r){return r.json()}).then(function(data){
+    console.log('Reminders synced:',data);
+    if(data.scheduled!==undefined)showCelebrationToast('Synced '+data.scheduled+' reminders','🔔')
+  }).catch(function(e){console.error('Sync failed:',e)})
 }
 function urlBase64ToUint8Array(base64String){
   var padding='='.repeat((4-base64String.length%4)%4);
