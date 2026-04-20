@@ -104,6 +104,8 @@ var DEFAULT_STATE = {
   roadmapChecklist:{},
   debtPayments:[],
   plannedPayments:[],
+  reminders:[],
+  water:{}
 };
 
 var STATE = loadState() || JSON.parse(JSON.stringify(DEFAULT_STATE));
