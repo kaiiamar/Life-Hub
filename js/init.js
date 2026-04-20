@@ -31,34 +31,43 @@ function setupReminders(){
     var el=document.getElementById('dash-notification-prompt');
     if(el)el.innerHTML='<div style="background:var(--accent-dim);border:1.5px solid var(--accent);border-radius:var(--radius-sm);padding:12px 16px;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="requestNotifPermission()"><span style="font-size:20px">🔔</span><div style="flex:1"><div style="font-size:13px;font-weight:500">Enable reminders</div><div style="font-size:11px;color:var(--text2)">Get daily nudges for habits, water & gratitude</div></div><button class="btn btn-accent btn-sm" onclick="event.stopPropagation();requestNotifPermission()">Enable</button></div>'
   }
-  if(Notification.permission==='granted')scheduleReminders()
+  if(Notification.permission==='granted'){
+    var el2=document.getElementById('dash-notification-prompt');
+    if(el2)el2.innerHTML='<div style="display:flex;justify-content:flex-end;margin-bottom:4px"><button class="btn btn-ghost btn-sm" onclick="openModal(\'notifSettings\')" style="font-size:11px">🔔 Manage reminders</button></div>';
+    scheduleReminders()
+  }
 }
 function requestNotifPermission(){
   Notification.requestPermission().then(function(p){
-    if(p==='granted'){scheduleReminders();var el=document.getElementById('dash-notification-prompt');if(el)el.innerHTML=''}
+    if(p==='granted'){setupReminders()}
   })
 }
+function getReminders(){
+  if(!STATE.reminders)STATE.reminders=[
+    {id:'morning',label:'Morning habits',emoji:'☀️',message:'Time to start ticking off those habits!',hour:7,minute:0,enabled:true,condition:'habits'},
+    {id:'water',label:'Water check',emoji:'💧',message:'Keep sipping! Stay hydrated.',hour:13,minute:0,enabled:true,condition:'water'},
+    {id:'gratitude',label:'Gratitude journal',emoji:'🙏',message:'Log your win and gratitude for today',hour:21,minute:0,enabled:true,condition:'gratitude'},
+    {id:'sleep',label:'Bedtime reminder',emoji:'😴',message:'Time to wind down. 10pm bedtime!',hour:21,minute:30,enabled:true,condition:'none'},
+    {id:'gym',label:'Gym reminder',emoji:'🏋️',message:'Don\'t skip today — get it done!',hour:6,minute:0,enabled:false,condition:'none'}
+  ];
+  return STATE.reminders
+}
+var _notifFired={};
 function scheduleReminders(){
-  var now=new Date();var todayKey=localDateKey(now);
-  // Check every 30 mins
   setInterval(function(){
-    var h=new Date().getHours();var m=new Date().getMinutes();
-    // 7am — morning reminder
-    if(h===7&&m<30){
-      var habitsToday=(STATE.habits||[]).filter(function(hab){return hab.logs[localDateKey(new Date())]}).length;
-      if(habitsToday===0)new Notification('Good morning ☀️',{body:'Time to start ticking off those habits!',icon:'icon-192.png'})
-    }
-    // 1pm — water check
-    if(h===13&&m<30){
-      var glasses=(STATE.water||{})[localDateKey(new Date())]||0;
-      if(glasses<4)new Notification('💧 Water check',{body:'Only '+glasses+' glasses so far. Keep sipping!',icon:'icon-192.png'})
-    }
-    // 9pm — gratitude reminder
-    if(h===21&&m<30){
-      var hasGrat=(STATE.gratitude||[]).some(function(e){return e.date===localDateKey(new Date())});
-      if(!hasGrat)new Notification('🙏 Gratitude time',{body:'Log your win and gratitude for today',icon:'icon-192.png'})
-    }
-  },1800000)
+    var now=new Date();var h=now.getHours();var m=now.getMinutes();var today=localDateKey(now);
+    getReminders().forEach(function(r){
+      if(!r.enabled)return;
+      if(h!==r.hour||m!==r.minute)return;
+      var firedKey=r.id+'-'+today;
+      if(_notifFired[firedKey])return;
+      var skip=false;
+      if(r.condition==='habits'){var done=(STATE.habits||[]).filter(function(hab){return hab.logs[today]}).length;if(done>0)skip=true}
+      if(r.condition==='water'){var glasses=(STATE.water||{})[today]||0;if(glasses>=4)skip=true}
+      if(r.condition==='gratitude'){var has=(STATE.gratitude||[]).some(function(e){return e.date===today});if(has)skip=true}
+      if(!skip){new Notification(r.emoji+' '+r.label,{body:r.message,icon:'icon-192.png'});_notifFired[firedKey]=true}
+    })
+  },60000)
 }
 setupReminders();
 
