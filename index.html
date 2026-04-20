@@ -10,8 +10,8 @@
 <link rel="manifest" href="manifest.json">
 <title>Kai's Life Hub 🤎</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=Plus+Jakarta+Sans:wght@200..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style-new.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -75,17 +75,18 @@
 
     <!-- ══ DASHBOARD ══ -->
     <div class="page active" id="page-dashboard">
-      <div style="background:linear-gradient(135deg,#fdf6e8,#ede0cc);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
-        <div style="display:flex;align-items:center;gap:12px;flex:1">
-          <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYnRhZm1iN2loeXp1dTBxaGIxMHcxdGpndHRnZHh1OTBlcHZnbjZ1cCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/tBWoHDVfEULuKqEFx8/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:14px;flex-shrink:0">
+      <div style="padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:14px;flex:1">
+          <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYnRhZm1iN2loeXp1dTBxaGIxMHcxdGpndHRnZHh1OTBlcHZnbjZ1cCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/tBWoHDVfEULuKqEFx8/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0">
           <div style="flex:1">
-          <h1 id="dash-greeting" style="color:var(--warm-brown);font-size:26px;font-family:var(--serif);font-weight:600">Good morning, Kai</h1>
-          <p id="dash-date-sub" style="color:var(--text2);margin-top:4px;font-size:13px"></p>
-
+          <h1 id="dash-greeting" style="color:var(--on-surface);font-size:28px;font-family:var(--serif);font-weight:500;letter-spacing:-0.02em">Good morning, Kai</h1>
+          <p id="dash-date-sub" style="color:var(--on-surface-variant);margin-top:4px;font-size:13px"></p>
         </div>
         </div>
       </div>
-      <div style="background:linear-gradient(135deg,#fdf6e8,#f2e8d8);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 18px;margin-bottom:20px;font-size:14px;font-style:italic;color:var(--warm-brown);text-align:center;font-family:var(--serif)" id="dash-quote"></div>
+      <div class="card" style="padding:14px 20px;margin-bottom:20px;text-align:center">
+        <p style="font-family:var(--serif);font-size:16px;font-style:italic;color:var(--on-surface-variant);opacity:0.8" id="dash-quote"></p>
+      </div>
       <div id="dash-notification-prompt" style="margin-bottom:16px"></div>
       <div class="grid-3" style="margin-bottom:20px" id="dash-stats"></div>
       <div class="grid-2" style="margin-bottom:16px">
