@@ -62,7 +62,7 @@ body{
   background-image:radial-gradient(var(--muted) 1px,transparent 1px);
   background-size:24px 24px;
   color:var(--fg);min-height:100dvh;
-  font-size:16px;line-height:1.6;overflow-x:hidden;
+  font-size:17px;line-height:1.7;overflow-x:hidden;
 }
 input,textarea,select,button{font-family:var(--sans)}
 button{cursor:pointer}
@@ -94,7 +94,7 @@ h1,h2,h3,.stat-big,.card-label{font-family:var(--serif)}
   box-shadow:var(--shadow-sm);
 }
 .card-label{
-  font-size:14px;font-weight:700;
+  font-size:15px;font-weight:700;
   color:var(--fg);
   letter-spacing:.02em;
   text-transform:uppercase;
@@ -133,7 +133,7 @@ h1,h2,h3,.stat-big,.card-label{font-family:var(--serif)}
   padding:10px 14px;
   border-radius:var(--wobbly-sm);
   cursor:pointer;color:var(--fg);
-  font-size:15px;font-weight:400;
+  font-size:16px;font-weight:400;
   transition:all .1s;
   border:2px solid transparent;background:none;width:100%;text-align:left;
 }
@@ -152,13 +152,13 @@ h1,h2,h3,.stat-big,.card-label{font-family:var(--serif)}
 
 /* ── PAGE HEADER ── */
 .page-header{margin-bottom:20px;overflow:visible}
-.page-header h1{font-family:var(--serif);font-size:32px;font-weight:700;margin-bottom:4px;color:var(--fg)}
-.page-header p{color:var(--text2);font-size:15px}
+.page-header h1{font-family:var(--serif);font-size:34px;font-weight:700;margin-bottom:4px;color:var(--fg)}
+.page-header p{color:var(--text2);font-size:16px}
 .header-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 
 /* ── STATS ── */
-.stat-big{font-family:var(--serif);font-size:36px;font-weight:700;line-height:1}
-.stat-sub{font-size:14px;color:var(--text2);margin-top:4px}
+.stat-big{font-family:var(--serif);font-size:40px;font-weight:700;line-height:1}
+.stat-sub{font-size:15px;color:var(--text2);margin-top:4px}
 .pos{color:var(--mint)}.neg{color:var(--red)}.neu{color:var(--text2)}
 
 /* ── PROGRESS BAR ── */
@@ -171,7 +171,7 @@ h1,h2,h3,.stat-big,.card-label{font-family:var(--serif)}
   padding:4px 12px;
   border:2px solid var(--fg);
   border-radius:var(--wobbly-btn);
-  font-size:12px;font-weight:700;font-family:var(--serif);
+  font-size:13px;font-weight:700;font-family:var(--serif);
   box-shadow:2px 2px 0px 0px var(--fg);
 }
 .badge-fin{background:var(--accent-dim);color:var(--accent)}
@@ -191,7 +191,7 @@ h1,h2,h3,.stat-big,.card-label{font-family:var(--serif)}
   border-radius:var(--wobbly-btn);
   border:3px solid var(--fg);
   background:var(--white);
-  color:var(--fg);font-size:15px;font-weight:700;font-family:var(--serif);
+  color:var(--fg);font-size:16px;font-weight:700;font-family:var(--serif);
   box-shadow:var(--shadow);
   transition:all .1s;
 }
@@ -205,7 +205,7 @@ h1,h2,h3,.stat-big,.card-label{font-family:var(--serif)}
   background:var(--accent);color:var(--white);
 }
 .btn-accent:hover{background:#e63e3e;color:var(--white)}
-.btn-sm{padding:6px 14px;font-size:13px;border-width:2px;box-shadow:var(--shadow-sm)}
+.btn-sm{padding:6px 14px;font-size:14px;border-width:2px;box-shadow:var(--shadow-sm)}
 .btn-ghost{border-color:transparent;box-shadow:none;background:transparent;color:var(--text2)}
 .btn-ghost:hover{background:var(--postit);border-color:var(--fg);box-shadow:var(--shadow-sm);color:var(--fg)}
 .btn-danger{border-color:transparent;color:var(--red);box-shadow:none;background:transparent}
