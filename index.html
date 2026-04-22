@@ -58,10 +58,10 @@
       <button class="nav-item" onclick="nav('watchlist')"><span style="font-size:15px">🎬</span> Watch List</button>
       <button class="nav-item" onclick="nav('wishlist')"><span style="font-size:15px">�️</span> Wishlist</button>
     </div>
-    <div style="margin-top:auto;padding:16px 20px;border-top:1px solid var(--border);text-align:center">
+    <div style="margin-top:auto;padding:16px 20px;border-top:1px solid var(--outline-variant);text-align:center">
       <div id="sync-status" style="font-size:11px;margin-bottom:8px;min-height:14px;transition:color .3s"></div>
       <div style="font-size:22px;margin-bottom:6px">🤎✨💪</div>
-      <div style="font-size:11px;color:var(--text3);line-height:1.5" id="sidebar-quote">You've got this!</div>
+      <div style="font-size:11px;color:var(--neutral);line-height:1.5" id="sidebar-quote">You've got this!</div>
     </div>
   </nav>
   <div class="mobile-nav-overlay" id="mobile-overlay" onclick="closeSidebar()"></div>
@@ -69,7 +69,7 @@
   <div class="main">
     <div class="mobile-header">
       <button class="hamburger" onclick="toggleSidebar()">☰</button>
-      <span style="font-family:var(--serif);font-size:16px;color:var(--accent)" id="mobile-title">Dashboard</span>
+      <span style="font-family:var(--serif);font-size:18px;font-weight:600;color:var(--primary)" id="mobile-title">Dashboard</span>
       <span style="font-size:12px;color:var(--text3)" id="mobile-date"></span>
     </div>
 
@@ -118,7 +118,7 @@
       <div class="page-header">
         <div class="header-row">
           <div style="display:flex;align-items:center;gap:12px">
-            <img src="https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3ajZoMHp5OXV6ODQ2YnBkYTFhbmx0ODB4cnp2eWFrdDEzZ2I0azEwNSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/fedkQvBUfTrasTTyUO/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:14px;flex-shrink:0">
+            <img src="https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3ajZoMHp5OXV6ODQ2YnBkYTFhbmx0ODB4cnp2eWFrdDEzZ2I0azEwNSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/fedkQvBUfTrasTTyUO/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0">
             <div>
               <h1>Roadmap</h1>
               <p>Month-by-month plan · March 2026 → March 2027 · Linked to your live data</p>
@@ -156,7 +156,7 @@
       <div class="page-header">
         <div class="header-row">
           <div style="display:flex;align-items:center;gap:12px">
-            <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdmV2ZjJqc2c4Y2FyOGh0ZzY0N3VrMGs4bDloNTYyaW8zcmx1cGZmdSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/GXZVx7kiFQ1IuZpB8o/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:14px;flex-shrink:0">
+            <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdmV2ZjJqc2c4Y2FyOGh0ZzY0N3VrMGs4bDloNTYyaW8zcmx1cGZmdSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/GXZVx7kiFQ1IuZpB8o/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0">
             <div><h1>Goals</h1><p>Annual goals and progress · Milestones tracked in <button class="btn btn-sm btn-ghost" onclick="nav('roadmap')" style="padding:2px 8px;font-size:12px">Roadmap</button></p></div>
           </div>
           <button class="btn btn-accent" onclick="openModal('addGoal')">+ Add Goal</button>
@@ -183,7 +183,7 @@
       <div class="page-header">
         <div class="header-row">
           <div style="display:flex;align-items:center;gap:12px">
-            <img src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExYnJva3RybnFtNTk4NnZ4aGt2ZzNma2dkcHEzcWh3aHEwZm13dTM5diZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/m9MaXtasxTu82sCrYW/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:14px;flex-shrink:0">
+            <img src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExYnJva3RybnFtNTk4NnZ4aGt2ZzNma2dkcHEzcWh3aHEwZm13dTM5diZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/m9MaXtasxTu82sCrYW/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0">
             <div><h1>Habits</h1><p>Daily tracking · streaks · consistency</p></div>
           </div>
           <button class="btn btn-accent" onclick="openModal('addHabit')">+ Add Habit</button>
@@ -212,7 +212,7 @@
       <div class="page-header">
         <div class="header-row">
           <div style="display:flex;align-items:center;gap:12px">
-            <img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExYnpyazdwZzhtaGF3cTl4eW52cDd1ejNueWN4MXd3c2ZyY2t0aTlleiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/FGiavUwla7m1ppSsnu/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:14px;flex-shrink:0">
+            <img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExYnpyazdwZzhtaGF3cTl4eW52cDd1ejNueWN4MXd3c2ZyY2t0aTlleiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/FGiavUwla7m1ppSsnu/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0">
             <div><h1>Gym Tracker</h1><p>Progressive overload — get stronger every week</p></div>
           </div>
           <div style="display:flex;gap:8px">
@@ -582,7 +582,7 @@
       <div class="page-header">
         <div class="header-row">
           <div style="display:flex;align-items:center;gap:12px">
-            <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdHI1bWNxaXRyZHI1OWgzZ2RuN20ybzgzcHR4ZnBseWk0bHVrZzY0ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/67ThRZlYBvibtdF9JH/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:14px;flex-shrink:0">
+            <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdHI1bWNxaXRyZHI1OWgzZ2RuN20ybzgzcHR4ZnBseWk0bHVrZzY0ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/67ThRZlYBvibtdF9JH/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0">
             <div><h1>Finance</h1><p>Budget, accounts, debts & savings goals</p></div>
           </div>
         </div>
@@ -660,7 +660,7 @@
       <div class="page-header">
         <div class="header-row">
           <div style="display:flex;align-items:center;gap:12px">
-            <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOGd1NjYzcmY1cmVmeDl5YThvZWtxanA5dXpjZ3QzM2hpYnc4c2VvYyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/bmQBu3aSF0DxadphkG/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:14px;flex-shrink:0">
+            <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOGd1NjYzcmY1cmVmeDl5YThvZWtxanA5dXpjZ3QzM2hpYnc4c2VvYyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/bmQBu3aSF0DxadphkG/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0">
             <div><h1>Metrics</h1><p>Track your body, fitness and financial numbers over time</p></div>
           </div>
           <button class="btn btn-accent" onclick="openModal('logMetric')">+ Log entry</button>
@@ -696,7 +696,7 @@
 
     <!-- ══ REVIEWS ══ -->
     <div class="page" id="page-review">
-      <div class="page-header"><div class="header-row"><div style="display:flex;align-items:center;gap:12px"><img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExdHEzd2MwZ3kzNGZ6YnhlamN4NjhoZzR6cTVjdHBuZnY2Zzk2MzEwdyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/zUXNtjMCjPd6S5WCgo/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:14px;flex-shrink:0"><div><h1>Reviews</h1><p>Monthly and quarterly reflections</p></div></div></div></div>
+      <div class="page-header"><div class="header-row"><div style="display:flex;align-items:center;gap:12px"><img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExdHEzd2MwZ3kzNGZ6YnhlamN4NjhoZzR6cTVjdHBuZnY2Zzk2MzEwdyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/zUXNtjMCjPd6S5WCgo/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0"><div><h1>Reviews</h1><p>Monthly and quarterly reflections</p></div></div></div></div>
       <div class="page-tabs">
         <button class="page-tab active" onclick="subNav('review','monthly')">📅 Monthly</button>
         <button class="page-tab" onclick="subNav('review','quarterly')">📆 Quarterly</button>
@@ -758,7 +758,7 @@
       <div class="page-header">
         <div class="header-row">
           <div style="display:flex;align-items:center;gap:12px">
-            <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdHdlZTY2djNjMWZnMTN6Z2o1YXEyMm5yeGhnMzVuejJwYmYybTI4cSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/0IAPszdB8MMjPxNhFL/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:14px;flex-shrink:0">
+            <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdHdlZTY2djNjMWZnMTN6Z2o1YXEyMm5yeGhnMzVuejJwYmYybTI4cSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/0IAPszdB8MMjPxNhFL/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0">
             <div><h1>Projects</h1><p>Active work · <button class="btn btn-sm btn-ghost" onclick="nav('roadmap')" style="padding:2px 8px;font-size:12px">Apprenticeship milestones in Roadmap</button></p></div>
           </div>
           <button class="btn btn-accent" onclick="openModal('addProject')">+ Add Project</button>
@@ -778,7 +778,7 @@
 
     <!-- ══ RELATIONSHIPS ══ -->
     <div class="page" id="page-relationships">
-      <div class="page-header"><div class="header-row"><div style="display:flex;align-items:center;gap:12px"><img src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExeXdsZDJobDE4MmlpeWx0amo0dWFqNXdiZnllYmtpeXljYzc4eWhrMiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/OvpA7YvA9INE7bgGOy/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:14px;flex-shrink:0"><div><h1>Relationships</h1><p>Stay connected with the people who matter most</p></div></div><button class="btn btn-accent" onclick="openModal('addRelationship')">+ Add Person</button></div></div>
+      <div class="page-header"><div class="header-row"><div style="display:flex;align-items:center;gap:12px"><img src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExeXdsZDJobDE4MmlpeWx0amo0dWFqNXdiZnllYmtpeXljYzc4eWhrMiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/OvpA7YvA9INE7bgGOy/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0"><div><h1>Relationships</h1><p>Stay connected with the people who matter most</p></div></div><button class="btn btn-accent" onclick="openModal('addRelationship')">+ Add Person</button></div></div>
       <div class="filter-row" id="rel-filters">
         <button class="filter-btn active" onclick="filterRel('all',this)">All</button>
         <button class="filter-btn" onclick="filterRel('Partner',this)">Partner</button>
@@ -790,7 +790,7 @@
 
     <!-- ══ GRATITUDE ══ -->
     <div class="page" id="page-gratitude">
-      <div class="page-header"><div class="header-row"><div style="display:flex;align-items:center;gap:12px"><img src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExOTQwNjVmM25mb2VvMTJzZGExMWUxNDR3ZXg4MmcwdGhrdG12cjN4cCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/IcGkqdUmYLFGE/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:14px;flex-shrink:0"><div><h1>Gratitude & Wins</h1><p>Celebrate the small victories.</p></div></div><button class="btn btn-accent" onclick="openModal('addGratitude')">+ Add Entry</button></div></div>
+      <div class="page-header"><div class="header-row"><div style="display:flex;align-items:center;gap:12px"><img src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExOTQwNjVmM25mb2VvMTJzZGExMWUxNDR3ZXg4MmcwdGhrdG12cjN4cCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/IcGkqdUmYLFGE/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0"><div><h1>Gratitude & Wins</h1><p>Celebrate the small victories.</p></div></div><button class="btn btn-accent" onclick="openModal('addGratitude')">+ Add Entry</button></div></div>
       <div class="grid-2" style="margin-bottom:16px">
         <div class="card"><div class="card-label">This week</div><div id="gratitude-wins"></div></div>
         <div class="card"><div class="card-label">Gratitude streak</div><div id="gratitude-stats"></div></div>
@@ -800,7 +800,7 @@
 
     <!-- ══ WATCHLIST ══ -->
     <div class="page" id="page-watchlist">
-      <div class="page-header"><div class="header-row"><div style="display:flex;align-items:center;gap:12px"><img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExY2pmcWw0OGh4a29rdWpmbWltczJvcThtYmppMXdwNGM0ZXZ1aWUwciZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/A8OSeenhtpey43CcMG/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:14px;flex-shrink:0"><div><h1>Watch List</h1><p>Movies, series and YouTube creators</p></div></div><button class="btn btn-accent" onclick="openModal('addWatchItem')">+ Add</button></div></div>
+      <div class="page-header"><div class="header-row"><div style="display:flex;align-items:center;gap:12px"><img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExY2pmcWw0OGh4a29rdWpmbWltczJvcThtYmppMXdwNGM0ZXZ1aWUwciZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/A8OSeenhtpey43CcMG/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0"><div><h1>Watch List</h1><p>Movies, series and YouTube creators</p></div></div><button class="btn btn-accent" onclick="openModal('addWatchItem')">+ Add</button></div></div>
       <div class="filter-row" id="watch-filters">
         <button class="filter-btn active" onclick="filterWatch('all',this)">All</button>
         <button class="filter-btn" onclick="filterWatch('want',this)">Want to watch</button>
@@ -814,7 +814,7 @@
 
     <!-- ══ WISHLIST ══ -->
     <div class="page" id="page-wishlist">
-      <div class="page-header"><div class="header-row"><div style="display:flex;align-items:center;gap:12px"><img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNGd3ajJrdWltazRjcnByYXFzbDRibTdpNGk3N2hxMmNnMGc5d3A3ciZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/At48Y4dT3oDXx64KQj/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:14px;flex-shrink:0"><div><h1>Wishlist / 30-Day Waitlist</h1><p>Impulse spending prevention.</p></div></div><button class="btn btn-accent" onclick="openModal('addWishItem')">+ Add Item</button></div></div>
+      <div class="page-header"><div class="header-row"><div style="display:flex;align-items:center;gap:12px"><img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNGd3ajJrdWltazRjcnByYXFzbDRibTdpNGk3N2hxMmNnMGc5d3A3ciZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/At48Y4dT3oDXx64KQj/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0"><div><h1>Wishlist / 30-Day Waitlist</h1><p>Impulse spending prevention.</p></div></div><button class="btn btn-accent" onclick="openModal('addWishItem')">+ Add Item</button></div></div>
       <div class="filter-row" id="wish-filters">
         <button class="filter-btn active" onclick="filterWish('all',this)">All</button>
         <button class="filter-btn" onclick="filterWish('waiting',this)">Waiting</button>
@@ -830,7 +830,7 @@
       <div class="page-header">
         <div class="header-row">
           <div style="display:flex;align-items:center;gap:12px">
-            <img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExdmRoanQwM3duajNiNmxuODN0eXplcW11bmEwODdrcG1wOTdxMDUyNSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/4ffHrJgxWofJ8E7qum/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:14px;flex-shrink:0">
+            <img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExdmRoanQwM3duajNiNmxuODN0eXplcW11bmEwODdrcG1wOTdxMDUyNSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/4ffHrJgxWofJ8E7qum/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0">
             <div><h1>Weekly Plan</h1><p>Set intentions. Plan your week.</p></div>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
@@ -880,7 +880,7 @@
 
     <!-- ══ INSIGHTS ══ -->
     <div class="page" id="page-insights">
-      <div class="page-header"><div class="header-row"><div style="display:flex;align-items:center;gap:12px"><img src="https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExZzdoajY0YXN5M3RldHczamRvZ205OGdxNXpxbHltYXp0dzFlejBoZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/t2cBOuEOoOsWmyUSZs/giphy.gif" alt="" style="width:100px;height:100px;object-fit:contain;border-radius:14px;flex-shrink:0"><div><h1>Insights</h1><p>Your life at a glance — powered by your data</p></div></div></div></div>
+      <div class="page-header"><div class="header-row"><div style="display:flex;align-items:center;gap:12px"><img src="https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExZzdoajY0YXN5M3RldHczamRvZ205OGdxNXpxbHltYXp0dzFlejBoZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/t2cBOuEOoOsWmyUSZs/giphy.gif" alt="" style="width:100px;height:100px;object-fit:contain;border-radius:20px;flex-shrink:0"><div><h1>Insights</h1><p>Your life at a glance — powered by your data</p></div></div></div></div>
 
       <!-- Pulse check -->
       <div class="card" style="margin-bottom:20px">
