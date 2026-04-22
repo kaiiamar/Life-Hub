@@ -75,37 +75,39 @@
 
     <!-- ══ DASHBOARD ══ -->
     <div class="page active" id="page-dashboard">
-      <div style="padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-        <div style="display:flex;align-items:center;gap:14px;flex:1">
-          <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYnRhZm1iN2loeXp1dTBxaGIxMHcxdGpndHRnZHh1OTBlcHZnbjZ1cCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/tBWoHDVfEULuKqEFx8/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0">
+      <div style="background:linear-gradient(135deg,rgba(189,90,61,0.06),rgba(201,151,58,0.04));border:1px solid rgba(189,90,61,0.08);border-radius:var(--radius);padding:28px 28px 24px;margin-bottom:24px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:-20px;right:-20px;width:120px;height:120px;background:radial-gradient(circle,rgba(189,90,61,0.06),transparent 70%);pointer-events:none"></div>
+        <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+          <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYnRhZm1iN2loeXp1dTBxaGIxMHcxdGpndHRnZHh1OTBlcHZnbjZ1cCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/tBWoHDVfEULuKqEFx8/giphy.gif" alt="" style="width:80px;height:80px;object-fit:cover;border-radius:20px;flex-shrink:0;box-shadow:0 4px 16px rgba(189,90,61,0.12)">
           <div style="flex:1">
-          <h1 id="dash-greeting" style="color:var(--on-surface);font-size:28px;font-family:var(--serif);font-weight:500;letter-spacing:-0.02em">Good morning, Kai</h1>
-          <p id="dash-date-sub" style="color:var(--on-surface-variant);margin-top:4px;font-size:13px"></p>
+          <h1 id="dash-greeting" style="color:var(--on-surface);font-size:26px;font-family:var(--serif);font-weight:500;letter-spacing:-0.02em;line-height:1.2">Good morning, Kai</h1>
+          <p id="dash-date-sub" style="color:var(--on-surface-variant);margin-top:6px;font-size:13px"></p>
         </div>
         </div>
       </div>
-      <div class="card" style="padding:14px 20px;margin-bottom:20px;text-align:center">
-        <p style="font-family:var(--serif);font-size:16px;font-style:italic;color:var(--on-surface-variant);opacity:0.8" id="dash-quote"></p>
+      <div style="margin-top:16px;padding:12px 16px;background:rgba(255,255,255,0.5);border-radius:var(--radius-sm);border:1px solid rgba(255,255,255,0.4)">
+        <p style="font-family:var(--serif);font-size:15px;font-style:italic;color:var(--on-surface-variant);opacity:0.75" id="dash-quote"></p>
       </div>
-      <div id="dash-notification-prompt" style="margin-bottom:16px"></div>
-      <div class="grid-3" style="margin-bottom:20px" id="dash-stats"></div>
-      <div class="grid-2" style="margin-bottom:16px">
+      </div>
+      <div id="dash-notification-prompt" style="margin-bottom:18px"></div>
+      <div class="grid-3" style="margin-bottom:22px" id="dash-stats"></div>
+      <div class="grid-2" style="margin-bottom:18px">
         <div class="card"><div class="card-label">📋 This week's priorities</div><div id="dash-priorities-preview"></div></div>
         <div class="card"><div class="card-label">✅ This week's habits</div><div id="dash-habits-preview"></div></div>
       </div>
-      <div class="grid-2" style="margin-bottom:16px">
+      <div class="grid-2" style="margin-bottom:18px">
         <div class="card"><div class="card-label">🌡️ Today's check-in</div><div id="dash-mood-checkin"></div></div>
         <div class="card"><div class="card-label">💧 Water today</div><div id="dash-water-tracker"></div></div>
       </div>
-      <div class="grid-2" style="margin-bottom:16px">
-        <div class="card"><div class="card-label">🙏 Gratitude & wins</div><div id="dash-gratitude-preview"></div></div>
+      <div class="grid-2" style="margin-bottom:18px">
+        <div class="card" style="background:rgba(189,90,61,0.04);border-color:rgba(189,90,61,0.08)"><div class="card-label" style="color:var(--primary)">🙏 Gratitude & wins</div><div id="dash-gratitude-preview"></div></div>
         <div class="card"><div class="card-label">🤎 Relationship check-ins</div><div id="dash-relationships-preview"></div></div>
       </div>
-      <div class="grid-2" style="margin-bottom:16px">
-        <div class="card"><div class="card-label">🏋️ Recent workouts</div><div id="dash-workouts-preview"></div></div>
-      </div>
-      <div class="grid-2" style="margin-bottom:16px">
+      <div class="grid-2" style="margin-bottom:18px">
+        <div class="card"><div class="card-label">🏋️ Recent activity</div><div id="dash-workouts-preview"></div></div>
         <div class="card"><div class="card-label">💸 Finance snapshot</div><div id="dash-finance-preview"></div></div>
+      </div>
+      <div style="margin-bottom:18px">
         <div class="card">
           <div class="card-label">🗓️ Roadmap — this month</div>
           <div id="dash-roadmap-preview"></div>
