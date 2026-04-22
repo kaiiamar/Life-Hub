@@ -62,7 +62,7 @@ body{
   background-image:radial-gradient(var(--muted) 1px,transparent 1px);
   background-size:24px 24px;
   color:var(--fg);min-height:100dvh;
-  font-size:17px;line-height:1.7;overflow-x:hidden;
+  font-size:18px;line-height:1.7;overflow-x:hidden;
 }
 input,textarea,select,button{font-family:var(--sans)}
 button{cursor:pointer}
@@ -125,9 +125,9 @@ h1,h2,h3,.stat-big,.card-label{font-family:var(--serif)}
 /* ── SIDEBAR ── */
 .sidebar-logo{padding:0 24px 24px;border-bottom:3px dashed var(--fg);margin-bottom:16px}
 .sidebar-logo h2{font-family:var(--serif);font-size:22px;font-weight:700;color:var(--fg);line-height:1.3}
-.sidebar-logo span{font-size:13px;color:var(--text2)}
+.sidebar-logo span{font-size:14px;color:var(--text2)}
 .nav-section{padding:0 14px;margin-bottom:6px}
-.nav-label{font-size:12px;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;padding:10px 10px 4px;font-weight:700;font-family:var(--serif)}
+.nav-label{font-size:13px;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;padding:10px 10px 4px;font-weight:700;font-family:var(--serif)}
 .nav-item{
   display:flex;align-items:center;gap:10px;
   padding:10px 14px;
@@ -246,8 +246,8 @@ h1,h2,h3,.stat-big,.card-label{font-family:var(--serif)}
 /* ── HABITS ── */
 .habit-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:2px dashed var(--muted)}
 .habit-row:last-child{border-bottom:none}
-.habit-name{flex:1;font-size:15px;min-width:0;font-weight:700;font-family:var(--serif)}
-.habit-freq{font-size:13px;color:var(--text2);margin-top:1px}
+.habit-name{flex:1;font-size:16px;min-width:0;font-weight:700;font-family:var(--serif)}
+.habit-freq{font-size:14px;color:var(--text2);margin-top:1px}
 .habit-dots{display:flex;gap:5px}
 .dot{
   width:28px;height:28px;
@@ -289,8 +289,8 @@ h1,h2,h3,.stat-big,.card-label{font-family:var(--serif)}
 .workout-card:hover{transform:translate(-2px,-2px) rotate(-0.5deg);box-shadow:var(--shadow-lg)}
 .workout-card:active{transform:translate(4px,4px);box-shadow:none}
 .workout-header{display:flex;align-items:flex-start;justify-content:space-between}
-.workout-title{font-size:16px;font-weight:700;font-family:var(--serif)}
-.workout-meta{font-size:14px;color:var(--text2);margin-top:3px}
+.workout-title{font-size:17px;font-weight:700;font-family:var(--serif)}
+.workout-meta{font-size:15px;color:var(--text2);margin-top:3px}
 .chart-wrap{position:relative;height:200px;width:100%}
 .chart-wrap-sm{position:relative;height:160px;width:100%}
 
@@ -328,9 +328,9 @@ h1,h2,h3,.stat-big,.card-label{font-family:var(--serif)}
 /* ── GOAL ITEMS ── */
 .goal-item{border-bottom:none;padding:22px 24px}
 .goal-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px}
-.goal-title{font-size:16px;font-weight:700;font-family:var(--serif);cursor:pointer}
+.goal-title{font-size:17px;font-weight:700;font-family:var(--serif);cursor:pointer}
 .goal-title:hover{color:var(--accent)}
-.goal-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;font-size:14px;color:var(--text2)}
+.goal-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;font-size:15px;color:var(--text2)}
 .goal-actions{display:flex;gap:4px;flex-shrink:0}
 .goal-roadmap-link{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--blue);background:var(--blue-dim);padding:3px 10px;border-radius:var(--wobbly-sm);cursor:pointer;border:2px solid var(--blue);font-family:var(--serif);font-weight:700;transition:all .1s;margin-top:4px;box-shadow:2px 2px 0px 0px var(--blue)}
 .goal-roadmap-link:hover{transform:translate(1px,1px);box-shadow:1px 1px 0px 0px var(--blue)}
@@ -582,9 +582,13 @@ h1,h2,h3,.stat-big,.card-label{font-family:var(--serif)}
   .fin-summary{grid-template-columns:1fr!important}
 }
 @media(min-width:1200px){
+  body{font-size:19px}
   .page{padding:36px 52px}
   .grid-3{grid-template-columns:1fr 1fr 1fr}
   .grid-4{grid-template-columns:repeat(4,1fr)}
-  .page-header h1{font-size:36px}
+  .page-header h1{font-size:38px}
   .rm-sections-grid{grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}
+  .card-label{font-size:16px}
+  .stat-big{font-size:44px}
+  .nav-item{font-size:17px}
 }
