@@ -5,13 +5,13 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
 
 // Handle push notifications from the backend
 self.addEventListener('push',function(e){
-  var data={title:'Life Hub',body:'Reminder',icon:'/icon-192.png'};
+  var data={title:'Life Hub',body:'Reminder',icon:'/Life-Hub/icon-192.png'};
   try{data=e.data.json()}catch(err){}
   e.waitUntil(
     self.registration.showNotification(data.title,{
       body:data.body,
-      icon:data.icon||'/icon-192.png',
-      badge:'/icon-192.png',
+      icon:data.icon||'/Life-Hub/icon-192.png',
+      badge:'/Life-Hub/icon-192.png',
       vibrate:[200,100,200]
     })
   );
@@ -25,7 +25,7 @@ self.addEventListener('notificationclick',function(e){
       for(var i=0;i<list.length;i++){
         if(list[i].url.indexOf('/')!==-1&&'focus' in list[i])return list[i].focus();
       }
-      if(clients.openWindow)return clients.openWindow('/');
+      if(clients.openWindow)return clients.openWindow('/Life-Hub/');
     })
   );
 });
