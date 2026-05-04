@@ -31,9 +31,17 @@ var curRmMonth=RM_MONTHS[rmGetCurrentMonthIdx?rmGetCurrentMonthIdx():0];
 var curRmProg=curRmMonth?rmGetProgress(curRmMonth):{done:0,total:0};
 var rmPct=curRmProg.total>0?Math.round(curRmProg.done/curRmProg.total*100):0;
 scores.push({label:'Roadmap',pct:rmPct,color:'var(--teal)',tip:curRmProg.done+'/'+curRmProg.total+' items this month'});
+// Priorities — % of daily priorities completed last 30 days
+var priDone=0,priTotal=0;
+last30.forEach(function(d){
+  var list=((STATE.dailyPriorities||{})[d])||[];
+  list.forEach(function(p){priTotal++;if(p.done)priDone++});
+});
+var priPct=priTotal>0?Math.round(priDone/priTotal*100):0;
+scores.push({label:'Priorities',pct:priPct,color:'#E8A87C',tip:priTotal>0?priDone+'/'+priTotal+' completed (30d)':'Set daily priorities to track focus'});
 
-// Overall composite (weighted)
-var weights=[0.25,0.2,0.15,0.2,0.2];
+// Overall composite (weighted) — now includes priorities
+var weights=[0.22,0.16,0.14,0.16,0.16,0.16];
 var overall=Math.round(scores.reduce(function(s,sc,i){return s+sc.pct*weights[i]},0));
 var overallLabel=overall>=80?'Crushing it':overall>=60?'On track':overall>=40?'Room to grow':'Needs attention';
 var overallColor=overall>=80?'var(--mint)':overall>=60?'var(--accent)':overall>=40?'var(--gold)':'var(--peach)';

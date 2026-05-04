@@ -2,9 +2,15 @@
 var quotes=['Be intentional \u{1F928}','God\'s timing is perfect \u2728','Make happiness the priority \u{1F973}','Character energy only \u{1F451}','You are so much stronger than you think \u{1F4AA}','Debt free era loading\u2026 \u{1F4B8}','Future you says thanks \u{1F929}','She believed she could, so she did \u{1F4AA}\u{1F3FE}'];
 var qEl=document.getElementById('sidebar-quote');if(qEl)qEl.textContent=quotes[Math.floor(Math.random()*quotes.length)];
 
+// Auto night mode — applied immediately on load
+(function(){
+  var h=new Date().getHours();
+  if(h>=21||h<5)document.body.classList.add('night-mode');
+})();
+
 if(_firebaseReady)setSyncStatus('saving');
 loadFromCloud(function(){
-  var migrateKeys=['goals','habits','workouts','gymTemplates','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','projects','relationships','gratitude','wishlist','watchlist','debtPayments','reminders','water'];
+  var migrateKeys=['goals','habits','workouts','gymTemplates','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','projects','relationships','gratitude','wishlist','watchlist','debtPayments','reminders','water','dailyPriorities'];
   migrateKeys.forEach(function(k){if(!STATE[k])STATE[k]=JSON.parse(JSON.stringify(DEFAULT_STATE[k]))});
   if(!STATE.metrics.projectsDone)STATE.metrics.projectsDone=[];
   if(!STATE.reviews.monthly)STATE.reviews.monthly={};
@@ -62,16 +68,23 @@ function subscribeToPush(){
   })
 }
 function syncRemindersToBackend(){
-  if(!NOTIF_API)return;
+  if(!NOTIF_API){showCelebrationToast('No backend URL set','⚠️');return}
   var reminders=getReminders();
+  var enabledCount=reminders.filter(function(r){return r.enabled}).length;
   fetch(NOTIF_API+'/api/reminders',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({userId:NOTIF_USER_ID,reminders:reminders})
   }).then(function(r){return r.json()}).then(function(data){
     console.log('Reminders synced:',data);
-    if(data.scheduled!==undefined)showCelebrationToast('Synced '+data.scheduled+' reminders','🔔')
-  }).catch(function(e){console.error('Sync failed:',e)})
+    if(typeof data.schedules==='string'&&data.schedules.indexOf('skipped')===0){
+      showCelebrationToast('Synced locally only — backend not configured','⚠️');
+    }else if(data.scheduled!==undefined){
+      showCelebrationToast('Synced '+data.scheduled+'/'+enabledCount+' reminders','🔔');
+    }else if(data.error){
+      showCelebrationToast('Sync failed: '+data.error,'⚠️');
+    }
+  }).catch(function(e){console.error('Sync failed:',e);showCelebrationToast('Sync failed — check connection','⚠️')})
 }
 function urlBase64ToUint8Array(base64String){
   var padding='='.repeat((4-base64String.length%4)%4);

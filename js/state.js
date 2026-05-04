@@ -87,6 +87,7 @@ var DEFAULT_STATE = {
   ],
   metrics:{weight:[],bodyFat:[],steps:[],runs:[],moneySaved:[],projectsDone:[]},
   weeklyPlans:{},reviews:{monthly:{},quarterly:{}},
+  dailyPriorities:{},
   journal:{},mood:{},dailyHighlights:{},
   projects:[
     {id:'prj1',name:'Thailand Trip Planning',status:'active',cat:'Personal',desc:'Anniversary trip \u2014 29 November 2026',deadline:'2026-11-01',tasks:[{id:'t4',text:'Set budget',done:false},{id:'t5',text:'Book flights',done:false},{id:'t6',text:'Book accommodation',done:false},{id:'t7',text:'Sort travel insurance',done:false}],color:'#6b9e7a'},

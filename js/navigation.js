@@ -15,9 +15,39 @@ function statusBadge(g){var p=goalPct(g);var dl=daysLeft(g.deadline);if(p>=100)r
 function habitStreak(h){var today=new Date();var streak=0;for(var i=0;i<90;i++){var d=new Date(today);d.setDate(d.getDate()-i);var k=localDateKey(d);if(h.logs[k])streak++;else if(i>0)break}return streak}
 function habitWeekPct(h,wk){var days=weekDays(wk);return Math.round((days.filter(function(d){return h.logs[d]}).length/7)*100)}
 
-function nav(page){document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active')});document.querySelectorAll('.nav-item').forEach(function(b){b.classList.remove('active')});var pageEl=document.getElementById('page-'+page);if(pageEl)pageEl.classList.add('active');document.querySelectorAll('.nav-item').forEach(function(b){if(b.getAttribute('onclick')==="nav('"+page+"')")b.classList.add('active')});var titles={dashboard:'Dashboard',roadmap:'Roadmap',goals:'Goals',habits:'Habits',workout:'Gym',finance:'Finance',metrics:'Metrics',review:'Reviews',weekly:'Weekly Plan',insights:'Insights',projects:'Projects',relationships:'Relationships',gratitude:'Gratitude',watchlist:'Watch List',wishlist:'Wishlist',skincare:'Skincare'};var mTitle=document.getElementById('mobile-title');if(mTitle)mTitle.textContent=titles[page]||'';closeSidebar();renderPage(page);if(page==='roadmap')refreshRoadmapLiveCards()}
+function nav(page){
+  // Transition out current page
+  var current=document.querySelector('.page.active');
+  var pageEl=document.getElementById('page-'+page);
+  if(!pageEl)return;
 
-function subNav(section,tab){var btns=document.querySelectorAll('#page-'+section+' .page-tab');var pages=document.querySelectorAll('#page-'+section+' .sub-page');btns.forEach(function(b){b.classList.remove('active')});pages.forEach(function(p){p.classList.remove('active')});event.target.classList.add('active');var spEl=document.getElementById(section+'-'+tab);if(spEl)spEl.classList.add('active');if(section==='finance'){renderFinance(tab);if(tab!=='overview')refreshRoadmapLiveCards()}if(section==='workout'){if(tab==='history')renderAllWorkouts();if(tab==='runs')renderRunsTab();if(tab==='myplan')renderMyPlanSchedule()}if(section==='metrics'){if(tab==='body')renderBodyMetrics();else if(tab==='fitness')renderFitnessMetrics();else if(tab==='finance')renderFinanceMetrics()}if(section==='review'){if(tab==='monthly')renderMonthlyReview();else if(tab==='quarterly')renderQuarterlyReview()}}
+  function applyNav(){
+    document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active')});
+    document.querySelectorAll('.nav-item').forEach(function(b){b.classList.remove('active')});
+    document.querySelectorAll('.topnav-link').forEach(function(b){b.classList.remove('active')});
+    pageEl.classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(function(b){if(b.getAttribute('onclick')==="nav('"+page+"')")b.classList.add('active')});
+    document.querySelectorAll('.topnav-link').forEach(function(b){if(b.getAttribute('data-page')===page)b.classList.add('active')});
+    var titles={dashboard:'Dashboard',roadmap:'Roadmap',goals:'Goals',habits:'Habits',workout:'Gym',finance:'Finance',metrics:'Metrics',review:'Reviews',weekly:'Weekly Plan',insights:'Insights',projects:'Projects',relationships:'Relationships',gratitude:'Gratitude',watchlist:'Watch List',wishlist:'Wishlist',skincare:'Skincare'};
+    var mTitle=document.getElementById('mobile-title');if(mTitle)mTitle.textContent=titles[page]||'';
+    closeSidebar();
+    renderPage(page);
+    if(page==='roadmap')refreshRoadmapLiveCards();
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  if(current&&current!==pageEl){
+    current.classList.add('page-leaving');
+    setTimeout(function(){
+      current.classList.remove('page-leaving');
+      applyNav();
+    },180);
+  }else{
+    applyNav();
+  }
+}
+
+function subNav(section,tab){var btns=document.querySelectorAll('#page-'+section+' .page-tab');var pages=document.querySelectorAll('#page-'+section+' .sub-page');btns.forEach(function(b){b.classList.remove('active')});pages.forEach(function(p){p.classList.remove('active')});event.target.classList.add('active');var spEl=document.getElementById(section+'-'+tab);if(spEl)spEl.classList.add('active');if(section==='finance'){renderFinance(tab);if(tab!=='overview')refreshRoadmapLiveCards()}if(section==='workout'){if(tab==='history')renderAllWorkouts();if(tab==='runs')renderRunsTab();if(tab==='myplan')renderMyPlanSchedule()}if(section==='metrics'){if(tab==='body')renderBodyMetrics();else if(tab==='fitness')renderFitnessMetrics();else if(tab==='water')renderMetricsWater();else if(tab==='finance')renderFinanceMetrics()}if(section==='review'){if(tab==='monthly')renderMonthlyReview();else if(tab==='quarterly')renderQuarterlyReview()}}
 
 function renderPage(page){if(page==='dashboard')renderDashboard();if(page==='roadmap')renderRoadmap();if(page==='goals')renderGoals();if(page==='habits')renderHabits();if(page==='workout')renderWorkout();if(page==='finance')renderFinance('overview');if(page==='metrics')renderMetrics();if(page==='review')renderReview();if(page==='weekly')renderWeeklyPlan();if(page==='insights')renderInsights();if(page==='projects')renderProjects();if(page==='relationships')renderRelationships();if(page==='gratitude')renderGratitude();if(page==='watchlist')renderWatchlist();if(page==='wishlist')renderWishlist();if(page==='skincare')renderSkincare()}
 
@@ -25,3 +55,72 @@ function toggleSidebar(){document.getElementById('sidebar').classList.toggle('op
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('mobile-overlay').classList.remove('open')}
 
 
+
+
+// Top nav dropdown toggle
+document.addEventListener('DOMContentLoaded',function(){
+  var moreBtn=document.getElementById('topnav-more-btn');
+  var dropdown=document.getElementById('topnav-dropdown');
+  if(moreBtn&&dropdown){
+    moreBtn.addEventListener('click',function(e){
+      e.stopPropagation();
+      dropdown.classList.toggle('open');
+    });
+    document.addEventListener('click',function(e){
+      if(!dropdown.contains(e.target)&&e.target!==moreBtn){
+        dropdown.classList.remove('open');
+      }
+    });
+    // Close on nav click
+    dropdown.querySelectorAll('.topnav-drop-item').forEach(function(item){
+      item.addEventListener('click',function(){dropdown.classList.remove('open')});
+    });
+  }
+});
+
+
+// ── TOPNAV SLIDING PILL + SCROLL BLUR ──
+function updateTopnavPill(){
+  var pill=document.getElementById('topnav-pill');
+  var active=document.querySelector('.topnav-link.active');
+  if(!pill||!active)return;
+  var rect=active.getBoundingClientRect();
+  var parentRect=active.parentElement.getBoundingClientRect();
+  pill.style.left=(rect.left-parentRect.left)+'px';
+  pill.style.width=rect.width+'px';
+  pill.classList.add('visible');
+}
+window.addEventListener('load',function(){setTimeout(updateTopnavPill,100)});
+window.addEventListener('resize',updateTopnavPill);
+// Re-run after every nav
+var _origNav=window.nav;
+window.nav=function(page){
+  _origNav(page);
+  setTimeout(updateTopnavPill,50);
+};
+
+// Scroll blur on topnav
+window.addEventListener('scroll',function(){
+  var topnav=document.getElementById('topnav');
+  if(!topnav)return;
+  if(window.scrollY>8)topnav.classList.add('scrolled');
+  else topnav.classList.remove('scrolled');
+},{passive:true});
+
+// ── HERO PARALLAX ──
+document.addEventListener('mousemove',function(e){
+  var inner=document.getElementById('hero-inner');
+  var hero=document.getElementById('hero');
+  if(!inner||!hero)return;
+  var rect=hero.getBoundingClientRect();
+  if(rect.bottom<0||rect.top>window.innerHeight)return;
+  var x=(e.clientX/window.innerWidth-0.5)*8;
+  var y=(e.clientY/window.innerHeight-0.5)*5;
+  inner.style.transform='translate('+x+'px,'+y+'px)';
+  // Move blobs too
+  var blobs=hero.querySelectorAll('.blob');
+  blobs.forEach(function(b,i){
+    var mult=(i+1)*0.6;
+    b.style.transform='translate('+(-x*mult)+'px,'+(-y*mult)+'px)';
+  });
+});

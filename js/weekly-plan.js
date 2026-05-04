@@ -52,8 +52,41 @@ RM_MONTHS.forEach(function(m){m.sections.forEach(function(sec,si){sec.items.forE
 (STATE.roadmapAdded||[]).forEach(function(a){if((STATE.roadmapChecklist||{})[a.id])return;if(!a.dueDate)return;if(a.dueDate>=days[0]&&a.dueDate<=days[6]){dueItems.push({text:a.text,dueDate:a.dueDate,section:'',month:'',key:a.id,type:'added'})}});
 dueItems.sort(function(a,b){return a.dueDate.localeCompare(b.dueDate)});
 if(dueItems.length){rdEl.innerHTML=dueItems.map(function(di){var dl2=Math.ceil((new Date(di.dueDate)-new Date())/86400000);var urgency=dl2<0?'var(--red)':dl2<=2?'var(--amber)':'var(--teal)';return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)"><div style="width:6px;height:6px;border-radius:50%;background:'+urgency+';flex-shrink:0"></div><div style="flex:1"><div style="font-size:13px;font-weight:500">'+di.text+'</div>'+(di.section?'<div style="font-size:10px;color:var(--text3)">'+di.section+' · '+di.month+'</div>':'')+'</div><span style="font-size:11px;font-weight:600;color:'+urgency+';white-space:nowrap">'+fmtDate(di.dueDate)+(dl2<0?' (overdue)':dl2===0?' (today)':dl2===1?' (tomorrow)':'')+'</span></div>'}).join('')}else{rdEl.innerHTML='<div style="font-size:13px;color:var(--text3);padding:12px 0;text-align:center">No roadmap items due this week</div>'}}
-var gaEl=document.getElementById('weekly-goals-attention');if(gaEl){var needsWork=(STATE.goals||[]).filter(function(g){var p=goalPct(g);var dl=Math.ceil((new Date(g.deadline)-new Date())/86400000);return p<50&&dl<180&&dl>0});gaEl.innerHTML=needsWork.length?needsWork.map(function(g){var p=goalPct(g);var dl=Math.ceil((new Date(g.deadline)-new Date())/86400000);return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)"><span class="badge badge-'+g.badge+'">'+g.cat+'</span><div style="flex:1"><div style="font-size:13px;font-weight:500">'+g.name+'</div><div style="font-size:11px;color:var(--text3)">'+p+'% · '+dl+' days left</div></div><button class="btn btn-sm" onclick="openModal(\'updateGoal\',\''+g.id+'\')">Update</button></div>'}).join(''):'<div style="font-size:13px;color:var(--text3);padding:12px 0;text-align:center">All goals on track!</div>'}}
+var gaEl=document.getElementById('weekly-goals-attention');if(gaEl){var needsWork=(STATE.goals||[]).filter(function(g){var p=goalPct(g);var dl=Math.ceil((new Date(g.deadline)-new Date())/86400000);return p<50&&dl<180&&dl>0});gaEl.innerHTML=needsWork.length?needsWork.map(function(g){var p=goalPct(g);var dl=Math.ceil((new Date(g.deadline)-new Date())/86400000);return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)"><span class="badge badge-'+g.badge+'">'+g.cat+'</span><div style="flex:1"><div style="font-size:13px;font-weight:500">'+g.name+'</div><div style="font-size:11px;color:var(--text3)">'+p+'% · '+dl+' days left</div></div><button class="btn btn-sm" onclick="openModal(\'updateGoal\',\''+g.id+'\')">Update</button></div>'}).join(''):'<div style="font-size:13px;color:var(--text3);padding:12px 0;text-align:center">All goals on track!</div>'}};try{renderWeeklyDailyPriorities()}catch(e){}}
 function changeWeeklyWeek(dir){if(!weeklyViewKey)weeklyViewKey=weekKey(new Date());var parts=weeklyViewKey.split('-');var d=new Date(+parts[0],+parts[1]-1,+parts[2]);d.setDate(d.getDate()+dir*7);weeklyViewKey=localDateKey(d);renderWeeklyPlan()}
 function toggleWeeklyPriority(idx){if(!weeklyViewKey)weeklyViewKey=weekKey(new Date());if(!STATE.weeklyPlans)STATE.weeklyPlans={};if(!STATE.weeklyPlans[weeklyViewKey])STATE.weeklyPlans[weeklyViewKey]={priorities:[]};if(!STATE.weeklyPlans[weeklyViewKey].prioritiesDone)STATE.weeklyPlans[weeklyViewKey].prioritiesDone={};STATE.weeklyPlans[weeklyViewKey].prioritiesDone[idx]=!STATE.weeklyPlans[weeklyViewKey].prioritiesDone[idx];saveState();renderWeeklyPlan()}
 function saveWeeklyPlan(){if(!weeklyViewKey)weeklyViewKey=weekKey(new Date());if(!STATE.weeklyPlans)STATE.weeklyPlans={};var priorities=[0,1,2].map(function(i){return (document.getElementById('wp-p'+i)||{}).value||''});var existing=STATE.weeklyPlans[weeklyViewKey]||{};STATE.weeklyPlans[weeklyViewKey]={priorities:priorities,prioritiesDone:existing.prioritiesDone||{},intention:(document.getElementById('weekly-intention')||{}).value||'',reflection:(document.getElementById('weekly-reflection')||{}).value||'',savedAt:new Date().toISOString()};saveState();var btn=event.target;var orig=btn.textContent;btn.textContent='Saved!';setTimeout(function(){btn.textContent=orig},2000)}
 
+
+
+// Render daily priorities grid (7 days)
+function renderWeeklyDailyPriorities(){
+  var el=document.getElementById('weekly-daily-priorities');
+  if(!el)return;
+  var days=weekDays(weeklyViewKey||weekKey(new Date()));
+  var dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var todayK=localDateKey(new Date());
+  if(!STATE.dailyPriorities)STATE.dailyPriorities={};
+  el.innerHTML='<div class="weekly-dp-grid">'+days.map(function(d,i){
+    var list=STATE.dailyPriorities[d]||[];
+    var done=list.filter(function(p){return p.done}).length;
+    var total=list.length;
+    var pct=total>0?Math.round((done/total)*100):0;
+    var isToday=d===todayK;
+    var dateNum=new Date(d).getDate();
+    var rows=list.length?list.map(function(p,idx){
+      return '<div class="weekly-dp-item'+(p.done?' done':'')+'" onclick="toggleDailyPri(\''+d+'\','+idx+');setTimeout(renderWeeklyPlan,50)">'
+        +'<div class="weekly-dp-check">'+(p.done?'✓':'')+'</div>'
+        +'<span>'+escapeHtml(p.text)+'</span></div>';
+    }).join(''):'<div class="weekly-dp-empty">—</div>';
+    return '<div class="weekly-dp-day'+(isToday?' today':'')+'">'
+      +'<div class="weekly-dp-day-header">'
+        +'<div><div class="weekly-dp-day-name">'+dayNames[i]+'</div>'
+        +'<div class="weekly-dp-day-num">'+dateNum+'</div></div>'
+        +(total>0?'<div class="weekly-dp-count">'+done+'/'+total+'</div>':'')
+      +'</div>'
+      +(total>0?'<div class="weekly-dp-bar"><div class="weekly-dp-bar-fill" style="width:'+pct+'%"></div></div>':'')
+      +'<div class="weekly-dp-items">'+rows+'</div>'
+      +'</div>';
+  }).join('')+'</div>';
+}
