@@ -115,7 +115,7 @@ function renderDashboard(){
     focusSubEl.innerHTML=msg;
     var barsHtml=focusBar('✅','Habits',habitsToday+'/'+STATE.habits.length,habPct,'var(--grad-green)');
     if(priTotal>0){
-      barsHtml+=focusBar('🎯','Priorities',priDone+'/'+priTotal,dailyPriPct,'var(--grad-accent)');
+      barsHtml+=focusBar('📝','Tasks',priDone+'/'+priTotal,dailyPriPct,'var(--grad-accent)');
     }
     focusBarsEl.innerHTML=barsHtml;
     setTimeout(function(){
@@ -146,10 +146,10 @@ function renderDashboard(){
           +'</div>';
       }).join('');
     }else{
-      html='<div class="empty-prompt-mini">What\'s the one thing you need to achieve today?</div>';
+      html='<div class="empty-prompt-mini">What do you need to get done today?</div>';
     }
     html+='<div class="daily-pri-add-row">'
-      +'<input type="text" id="daily-pri-input" placeholder="Add a priority for today..." onkeydown="if(event.key===\'Enter\'){addDailyPri()}">'
+      +'<input type="text" id="daily-pri-input" placeholder="Add a task for today..." onkeydown="if(event.key===\'Enter\'){addDailyPri()}">'
       +'<button class="daily-pri-add-btn" onclick="addDailyPri()">+</button>'
       +'</div>';
     ppEl.innerHTML=html;
@@ -265,4 +265,90 @@ function moveDailyPriToTomorrow(dateKey,idx){
   list.splice(idx,1);
   saveState();
   renderDashboard();
+}
+
+
+// ── TASKS ARCHIVE PAGE ──
+function renderTasksArchive(){
+  var statsEl=document.getElementById('tasks-stats');
+  var archEl=document.getElementById('tasks-archive');
+  if(!archEl)return;
+  if(!STATE.dailyPriorities)STATE.dailyPriorities={};
+  var allKeys=Object.keys(STATE.dailyPriorities).filter(function(k){
+    return (STATE.dailyPriorities[k]||[]).length>0;
+  }).sort().reverse();
+
+  if(allKeys.length===0){
+    if(statsEl)statsEl.innerHTML='';
+    archEl.innerHTML='<div class="empty"><div class="empty-icon">📝</div>No tasks yet. Add some from the dashboard to start building history.</div>';
+    return;
+  }
+
+  // Aggregate stats
+  var totalTasks=0,totalDone=0;
+  var last30=0,last30Done=0;
+  var thirtyAgo=new Date();thirtyAgo.setDate(thirtyAgo.getDate()-30);
+  var thirtyKey=localDateKey(thirtyAgo);
+  allKeys.forEach(function(k){
+    var list=STATE.dailyPriorities[k]||[];
+    list.forEach(function(t){
+      totalTasks++;
+      if(t.done)totalDone++;
+      if(k>=thirtyKey){
+        last30++;
+        if(t.done)last30Done++;
+      }
+    });
+  });
+  var overallPct=totalTasks>0?Math.round(totalDone/totalTasks*100):0;
+  var recentPct=last30>0?Math.round(last30Done/last30*100):0;
+  var todayKey=localDateKey(new Date());
+  var todayList=STATE.dailyPriorities[todayKey]||[];
+  var todayDone=todayList.filter(function(t){return t.done}).length;
+
+  if(statsEl){
+    statsEl.innerHTML=
+      '<div class="card-sm" style="text-align:center;border-top:3px solid var(--accent)"><div style="font-family:var(--serif);font-size:26px;font-weight:500;color:var(--accent-dark);line-height:1">'+totalDone+'</div><div style="font-size:11px;color:var(--text2);margin-top:4px">of '+totalTasks+' all-time</div></div>'
+      +'<div class="card-sm" style="text-align:center;border-top:3px solid var(--mint)"><div style="font-family:var(--serif);font-size:26px;font-weight:500;color:#5A8A55;line-height:1">'+overallPct+'%</div><div style="font-size:11px;color:var(--text2);margin-top:4px">completion rate</div></div>'
+      +'<div class="card-sm" style="text-align:center;border-top:3px solid var(--purple)"><div style="font-family:var(--serif);font-size:26px;font-weight:500;color:#7A6A9E;line-height:1">'+recentPct+'%</div><div style="font-size:11px;color:var(--text2);margin-top:4px">last 30 days</div></div>'
+      +'<div class="card-sm" style="text-align:center;border-top:3px solid var(--gold)"><div style="font-family:var(--serif);font-size:26px;font-weight:500;color:#B8860B;line-height:1">'+todayDone+'/'+todayList.length+'</div><div style="font-size:11px;color:var(--text2);margin-top:4px">today</div></div>';
+  }
+
+  // Group by date and render
+  archEl.innerHTML=allKeys.map(function(k){
+    var list=STATE.dailyPriorities[k]||[];
+    var done=list.filter(function(t){return t.done}).length;
+    var total=list.length;
+    var pct=Math.round(done/total*100);
+    var d=new Date(k);
+    var isToday=k===todayKey;
+    var dateLabel=isToday?'Today':d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:d.getFullYear()!==new Date().getFullYear()?'numeric':undefined});
+    return '<div class="card" style="margin-bottom:14px">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap">'
+        +'<div>'
+          +'<div style="font-family:var(--serif);font-size:18px;font-weight:500;letter-spacing:-0.01em">'+dateLabel+(isToday?' <span class="badge" style="background:var(--accent);color:var(--white);font-size:10px;margin-left:6px;vertical-align:middle">LIVE</span>':'')+'</div>'
+          +'<div style="font-size:12px;color:var(--text2);margin-top:2px">'+done+' of '+total+' complete · '+pct+'%</div>'
+        +'</div>'
+        +'<div style="min-width:160px;flex:1;max-width:260px">'
+          +'<div class="pbar-wrap" style="margin:0"><div class="pbar" style="width:'+pct+'%"></div></div>'
+        +'</div>'
+      +'</div>'
+      +'<div style="display:flex;flex-direction:column;gap:6px">'
+        +list.map(function(t,idx){
+          return '<div class="tasks-arch-item'+(t.done?' done':'')+'" onclick="toggleArchiveTask(\''+k+'\','+idx+')">'
+            +'<div class="tasks-arch-check">'+(t.done?'✓':'')+'</div>'
+            +'<span>'+escapeHtml(t.text)+'</span>'
+            +'</div>';
+        }).join('')
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function toggleArchiveTask(dateKey,idx){
+  var list=(STATE.dailyPriorities||{})[dateKey];
+  if(!list||!list[idx])return;
+  list[idx].done=!list[idx].done;
+  saveState();
+  renderTasksArchive();
 }

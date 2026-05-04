@@ -38,6 +38,7 @@
         <div class="topnav-more">
           <button class="topnav-link" id="topnav-more-btn">More <span style="font-size:10px">▾</span></button>
           <div class="topnav-dropdown" id="topnav-dropdown">
+            <button class="topnav-drop-item" onclick="nav('tasks')">✅ Tasks archive</button>
             <button class="topnav-drop-item" onclick="nav('roadmap')">�️ Roadmap</button>
             <button class="topnav-drop-item" onclick="nav('goals')">🎯 Goals</button>
             <button class="topnav-drop-item" onclick="nav('finance')">� Finance</button>
@@ -53,11 +54,6 @@
         </div>
       </div>
       <div class="topnav-right">
-        <div class="topnav-search">
-          <span class="topnav-search-icon">⌕</span>
-          <input type="text" placeholder="Search…" id="global-search">
-          <span class="topnav-search-shortcut">⌘K</span>
-        </div>
         <span class="topnav-date" id="top-bar-date"></span>
         <div id="sync-status" class="topnav-sync"></div>
       </div>
@@ -148,7 +144,7 @@
 
       <div class="bento-row-2">
         <div class="card bento-priorities">
-          <div class="card-label">📋 Today's priorities</div>
+          <div class="card-label">✅ Today's tasks</div>
           <div id="dash-priorities-preview"></div>
         </div>
         <div class="card bento-habits">
@@ -737,6 +733,20 @@
       </div>
     </div>
 
+    <!-- ══ TASKS ARCHIVE ══ -->
+    <div class="page" id="page-tasks">
+      <div class="page-header">
+        <div class="header-row">
+          <div>
+            <h1>Tasks archive</h1>
+            <p>Every task, grouped by day. Tasks reset on the dashboard overnight — this is the full history.</p>
+          </div>
+        </div>
+      </div>
+      <div id="tasks-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px"></div>
+      <div id="tasks-archive"></div>
+    </div>
+
     <!-- ══ SKINCARE ══ -->
     <div class="page" id="page-skincare">
       <div class="page-header">
@@ -869,7 +879,6 @@
 <script src="js/weekly-plan.js"></script>
 <script src="js/insights.js"></script>
 <script src="js/skincare.js"></script>
-<script src="js/search.js"></script>
 <script src="js/modals.js"></script>
 <script src="js/init.js"></script>
 </body>

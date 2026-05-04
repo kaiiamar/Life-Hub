@@ -1735,3 +1735,24 @@ body.night-mode .feature-card{
 body.night-mode .feature-card::before{
   background:radial-gradient(circle,rgba(217,123,108,0.08),transparent 60%);
 }
+
+/* ── TASKS ARCHIVE ── */
+.tasks-arch-item{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:9px 12px;border-radius:10px;
+  cursor:pointer;transition:all 200ms var(--ease);
+  font-size:13px;
+}
+.tasks-arch-item:hover{background:var(--accent-dim)}
+.tasks-arch-item.done{opacity:0.5}
+.tasks-arch-item.done span{text-decoration:line-through;color:var(--text3)}
+.tasks-arch-check{
+  width:18px;height:18px;border-radius:50%;
+  border:1.5px solid var(--accent);
+  flex-shrink:0;margin-top:1px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;color:var(--white);font-weight:700;
+  background:transparent;
+  transition:all 200ms var(--ease);
+}
+.tasks-arch-item.done .tasks-arch-check{background:var(--mint);border-color:var(--mint)}
