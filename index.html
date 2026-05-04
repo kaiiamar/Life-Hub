@@ -6,12 +6,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Kai's Life Hub">
-<meta name="theme-color" content="#f0eef5">
+<meta name="theme-color" content="#F8F5F1">
 <link rel="apple-touch-icon" href="/Life-Hub/icon-192.jpg">
 <link rel="manifest" href="/Life-Hub/manifest.json">
 <title>Kai's Life Hub 🤎</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=VT323&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Caveat:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style-new.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -20,100 +20,182 @@
 <body>
 <div class="app">
 
-  <!-- SIDEBAR -->
-  <nav class="sidebar" id="sidebar">
-    <div class="sidebar-logo">
-      <h2>Kai's Life Hub 🤎</h2>
-      <span id="sidebar-date"></span>
-    </div>
-    <div class="nav-section">
-      <div class="nav-label">Overview</div>
-      <button class="nav-item active" onclick="nav('dashboard')"><span style="font-size:15px">🏠</span> Dashboard</button>
-    </div>
-    <div class="nav-section">
-      <div class="nav-label">Plan</div>
-      <button class="nav-item" onclick="nav('roadmap')"><span style="font-size:15px">🗓️</span> Roadmap</button>
-      <button class="nav-item" onclick="nav('weekly')"><span style="font-size:15px">📋</span> Weekly Plan</button>
-    </div>
-    <div class="nav-section">
-      <div class="nav-label">Tracking</div>
-      <button class="nav-item" onclick="nav('goals')"><span style="font-size:15px">🎯</span> Goals</button>
-      <button class="nav-item" onclick="nav('habits')"><span style="font-size:15px">✅</span> Habits</button>
-      <button class="nav-item" onclick="nav('workout')"><span style="font-size:15px">🏋️</span> Workouts</button>
-    </div>
-    <div class="nav-section">
-      <div class="nav-label">Finance</div>
-      <button class="nav-item" onclick="nav('finance')"><span style="font-size:15px">💸</span> Finance</button>
-    </div>
-    <div class="nav-section">
-      <div class="nav-label">Reflect</div>
-      <button class="nav-item" onclick="nav('metrics')"><span style="font-size:15px">📊</span> Metrics</button>
-      <button class="nav-item" onclick="nav('review')"><span style="font-size:15px">📝</span> Reviews</button>
-      <button class="nav-item" onclick="nav('gratitude')"><span style="font-size:15px">🙏</span> Gratitude & Wins</button>
-      <button class="nav-item" onclick="nav('insights')"><span style="font-size:15px">💡</span> Insights</button>
-    </div>
-    <div class="nav-section">
-      <div class="nav-label">More</div>
-      <button class="nav-item" onclick="nav('projects')"><span style="font-size:15px">🗂️</span> Projects</button>
-      <button class="nav-item" onclick="nav('relationships')"><span style="font-size:15px">🤎</span> Relationships</button>
-      <button class="nav-item" onclick="nav('skincare')"><span style="font-size:15px">✨</span> Skincare</button>
-      <button class="nav-item" onclick="nav('watchlist')"><span style="font-size:15px">🎬</span> Watch List</button>
-      <button class="nav-item" onclick="nav('wishlist')"><span style="font-size:15px">�️</span> Wishlist</button>
-    </div>
-    <div style="margin-top:auto;padding:16px 20px;border-top:1px solid var(--outline-variant);text-align:center">
-      <div id="sync-status" style="font-size:11px;margin-bottom:8px;min-height:14px;transition:color .3s"></div>
-      <div style="font-size:22px;margin-bottom:6px">🤎✨💪</div>
-      <div style="font-size:11px;color:var(--neutral);line-height:1.5" id="sidebar-quote">You've got this!</div>
+  <!-- TOP NAV -->
+  <nav class="topnav" id="topnav">
+    <div class="topnav-inner">
+      <div class="topnav-brand">
+        <span class="topnav-logo">🤎</span>
+        <span class="topnav-name">Life Hub</span>
+      </div>
+      <div class="topnav-links">
+        <div class="topnav-pill-indicator" id="topnav-pill"></div>
+        <button class="topnav-link active" data-page="dashboard" onclick="nav('dashboard')">Dashboard</button>
+        <button class="topnav-link" data-page="weekly" onclick="nav('weekly')">Week</button>
+        <button class="topnav-link" data-page="habits" onclick="nav('habits')">Habits</button>
+        <button class="topnav-link" data-page="workout" onclick="nav('workout')">Gym</button>
+        <button class="topnav-link" data-page="skincare" onclick="nav('skincare')">Skincare</button>
+        <button class="topnav-link" data-page="gratitude" onclick="nav('gratitude')">Gratitude</button>
+        <div class="topnav-more">
+          <button class="topnav-link" id="topnav-more-btn">More <span style="font-size:10px">▾</span></button>
+          <div class="topnav-dropdown" id="topnav-dropdown">
+            <button class="topnav-drop-item" onclick="nav('roadmap')">�️ Roadmap</button>
+            <button class="topnav-drop-item" onclick="nav('goals')">🎯 Goals</button>
+            <button class="topnav-drop-item" onclick="nav('finance')">� Finance</button>
+            <button class="topnav-drop-item" onclick="nav('metrics')">� Metrics</button>
+            <div class="topnav-drop-divider"></div>
+            <button class="topnav-drop-item" onclick="nav('review')">� Reviews</button>
+            <button class="topnav-drop-item" onclick="nav('insights')">💡 Insights</button>
+            <button class="topnav-drop-item" onclick="nav('projects')">🗂️ Projects</button>
+            <button class="topnav-drop-item" onclick="nav('relationships')">🤎 Relationships</button>
+            <button class="topnav-drop-item" onclick="nav('watchlist')">🎬 Watch List</button>
+            <button class="topnav-drop-item" onclick="nav('wishlist')">🛍️ Wishlist</button>
+          </div>
+        </div>
+      </div>
+      <div class="topnav-right">
+        <div class="topnav-search">
+          <span class="topnav-search-icon">⌕</span>
+          <input type="text" placeholder="Search…" id="global-search">
+          <span class="topnav-search-shortcut">⌘K</span>
+        </div>
+        <span class="topnav-date" id="top-bar-date"></span>
+        <div id="sync-status" class="topnav-sync"></div>
+      </div>
+      <button class="topnav-hamburger" onclick="toggleSidebar()">☰</button>
     </div>
   </nav>
   <div class="mobile-nav-overlay" id="mobile-overlay" onclick="closeSidebar()"></div>
 
-  <div class="main">
-    <div class="mobile-header">
-      <button class="hamburger" onclick="toggleSidebar()">☰</button>
-      <span style="font-family:var(--serif);font-size:18px;font-weight:600;color:var(--primary)" id="mobile-title">Dashboard</span>
-      <span style="font-size:12px;color:var(--text3)" id="mobile-date"></span>
+  <!-- MOBILE DRAWER -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <h2>Life Hub 🤎</h2>
+      <span id="sidebar-date"></span>
     </div>
+    <div class="nav-section">
+      <button class="nav-item active" onclick="nav('dashboard')">🏠 Dashboard</button>
+      <button class="nav-item" onclick="nav('roadmap')">🗓️ Roadmap</button>
+      <button class="nav-item" onclick="nav('weekly')">📋 Weekly Plan</button>
+      <button class="nav-item" onclick="nav('goals')">🎯 Goals</button>
+      <button class="nav-item" onclick="nav('habits')">✅ Habits</button>
+      <button class="nav-item" onclick="nav('workout')">🏋️ Workouts</button>
+      <button class="nav-item" onclick="nav('finance')">💸 Finance</button>
+      <button class="nav-item" onclick="nav('metrics')">📊 Metrics</button>
+      <button class="nav-item" onclick="nav('review')">📝 Reviews</button>
+      <button class="nav-item" onclick="nav('gratitude')">🙏 Gratitude</button>
+      <button class="nav-item" onclick="nav('insights')">💡 Insights</button>
+      <button class="nav-item" onclick="nav('projects')">🗂️ Projects</button>
+      <button class="nav-item" onclick="nav('relationships')">🤎 Relationships</button>
+      <button class="nav-item" onclick="nav('skincare')">✨ Skincare</button>
+      <button class="nav-item" onclick="nav('watchlist')">🎬 Watch List</button>
+      <button class="nav-item" onclick="nav('wishlist')">🛍️ Wishlist</button>
+    </div>
+  </nav>
+
+  <div class="main">
 
     <!-- ══ DASHBOARD ══ -->
     <div class="page active" id="page-dashboard">
-      <div style="background:linear-gradient(135deg,rgba(189,90,61,0.06),rgba(201,151,58,0.04));border:1px solid rgba(189,90,61,0.08);border-radius:var(--radius);padding:28px;margin-bottom:24px;position:relative;overflow:hidden">
-        <div style="position:absolute;top:-20px;right:-20px;width:120px;height:120px;background:radial-gradient(circle,rgba(189,90,61,0.06),transparent 70%);pointer-events:none"></div>
-        <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
-          <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYnRhZm1iN2loeXp1dTBxaGIxMHcxdGpndHRnZHh1OTBlcHZnbjZ1cCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/tBWoHDVfEULuKqEFx8/giphy.gif" alt="" style="width:80px;height:80px;object-fit:cover;border-radius:20px;flex-shrink:0;box-shadow:0 4px 16px rgba(189,90,61,0.12)">
-          <div style="flex:1">
-            <h1 id="dash-greeting" style="color:var(--on-surface);font-size:26px;font-family:var(--serif);font-weight:500;letter-spacing:-0.02em;line-height:1.2">Good morning, Kai</h1>
-            <p id="dash-date-sub" style="color:var(--on-surface-variant);margin-top:6px;font-size:13px"></p>
-          </div>
-        </div>
-        <div style="margin-top:16px;padding:12px 16px;background:rgba(255,255,255,0.5);border-radius:var(--radius-sm);border:1px solid rgba(255,255,255,0.4)">
-          <p style="font-family:var(--serif);font-size:15px;font-style:italic;color:var(--on-surface-variant);opacity:0.75" id="dash-quote"></p>
+      <!-- HERO -->
+      <div class="hero" id="hero">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+        <div class="hero-inner" id="hero-inner">
+          <div class="hero-eyebrow"><span class="pulse-dot"></span>Today's mission</div>
+          <h1 id="dash-greeting">Good morning, <em>Kai</em>.</h1>
+          <p class="hero-sub" id="dash-date-sub"></p>
+          <div class="hero-quote" id="dash-quote"></div>
         </div>
       </div>
+
       <div id="dash-notification-prompt" style="margin-bottom:18px"></div>
-      <div class="grid-3" style="margin-bottom:22px" id="dash-stats"></div>
-      <div class="grid-2" style="margin-bottom:18px">
-        <div class="card"><div class="card-label">📋 This week's priorities</div><div id="dash-priorities-preview"></div></div>
-        <div class="card"><div class="card-label">✅ This week's habits</div><div id="dash-habits-preview"></div></div>
+
+      <!-- BENTO LAYOUT — asymmetric rhythm -->
+      <div class="bento-main">
+        <!-- FEATURED FOCUS CARD (large, top-left, 2-col span) -->
+        <div class="focus-card">
+          <div class="focus-label">
+            <span class="pulse-dot"></span>
+            Today's focus
+          </div>
+          <div class="focus-stat" id="focus-stat">—</div>
+          <div class="focus-score-label">Daily focus · Completion</div>
+          <div class="focus-sub" id="focus-sub">Loading your day…</div>
+          <div class="focus-bars" id="focus-bars"></div>
+        </div>
+
+        <!-- Stat orbs stack -->
+        <div class="bento-stat" data-orb="accent">
+          <div class="stat-orb accent">🎯</div>
+          <div class="stat-label">Priorities</div>
+          <div class="stat-val" id="stat-priorities">—</div>
+          <div class="stat-pbar"><div class="stat-pbar-fill" id="stat-priorities-bar" style="width:0%;background:var(--grad-accent)"></div></div>
+        </div>
+        <div class="bento-stat" data-orb="green">
+          <div class="stat-orb green">✅</div>
+          <div class="stat-label">Habits</div>
+          <div class="stat-val" id="stat-habits">—</div>
+          <div class="stat-pbar"><div class="stat-pbar-fill" id="stat-habits-bar" style="width:0%;background:var(--grad-green)"></div></div>
+        </div>
+        <div class="bento-stat" data-orb="purple">
+          <div class="stat-orb purple">🗓️</div>
+          <div class="stat-label">Roadmap</div>
+          <div class="stat-val" id="stat-roadmap">—</div>
+          <div class="stat-pbar"><div class="stat-pbar-fill" id="stat-roadmap-bar" style="width:0%;background:var(--grad-purple)"></div></div>
+        </div>
       </div>
-      <div class="grid-2" style="margin-bottom:18px">
-        <div class="card"><div class="card-label">🌡️ Today's check-in</div><div id="dash-mood-checkin"></div></div>
-        <div class="card"><div class="card-label">💧 Water today</div><div id="dash-water-tracker"></div></div>
+
+      <div class="bento-row-2">
+        <div class="card bento-priorities">
+          <div class="card-label">📋 Today's priorities</div>
+          <div id="dash-priorities-preview"></div>
+        </div>
+        <div class="card bento-habits">
+          <div class="card-label">✅ Habits</div>
+          <div id="dash-habits-preview"></div>
+        </div>
       </div>
-      <div class="grid-2" style="margin-bottom:18px">
-        <div class="card" style="background:rgba(189,90,61,0.04);border-color:rgba(189,90,61,0.08)"><div class="card-label" style="color:var(--primary)">🙏 Gratitude & wins</div><div id="dash-gratitude-preview"></div></div>
-        <div class="card"><div class="card-label">🤎 Relationship check-ins</div><div id="dash-relationships-preview"></div></div>
+
+      <div class="bento-row-3">
+        <div class="card">
+          <div class="card-label">🌡️ Today's check-in</div>
+          <div id="dash-mood-checkin"></div>
+        </div>
+        <div class="card">
+          <div class="card-label">💧 Water today</div>
+          <div id="dash-water-tracker"></div>
+        </div>
+        <div class="card feature-card">
+          <div class="card-label" style="color:var(--accent-dark)">� Gratitude & wins</div>
+          <div id="dash-gratitude-preview"></div>
+        </div>
       </div>
-      <div class="grid-2" style="margin-bottom:18px">
-        <div class="card"><div class="card-label">🏋️ Recent activity</div><div id="dash-workouts-preview"></div></div>
-        <div class="card"><div class="card-label">💸 Finance snapshot</div><div id="dash-finance-preview"></div></div>
+
+      <div class="bento-row-4">
+        <div class="card">
+          <div class="card-label">🤎 Relationship check-ins</div>
+          <div id="dash-relationships-preview"></div>
+        </div>
+        <div class="card">
+          <div class="card-label">🏋️ Recent activity</div>
+          <div id="dash-workouts-preview"></div>
+        </div>
+        <div class="card">
+          <div class="card-label">💸 Finance snapshot</div>
+          <div id="dash-finance-preview"></div>
+        </div>
       </div>
-      <div style="margin-bottom:18px">
+
+      <div style="margin-top:18px">
         <div class="card">
           <div class="card-label">🗓️ Roadmap — this month</div>
           <div id="dash-roadmap-preview"></div>
         </div>
       </div>
+
+      <!-- Hidden but kept for compatibility with existing renderDashboard -->
+      <div id="dash-stats" style="display:none"></div>
     </div>
 
     <!-- ══ ROADMAP ══ -->
@@ -372,6 +454,7 @@
       <div class="page-tabs">
         <button class="page-tab active" onclick="subNav('metrics','body')">💪 Body</button>
         <button class="page-tab" onclick="subNav('metrics','fitness')">🏃 Fitness</button>
+        <button class="page-tab" onclick="subNav('metrics','water')">💧 Water</button>
         <button class="page-tab" onclick="subNav('metrics','finance')">💰 Financial</button>
       </div>
       <div class="sub-page active" id="metrics-body">
@@ -389,6 +472,10 @@
           <div class="card"><div class="card-label">👟 Weekly steps (avg)</div><div class="chart-wrap"><canvas id="stepsChart"></canvas></div></div>
         </div>
         <div class="card"><div class="card-label">Run log</div><div id="runs-log"></div><button class="btn btn-sm" style="margin-top:12px" onclick="openModal('logMetric','run')">+ Log run</button></div>
+      </div>
+      <div class="sub-page" id="metrics-water">
+        <div class="card" style="margin-bottom:16px"><div class="card-label">💧 Water today</div><div id="metrics-water-tracker"></div></div>
+        <div class="card"><div class="card-label">💧 7-day hydration</div><div id="metrics-water-history"></div></div>
       </div>
       <div class="sub-page" id="metrics-finance">
         <div class="grid-3" style="margin-bottom:20px" id="finmetric-stats"></div>
@@ -546,6 +633,12 @@
 
       <!-- Week stats row -->
       <div id="weekly-stats-row" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:16px"></div>
+
+      <!-- Daily priorities grid -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-label">📋 Daily priorities this week</div>
+        <div id="weekly-daily-priorities"></div>
+      </div>
 
       <div class="grid-2" style="margin-bottom:16px">
         <div class="card">
@@ -776,6 +869,7 @@
 <script src="js/weekly-plan.js"></script>
 <script src="js/insights.js"></script>
 <script src="js/skincare.js"></script>
+<script src="js/search.js"></script>
 <script src="js/modals.js"></script>
 <script src="js/init.js"></script>
 </body>

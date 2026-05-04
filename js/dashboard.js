@@ -1,19 +1,159 @@
 // DASHBOARD
 // ============================================================
+function focusBar(icon,label,val,pct,grad){
+  return '<div class="focus-bar">'
+    +'<span class="focus-bar-icon">'+icon+'</span>'
+    +'<span class="focus-bar-label">'+label+'</span>'
+    +'<div class="focus-bar-track"><div class="focus-bar-fill" data-w="'+pct+'" style="background:'+grad+'"></div></div>'
+    +'<span class="focus-bar-val">'+val+'</span>'
+    +'</div>';
+}
+function setStat(key,val,pct){
+  var v=document.getElementById('stat-'+key);if(v)v.textContent=val;
+  var b=document.getElementById('stat-'+key+'-bar');if(b){setTimeout(function(){b.style.width=pct+'%'},120)}
+}
+
+// Smooth number tick animation
+function tickNumber(el,targetStr,duration){
+  if(!el)return;
+  duration=duration||900;
+  var target=parseInt(targetStr,10);
+  if(isNaN(target)){el.textContent=targetStr;return}
+  var start=parseInt(el.getAttribute('data-current')||'0',10);
+  var t0=performance.now();
+  function step(t){
+    var p=Math.min(1,(t-t0)/duration);
+    // easeOutCubic
+    var eased=1-Math.pow(1-p,3);
+    var v=Math.round(start+(target-start)*eased);
+    el.firstChild?el.firstChild.nodeValue=v:el.textContent=v;
+    if(p<1)requestAnimationFrame(step);
+    else el.setAttribute('data-current',target);
+  }
+  requestAnimationFrame(step);
+}
+
+// Time-based theming
+function getTimeContext(){
+  var h=new Date().getHours();
+  if(h>=5&&h<12)return {slot:'morning',greeting:'Good morning',class:'time-morning'};
+  if(h>=12&&h<17)return {slot:'afternoon',greeting:'Good afternoon',class:'time-afternoon'};
+  if(h>=17&&h<21)return {slot:'evening',greeting:'Good evening',class:'time-evening'};
+  return {slot:'night',greeting:'Winding down',class:'time-night'};
+}
+var CONTEXTUAL_QUOTES={
+  morning:['You did not wake up to be mediocre.','A quiet start. Make it count.','First hour, best hour.','Begin with one small intention.'],
+  afternoon:['Midday check — are you still with you?','Half the day remains. Use it well.','Keep moving. Softly.','The afternoon rewards the focused.'],
+  evening:['Soft landings make better days tomorrow.','Celebrate the small wins today.','Evening is for reflection, not regret.','You did enough. You are enough.'],
+  night:['Time to wind down.','Rest is part of the plan.','Dim the screen, quiet the mind.','Tomorrow starts with tonight\'s rest.']
+};
+
 function renderDashboard(){
   var now=new Date();var todayKey=localDateKey(now);
-  var hr=now.getHours();var greeting=hr<12?'Good morning':hr<18?'Good afternoon':'Good evening';
-  var gEl=document.getElementById('dash-greeting');if(gEl)gEl.textContent=greeting+', Kai \u2728';
-  var dEl=document.getElementById('dash-date-sub');if(dEl)dEl.textContent=now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  var qEl=document.getElementById('dash-quote');if(qEl)qEl.textContent='You did not wake up to be mediocre.';
+  var ctx=getTimeContext();
+  // Auto night mode after 9pm / before 5am
+  if(ctx.slot==='night')document.body.classList.add('night-mode');
+  else document.body.classList.remove('night-mode');
+  var gEl=document.getElementById('dash-greeting');if(gEl)gEl.innerHTML=ctx.greeting+', <em>Kai</em>.';
+  // Apply time-based class to hero
+  var hero=document.getElementById('hero');
+  if(hero){
+    hero.classList.remove('time-morning','time-afternoon','time-evening','time-night');
+    hero.classList.add(ctx.class);
+  }
+  var dEl=document.getElementById('dash-date-sub');
+  var tbd=document.getElementById('top-bar-date');if(tbd)tbd.textContent=now.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+  var qEl=document.getElementById('dash-quote');
+  if(qEl){
+    var pool=CONTEXTUAL_QUOTES[ctx.slot]||CONTEXTUAL_QUOTES.morning;
+    // Stable-per-day choice — same quote all day, refreshes next day
+    var seed=now.getFullYear()*366+now.getMonth()*31+now.getDate();
+    qEl.textContent=pool[seed%pool.length];
+  }
   loadDailyHighlight();
+
   var goalsDone=STATE.goals.filter(function(g){return g.done}).length;
   var habitsToday=STATE.habits.filter(function(h){return h.logs[todayKey]}).length;
   var rmProgress=function(){var td=0,ti=0;RM_MONTHS.forEach(function(m){var p=rmGetProgress(m);td+=p.done;ti+=p.total});return ti===0?0:Math.round(td/ti*100)}();
-  var sEl=document.getElementById('dash-stats');
-  if(sEl){var priData=(function(){var wk=weekKey(now);var plan=(STATE.weeklyPlans||{})[wk]||{};var pris=(plan.priorities||[]).filter(function(p){return p&&p.trim()});var done=0;var td=plan.prioritiesDone||{};pris.forEach(function(_,i){if(td[i])done++});return {done:done,total:pris.length}})();var priPct=priData.total>0?Math.round(priData.done/priData.total*100):0;var habPct=STATE.habits.length>0?Math.round(habitsToday/STATE.habits.length*100):0;function svgRing(pct,color,label,sub){var r=18,c=2*Math.PI*r,off=c-(pct/100)*c;return '<div class="card" style="text-align:center;padding:20px 16px"><div style="position:relative;width:44px;height:44px;margin:0 auto 8px"><svg width="44" height="44" style="transform:rotate(-90deg)"><circle cx="22" cy="22" r="'+r+'" fill="none" stroke="rgba(226,216,209,0.5)" stroke-width="3"/><circle cx="22" cy="22" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="3" stroke-linecap="round" stroke-dasharray="'+c+'" stroke-dashoffset="'+off+'" style="transition:stroke-dashoffset .8s ease"/></svg><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:'+color+'">'+label+'</span></div><span style="font-size:10px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;letter-spacing:.06em">'+sub+'</span></div>'}sEl.innerHTML=svgRing(priPct,'var(--primary)',priData.done+'/'+priData.total,'Priorities')+svgRing(habPct,'var(--secondary)',habitsToday+'/'+STATE.habits.length,'Habits')+svgRing(rmProgress,'var(--teal)',rmProgress+'%','Roadmap')}
+
+  var priData=(function(){var wk=weekKey(now);var plan=(STATE.weeklyPlans||{})[wk]||{};var pris=(plan.priorities||[]).filter(function(p){return p&&p.trim()});var done=0;var td=plan.prioritiesDone||{};pris.forEach(function(_,i){if(td[i])done++});return {done:done,total:pris.length}})();
+  var priPct=priData.total>0?Math.round(priData.done/priData.total*100):0;
+  var habPct=STATE.habits.length>0?Math.round(habitsToday/STATE.habits.length*100):0;
+
+  // Smart hero subtext
+  if(dEl){
+    var dateStr=now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+    var parts=[];
+    if(habitsToday>0)parts.push('<strong>'+habitsToday+'</strong> habit'+(habitsToday===1?'':'s')+' done');
+    if(priData.done>0)parts.push('<strong>'+priData.done+'</strong> priorit'+(priData.done===1?'y':'ies')+' ticked');
+    var insight=parts.length?parts.join(' · ')+'.':'A clean slate to work with.';
+    dEl.innerHTML=dateStr+'. '+insight;
+  }
+
+  // Smart focus card — 50/50 habits + daily priorities (day-scoped)
+  var focusStatEl=document.getElementById('focus-stat');
+  var focusSubEl=document.getElementById('focus-sub');
+  var focusBarsEl=document.getElementById('focus-bars');
+  if(focusStatEl&&focusSubEl&&focusBarsEl){
+    if(!STATE.dailyPriorities)STATE.dailyPriorities={};
+    var todayPris=STATE.dailyPriorities[todayKey]||[];
+    var priDone=todayPris.filter(function(p){return p.done}).length;
+    var priTotal=todayPris.length;
+    var dailyPriPct=priTotal>0?Math.round((priDone/priTotal)*100):0;
+    // Weighted score: if no priorities set, use habits only
+    var overall=priTotal>0?Math.round((habPct+dailyPriPct)/2):habPct;
+    var msg;
+    if(overall>=75)msg='You\'re <em>flying</em>. Keep it going.';
+    else if(overall>=50)msg='Good rhythm today — one more win to go.';
+    else if(overall>=25)msg='Small steps compound. Pick one thing.';
+    else msg='A fresh start. Begin with the smallest win.';
+    if(!focusStatEl.querySelector('.focus-stat-num')){
+      focusStatEl.innerHTML='<span class="focus-stat-num">0</span><span class="focus-stat-suffix"> /100</span>';
+    }
+    var numEl=focusStatEl.querySelector('.focus-stat-num');
+    tickNumber(numEl,String(overall),1000);
+    focusSubEl.innerHTML=msg;
+    var barsHtml=focusBar('✅','Habits',habitsToday+'/'+STATE.habits.length,habPct,'var(--grad-green)');
+    if(priTotal>0){
+      barsHtml+=focusBar('🎯','Priorities',priDone+'/'+priTotal,dailyPriPct,'var(--grad-accent)');
+    }
+    focusBarsEl.innerHTML=barsHtml;
+    setTimeout(function(){
+      focusBarsEl.querySelectorAll('.focus-bar-fill').forEach(function(el){
+        var w=el.getAttribute('data-w');el.style.width=w+'%';
+      });
+    },80);
+  }
+
+  // Mini stat orbs on the right
+  setStat('priorities',priData.done+' / '+priData.total,priPct);
+  setStat('habits',habitsToday+' / '+STATE.habits.length,habPct);
+  setStat('roadmap',rmProgress+'%',rmProgress);
+
   var ppEl=document.getElementById('dash-priorities-preview');
-  if(ppEl){var wk=weekKey(now);var plan=(STATE.weeklyPlans||{})[wk]||{};var pris=(plan.priorities||[]).filter(function(p){return p&&p.trim()});if(pris.length){var ticked=plan.prioritiesDone||{};ppEl.innerHTML=pris.map(function(p,i){var done=ticked[i];return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer;'+(done?'opacity:0.55':'')+'" onclick="toggleDashPriority('+i+')"><div style="width:22px;height:22px;border-radius:50%;border:2px solid '+(done?'var(--mint)':'var(--accent)')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;background:'+(done?'var(--mint)':'transparent')+'">'+(done?'<span style="color:#fff;font-size:11px;font-weight:700">\u2713</span>':'')+'</div><span style="flex:1;font-size:12px;font-weight:500;'+(done?'text-decoration:line-through;color:var(--text3)':'')+'">'+p+'</span></div>'}).join('')+'<button class="btn btn-ghost btn-sm" onclick="nav(\'weekly\')" style="margin-top:8px;width:100%;justify-content:center">Weekly plan \u2192</button>'}else{ppEl.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:12px 0">No priorities set this week</div><button class="btn btn-accent btn-sm" onclick="nav(\'weekly\')" style="width:100%;justify-content:center">Set priorities</button>'}};
+  if(ppEl){
+    if(!STATE.dailyPriorities)STATE.dailyPriorities={};
+    var todayPris=STATE.dailyPriorities[todayKey]||[];
+    var html='';
+    if(todayPris.length){
+      html=todayPris.map(function(p,i){
+        var done=p.done;
+        return '<div class="daily-pri-row'+(done?' done':'')+'">'
+          +'<div class="daily-pri-check" onclick="toggleDailyPri(\''+todayKey+'\','+i+')">'+(done?'<span>\u2713</span>':'')+'</div>'
+          +'<span class="daily-pri-text">'+escapeHtml(p.text)+'</span>'
+          +'<button class="daily-pri-action" title="Move to tomorrow" onclick="moveDailyPriToTomorrow(\''+todayKey+'\','+i+')">→</button>'
+          +'<button class="daily-pri-action daily-pri-delete" title="Remove" onclick="deleteDailyPri(\''+todayKey+'\','+i+')">×</button>'
+          +'</div>';
+      }).join('');
+    }else{
+      html='<div class="empty-prompt-mini">What\'s the one thing you need to achieve today?</div>';
+    }
+    html+='<div class="daily-pri-add-row">'
+      +'<input type="text" id="daily-pri-input" placeholder="Add a priority for today..." onkeydown="if(event.key===\'Enter\'){addDailyPri()}">'
+      +'<button class="daily-pri-add-btn" onclick="addDailyPri()">+</button>'
+      +'</div>';
+    ppEl.innerHTML=html;
+  }
   var days7=weekDays(weekKey(now));var dl=['S','M','T','W','T','F','S'];
   var hpEl=document.getElementById('dash-habits-preview');
   if(hpEl)hpEl.innerHTML=STATE.habits.slice(0,5).map(function(h){return '<div class="habit-row"><div style="flex:1;min-width:0"><div class="habit-name">'+h.name+'</div></div><div class="habit-dots">'+days7.map(function(d,i){var done=h.logs[d];var isT=d===todayKey;return '<div class="dot'+(done?' done':'')+(isT&&!done?' today':'')+'" onclick="quickToggleHabit(\''+h.id+'\',\''+d+'\')">'+dl[i]+'</div>'}).join('')+'</div></div>'}).join('')+'<button class="btn btn-ghost btn-sm" onclick="nav(\'habits\')" style="margin-top:10px;width:100%;justify-content:center">View all \u2192</button>';
@@ -79,3 +219,50 @@ function deleteGoal(id){confirmDelete('Delete this goal?',function(){STATE.goals
 function saveMetric(type){if(!STATE.metrics)STATE.metrics={};var date=(document.getElementById('m-mdate')||{}).value||localDateKey(new Date());var note=(document.getElementById('m-mnote')||{}).value||'';var entry={id:g(),date:date};if(type==='project'){var name=((document.getElementById('m-mname')||{}).value||'').trim();if(!name)return;entry.name=name}else if(type==='run'){var val=(document.getElementById('m-mval')||{}).value;if(!val)return;entry.distance=Number(val);entry.time=(document.getElementById('m-mtime')||{}).value||'';entry.note=note}else if(type==='moneySaved'){var val=(document.getElementById('m-mval')||{}).value;if(!val)return;entry.amount=Number(val);entry.note=note}else{var val=(document.getElementById('m-mval')||{}).value;if(!val)return;entry.value=Number(val);entry.note=note}if(!STATE.metrics[type])STATE.metrics[type]=[];STATE.metrics[type].push(entry);saveState();closeModal();renderMetrics();if(type==='run'){var rrEl=document.getElementById('recent-runs-workout');if(rrEl)renderWorkout()}}
 
 
+
+
+// ── DAILY PRIORITIES ──
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+function addDailyPri(){
+  var input=document.getElementById('daily-pri-input');
+  if(!input)return;
+  var text=input.value.trim();
+  if(!text)return;
+  var key=localDateKey(new Date());
+  if(!STATE.dailyPriorities)STATE.dailyPriorities={};
+  if(!STATE.dailyPriorities[key])STATE.dailyPriorities[key]=[];
+  STATE.dailyPriorities[key].push({text:text,done:false});
+  input.value='';
+  saveState();
+  renderDashboard();
+}
+function toggleDailyPri(dateKey,idx){
+  var list=(STATE.dailyPriorities||{})[dateKey];
+  if(!list||!list[idx])return;
+  list[idx].done=!list[idx].done;
+  saveState();
+  renderDashboard();
+}
+function deleteDailyPri(dateKey,idx){
+  var list=(STATE.dailyPriorities||{})[dateKey];
+  if(!list)return;
+  list.splice(idx,1);
+  saveState();
+  renderDashboard();
+}
+function moveDailyPriToTomorrow(dateKey,idx){
+  var list=(STATE.dailyPriorities||{})[dateKey];
+  if(!list||!list[idx])return;
+  var item=list[idx];
+  item.done=false;
+  // Compute tomorrow from dateKey
+  var parts=dateKey.split('-');
+  var d=new Date(+parts[0],+parts[1]-1,+parts[2]);
+  d.setDate(d.getDate()+1);
+  var tomorrowKey=localDateKey(d);
+  if(!STATE.dailyPriorities[tomorrowKey])STATE.dailyPriorities[tomorrowKey]=[];
+  STATE.dailyPriorities[tomorrowKey].push(item);
+  list.splice(idx,1);
+  saveState();
+  renderDashboard();
+}
