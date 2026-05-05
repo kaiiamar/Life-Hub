@@ -91,7 +91,7 @@ cards.push(mkInsightCard('🗓️','Roadmap progress',rmPct+'% of your overall p
 var grid=document.getElementById('insights-grid');
 if(grid)grid.innerHTML=cards.length?cards.join(''):'<div class="card" style="text-align:center;padding:40px;grid-column:1/-1"><div style="font-size:36px;margin-bottom:12px">🌿</div><div style="font-size:14px;color:var(--text2)">Start logging to unlock insights!</div></div>';
 
-renderDebtCalc();renderCountdowns();renderInsightReviewTrends()}
+renderDebtCalc();renderCountdowns();renderInsightReviewTrends();renderMoodCorrelations()}
 
 function renderInsightReviewTrends(){
 var reviews=STATE.reviews&&STATE.reviews.monthly?STATE.reviews.monthly:{};
@@ -171,3 +171,84 @@ function renderDebtPaymentHistory(){}
 function setDebtMonthlyTarget(debtId,val){var debt=(STATE.debts||[]).find(function(d){return d.id===debtId});if(!debt)return;debt.monthlyTarget=Number(val)||0;saveState()}
 function renderCountdowns(){var el=document.getElementById('countdown-grid');if(!el)return;var goals=STATE.goals.filter(function(g){return g.deadline}).map(function(g){var totalDays=Math.ceil((new Date(g.deadline)-new Date(g.deadline.slice(0,4)+'-01-01'))/86400000+180);var daysLeft=Math.ceil((new Date(g.deadline)-new Date())/86400000);var elapsed=Math.max(0,totalDays-daysLeft);var pct=totalDays>0?Math.min(100,Math.round(elapsed/totalDays*100)):0;return {name:g.name,days:daysLeft,deadline:g.deadline,pct:pct}}).filter(function(g){return g.days>0}).sort(function(a,b){return a.days-b.days});el.innerHTML=goals.length?'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">'+goals.slice(0,8).map(function(g){var urgency=g.days<30?'#c0392b':g.days<90?'#c9973a':'#6b9e7a';var r=28,c=2*Math.PI*r,offset=c-(g.pct/100)*c;return '<div style="background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:14px;text-align:center;transition:transform .15s;cursor:default" onmouseover="this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.transform=\'none\'"><div style="position:relative;width:64px;height:64px;margin:0 auto 8px"><svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="'+r+'" fill="none" stroke="var(--bg4)" stroke-width="4"/><circle cx="32" cy="32" r="'+r+'" fill="none" stroke="'+urgency+'" stroke-width="4" stroke-linecap="round" stroke-dasharray="'+c+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 32 32)" style="transition:stroke-dashoffset .6s ease"/></svg><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:18px;font-weight:600;color:'+urgency+'">'+g.days+'</div></div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">days left</div><div style="font-size:11px;font-weight:600;line-height:1.3">'+g.name+'</div><div style="font-size:10px;color:var(--text3);margin-top:3px">'+fmtDate(g.deadline)+'</div></div>'}).join('')+'</div>':'<div style="font-size:13px;color:var(--text3);padding:12px 0">Set deadlines on your goals to see countdowns</div>'}
 
+
+
+// ── MOOD CORRELATIONS ──
+function renderMoodCorrelations(){
+  var el=document.getElementById('mood-correlations');
+  if(!el)return;
+  var mood=STATE.mood||{};
+  var allDates=Object.keys(mood).filter(function(d){return mood[d]&&mood[d].mood});
+  if(allDates.length<5){
+    el.innerHTML='<div class="empty" style="padding:20px 0">Log your mood for at least 5 days to see patterns.</div>';
+    return;
+  }
+
+  // Build buckets
+  var gymDates={},runDates={},taskDates={},gratitudeDates={};
+  (STATE.workouts||[]).forEach(function(w){if(w.date&&(w.type||'').toLowerCase()!=='rest')gymDates[w.date]=true});
+  (((STATE.metrics||{}).run)||[]).forEach(function(r){if(r.date)runDates[r.date]=true});
+  Object.keys(STATE.dailyPriorities||{}).forEach(function(d){
+    var list=STATE.dailyPriorities[d]||[];
+    var done=list.filter(function(t){return t.done}).length;
+    if(list.length>0&&done>=list.length*0.7)taskDates[d]=true;  // 70%+ tasks done
+  });
+  (STATE.gratitude||[]).forEach(function(g){if(g.date)gratitudeDates[g.date]=true});
+
+  // Overall mean
+  var allMoods=allDates.map(function(d){return Number(mood[d].mood)});
+  var overallMean=allMoods.reduce(function(s,v){return s+v},0)/allMoods.length;
+
+  function bucketMean(dateSet){
+    var vals=allDates.filter(function(d){return dateSet[d]}).map(function(d){return Number(mood[d].mood)});
+    return vals.length>=2?{mean:vals.reduce(function(s,v){return s+v},0)/vals.length,n:vals.length}:null;
+  }
+
+  var buckets=[
+    {label:'gym days',emoji:'💪',data:bucketMean(gymDates),color:'var(--accent-dark)'},
+    {label:'run days',emoji:'🏃',data:bucketMean(runDates),color:'var(--blue)'},
+    {label:'days with 70%+ tasks done',emoji:'✅',data:bucketMean(taskDates),color:'var(--mint)'},
+    {label:'days you logged gratitude',emoji:'🙏',data:bucketMean(gratitudeDates),color:'var(--gold)'}
+  ].filter(function(b){return b.data});
+
+  // Energy bucket
+  var energyDates=allDates.filter(function(d){return mood[d].energy});
+  if(energyDates.length>=5){
+    var highEnergy={};
+    energyDates.forEach(function(d){if(Number(mood[d].energy)>=4)highEnergy[d]=true});
+    var he=bucketMean(highEnergy);
+    if(he)buckets.push({label:'high-energy days',emoji:'⚡',data:he,color:'var(--purple)'});
+  }
+
+  // Sleep bucket — days with 7+ hours
+  var wellRested={};
+  allDates.forEach(function(d){if(mood[d].sleep&&Number(mood[d].sleep)>=7)wellRested[d]=true});
+  var wr=bucketMean(wellRested);
+  if(wr)buckets.push({label:'7+ hrs sleep',emoji:'😴',data:wr,color:'var(--teal)'});
+
+  if(!buckets.length){
+    el.innerHTML='<div class="empty" style="padding:20px 0">Keep logging — patterns will emerge once there is more data.</div>';
+    return;
+  }
+
+  // Sort by delta (biggest positive first)
+  buckets.sort(function(a,b){return (b.data.mean-overallMean)-(a.data.mean-overallMean)});
+
+  el.innerHTML='<div style="font-size:12px;color:var(--text2);margin-bottom:14px">Your average mood is <strong>'+overallMean.toFixed(1)+'/5</strong>. Here is how it shifts:</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">'
+    +buckets.map(function(b){
+      var delta=b.data.mean-overallMean;
+      var sign=delta>=0?'+':'';
+      var deltaStr=sign+delta.toFixed(1);
+      var color=delta>0.3?'var(--mint)':delta<-0.3?'var(--accent-dark)':'var(--text2)';
+      return '<div class="stat-card" style="padding:14px 16px">'
+        +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
+          +'<span style="font-size:20px">'+b.emoji+'</span>'
+          +'<span style="font-size:12px;font-weight:500;color:var(--text2)">'+b.label+'</span>'
+        +'</div>'
+        +'<div style="font-family:var(--serif);font-size:24px;font-weight:500;color:'+color+';letter-spacing:-0.02em">'+deltaStr+'<span style="font-size:14px;color:var(--text3);font-weight:400"> mood</span></div>'
+        +'<div style="font-size:10px;color:var(--text3);margin-top:2px">across '+b.data.n+' days</div>'
+      +'</div>';
+    }).join('')
+    +'</div>';
+}

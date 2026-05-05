@@ -50,10 +50,16 @@
             <button class="topnav-drop-item" onclick="nav('relationships')">🤎 Relationships</button>
             <button class="topnav-drop-item" onclick="nav('watchlist')">🎬 Watch List</button>
             <button class="topnav-drop-item" onclick="nav('wishlist')">🛍️ Wishlist</button>
+            <div class="topnav-drop-divider"></div>
+            <button class="topnav-drop-item" onclick="exportLifeHubData()">📥 Export data</button>
+            <button class="topnav-drop-item" onclick="openModal('importData')">📤 Import data</button>
           </div>
         </div>
       </div>
       <div class="topnav-right">
+        <button class="topnav-theme-toggle" onclick="toggleTheme()" title="Toggle light/dark" aria-label="Toggle theme">
+          <span id="theme-toggle-icon">🌙</span>
+        </button>
         <span class="topnav-date" id="top-bar-date"></span>
         <div id="sync-status" class="topnav-sync"></div>
       </div>
@@ -106,87 +112,107 @@
       </div>
 
       <div id="dash-notification-prompt" style="margin-bottom:18px"></div>
+      <div id="dash-review-nudge" style="margin-bottom:18px"></div>
 
       <!-- BENTO LAYOUT — asymmetric rhythm -->
-      <div class="bento-main">
-        <!-- FEATURED FOCUS CARD (large, top-left, 2-col span) -->
+      <div class="bento-main bento-main-2row">
+        <!-- FEATURED FOCUS CARD (large, top-left, spans 2 rows) -->
         <div class="focus-card">
           <div class="focus-label">
             <span class="pulse-dot"></span>
             Today's focus
           </div>
           <div class="focus-stat" id="focus-stat">—</div>
-          <div class="focus-score-label">Daily focus · Completion</div>
+          <div class="focus-score-label" id="focus-score-label">Habits &amp; tasks today</div>
           <div class="focus-sub" id="focus-sub">Loading your day…</div>
           <div class="focus-bars" id="focus-bars"></div>
         </div>
 
-        <!-- Stat orbs stack -->
-        <div class="bento-stat" data-orb="accent">
-          <div class="stat-orb accent">🎯</div>
-          <div class="stat-label">Priorities</div>
-          <div class="stat-val" id="stat-priorities">—</div>
-          <div class="stat-pbar"><div class="stat-pbar-fill" id="stat-priorities-bar" style="width:0%;background:var(--grad-accent)"></div></div>
-        </div>
+        <!-- Stat orbs stack (today-relevant only) -->
         <div class="bento-stat" data-orb="green">
           <div class="stat-orb green">✅</div>
-          <div class="stat-label">Habits</div>
+          <div class="stat-label">Habits today</div>
           <div class="stat-val" id="stat-habits">—</div>
           <div class="stat-pbar"><div class="stat-pbar-fill" id="stat-habits-bar" style="width:0%;background:var(--grad-green)"></div></div>
         </div>
-        <div class="bento-stat" data-orb="purple">
-          <div class="stat-orb purple">🗓️</div>
-          <div class="stat-label">Roadmap</div>
-          <div class="stat-val" id="stat-roadmap">—</div>
-          <div class="stat-pbar"><div class="stat-pbar-fill" id="stat-roadmap-bar" style="width:0%;background:var(--grad-purple)"></div></div>
+        <div class="bento-stat" data-orb="accent">
+          <div class="stat-orb accent">📝</div>
+          <div class="stat-label">Tasks today</div>
+          <div class="stat-val" id="stat-tasks-today">—</div>
+          <div class="stat-pbar"><div class="stat-pbar-fill" id="stat-tasks-today-bar" style="width:0%;background:var(--grad-accent)"></div></div>
         </div>
       </div>
 
-      <div class="bento-row-2">
-        <div class="card bento-priorities">
-          <div class="card-label">✅ Today's tasks</div>
-          <div id="dash-priorities-preview"></div>
+      <!-- Dashboard tabs -->
+      <div class="page-tabs" style="margin-bottom:16px">
+        <button class="page-tab active" onclick="switchDashTab('today',this)">Today</button>
+        <button class="page-tab" onclick="switchDashTab('week',this)">This week</button>
+        <button class="page-tab" onclick="switchDashTab('life',this)">Life</button>
+      </div>
+
+      <!-- TODAY TAB -->
+      <div class="dash-tab active" id="dash-tab-today">
+        <div class="bento-row-3">
+          <div class="card">
+            <div class="card-label">🌡️ Today's check-in</div>
+            <div id="dash-mood-checkin"></div>
+          </div>
+          <div class="card">
+            <div class="card-label">💧 Water today</div>
+            <div id="dash-water-tracker"></div>
+          </div>
+          <div class="card feature-card">
+            <div class="card-label" style="color:var(--accent-dark)">🙏 Gratitude & wins</div>
+            <div id="dash-gratitude-preview"></div>
+          </div>
         </div>
-        <div class="card bento-habits">
-          <div class="card-label">✅ Habits</div>
-          <div id="dash-habits-preview"></div>
+        <div class="bento-row-2" style="margin-top:14px">
+          <div class="card bento-priorities">
+            <div class="card-label">✅ Today's tasks</div>
+            <div id="dash-priorities-preview"></div>
+          </div>
+          <div class="card bento-habits">
+            <div class="card-label">✅ Habits</div>
+            <div id="dash-habits-preview"></div>
+          </div>
         </div>
       </div>
 
-      <div class="bento-row-3">
-        <div class="card">
-          <div class="card-label">🌡️ Today's check-in</div>
-          <div id="dash-mood-checkin"></div>
+      <!-- THIS WEEK TAB -->
+      <div class="dash-tab" id="dash-tab-week">
+        <div class="bento-row-3">
+          <div class="card">
+            <div class="card-label">🏋️ Recent activity</div>
+            <div id="dash-workouts-preview"></div>
+          </div>
+          <div class="card">
+            <div class="card-label">🤎 Relationship check-ins</div>
+            <div id="dash-relationships-preview"></div>
+          </div>
+          <div class="card">
+            <div class="card-label">💸 Finance snapshot</div>
+            <div id="dash-finance-preview"></div>
+          </div>
         </div>
-        <div class="card">
-          <div class="card-label">💧 Water today</div>
-          <div id="dash-water-tracker"></div>
-        </div>
-        <div class="card feature-card">
-          <div class="card-label" style="color:var(--accent-dark)">� Gratitude & wins</div>
-          <div id="dash-gratitude-preview"></div>
-        </div>
-      </div>
-
-      <div class="bento-row-4">
-        <div class="card">
-          <div class="card-label">🤎 Relationship check-ins</div>
-          <div id="dash-relationships-preview"></div>
-        </div>
-        <div class="card">
-          <div class="card-label">🏋️ Recent activity</div>
-          <div id="dash-workouts-preview"></div>
-        </div>
-        <div class="card">
-          <div class="card-label">💸 Finance snapshot</div>
-          <div id="dash-finance-preview"></div>
+        <div style="margin-top:14px">
+          <div class="card">
+            <div class="card-label">🗓️ Roadmap — this month</div>
+            <div id="dash-roadmap-preview"></div>
+          </div>
         </div>
       </div>
 
-      <div style="margin-top:18px">
-        <div class="card">
-          <div class="card-label">🗓️ Roadmap — this month</div>
-          <div id="dash-roadmap-preview"></div>
+      <!-- LIFE TAB -->
+      <div class="dash-tab" id="dash-tab-life">
+        <div class="bento-row-2">
+          <div class="card">
+            <div class="card-label">🎯 Goals snapshot</div>
+            <div id="dash-goals-snapshot"></div>
+          </div>
+          <div class="card">
+            <div class="card-label">📝 Recent reviews</div>
+            <div id="dash-reviews-snapshot"></div>
+          </div>
         </div>
       </div>
 
@@ -288,64 +314,105 @@
       </div>
     </div>
 
-    <!-- ══ WORKOUTS ══ -->
+    <!-- ══ TRAINING ══ -->
     <div class="page" id="page-workout">
       <div class="page-header">
         <div class="header-row">
-          <div style="display:flex;align-items:center;gap:12px">
-            <img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExYnpyazdwZzhtaGF3cTl4eW52cDd1ejNueWN4MXd3c2ZyY2t0aTlleiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/FGiavUwla7m1ppSsnu/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0">
-            <div><h1>Gym Tracker</h1><p>Progressive overload — get stronger every week</p></div>
+          <div>
+            <h1>Training</h1>
+            <p>Your high-level view. Detailed logs live in HEVY and Adidas Running.</p>
           </div>
-          <div style="display:flex;gap:8px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn" onclick="openModal('quickLog')">+ Log session</button>
+            <button class="btn" onclick="openModal('logRun')">+ Log run</button>
           </div>
         </div>
-      </div>
-      <div class="page-tabs">
-        <button class="page-tab active" onclick="subNav('workout','log')">Overview</button>
-        <button class="page-tab" onclick="subNav('workout','myplan')">📅 My Plan</button>
-        <button class="page-tab" onclick="subNav('workout','runs')">🏃 Runs</button>
-        <button class="page-tab" onclick="subNav('workout','history')">History</button>
-      </div>
-      <div class="sub-page active" id="workout-log">
-        <!-- Quick actions -->
-        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap" id="workout-quick-actions">
-          <button class="btn btn-accent" onclick="openModal('quickLog')">🏋️ Log Session</button>
-          <button class="btn" onclick="openModal('logRun')">🏃 Log Run</button>
-          <button class="btn" onclick="openModal('logMetric','weight')">⚖️ Log Weight</button>
-        </div>
-        <!-- Stats -->
-        <div class="grid-4" style="margin-bottom:16px" id="workout-stats"></div>
-        <!-- This week at a glance -->
-        <div class="grid-2" style="margin-bottom:16px">
-          <div class="card"><div class="card-label">Recent sessions</div><div id="recent-workouts"></div></div>
-          <div class="card"><div class="card-label">Recent runs</div><div id="recent-runs-workout"></div></div>
-        </div>
-      </div>
-      <!-- Runs tab -->
-      <div class="sub-page" id="workout-runs">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-          <span style="font-size:13px;color:var(--text2)">Track your runs and cardio</span>
-          <button class="btn btn-accent btn-sm" onclick="openModal('logRun')">+ Log Run</button>
-        </div>
-        <!-- PB Cards -->
-        <div style="margin-bottom:20px">
-          <div class="card-label" style="margin-bottom:10px">Personal Bests</div>
-          <div class="grid-5" id="run-pbs" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px"></div>
-        </div>
-        <!-- Key metrics -->
-        <div class="grid-4" style="margin-bottom:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px" id="run-stats"></div>
-        <div class="grid-2" style="margin-bottom:16px">
-          <div class="card"><div class="card-label">Distance over time</div><div class="chart-wrap"><canvas id="runDistChart"></canvas></div></div>
-          <div class="card"><div class="card-label">Pace over time</div><div class="chart-wrap"><canvas id="runPaceChart"></canvas></div></div>
-        </div>
-        <div class="card"><div class="card-label">Run log</div><div id="runs-list-workout"></div></div>
-      </div>
-      <div class="sub-page" id="workout-history">
-        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap" id="muscle-filters"></div>
-        <div id="all-workouts"></div>
       </div>
 
-      <!-- ══ MY TRAINING PLAN ══ -->
+      <div class="page-tabs">
+        <button class="page-tab active" onclick="subNav('workout','overview')">Overview</button>
+        <button class="page-tab" onclick="subNav('workout','myplan')">📅 Weekly schedule</button>
+        <button class="page-tab" onclick="subNav('workout','body')">💪 Body</button>
+        <button class="page-tab" onclick="subNav('workout','history')">📖 History</button>
+      </div>
+
+      <!-- Overview: session counter + streak + events -->
+      <div class="sub-page active" id="workout-overview">
+        <!-- Weekly counter -->
+        <div class="card" style="margin-bottom:16px;padding:24px 28px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+            <div>
+              <div class="card-label" style="margin:0 0 4px">This week</div>
+              <div style="font-family:var(--serif);font-size:30px;font-weight:500;letter-spacing:-0.02em" id="training-week-count">—</div>
+              <div style="font-size:13px;color:var(--text2)" id="training-week-target">— sessions this week</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-accent" onclick="quickLogToday('Gym')">+ Gym</button>
+              <button class="btn" onclick="quickLogToday('Hyrox')">+ Hyrox</button>
+              <button class="btn" onclick="quickLogToday('Run')">+ Run</button>
+              <button class="btn btn-ghost" onclick="quickLogToday('Rest')">Rest day</button>
+            </div>
+          </div>
+          <div id="training-week-grid"></div>
+        </div>
+
+        <!-- Stat cards -->
+        <div class="grid-3" style="margin-bottom:16px">
+          <div class="stat-card">
+            <div class="stat-orb accent">🔥</div>
+            <div class="card-label">Weekly streak</div>
+            <div class="stat-big" id="training-streak">—</div>
+            <div class="stat-sub" id="training-streak-sub">weeks hitting target</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-orb purple">📊</div>
+            <div class="card-label">This month</div>
+            <div class="stat-big" id="training-month-count">—</div>
+            <div class="stat-sub" id="training-month-breakdown">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-orb green">⏱️</div>
+            <div class="card-label">Last session</div>
+            <div class="stat-big" style="font-size:22px" id="training-last-session">—</div>
+            <div class="stat-sub" id="training-last-when">—</div>
+          </div>
+        </div>
+
+        <!-- Events -->
+        <div class="card" style="margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div class="card-label" style="margin:0">🎯 Upcoming events</div>
+            <button class="btn btn-sm" onclick="openModal('addEvent')">+ Add event</button>
+          </div>
+          <div id="training-events"></div>
+        </div>
+
+        <!-- Shortcuts to external apps -->
+        <div class="grid-2">
+          <a class="card app-shortcut" href="https://www.adidas.com/us/running" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block">
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#000,#333);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff">🏃</div>
+              <div style="flex:1">
+                <div style="font-family:var(--serif);font-size:16px;font-weight:500">Adidas Running</div>
+                <div style="font-size:12px;color:var(--text2)">Your run programme lives here</div>
+              </div>
+              <span style="color:var(--text3)">↗</span>
+            </div>
+          </a>
+          <a class="card app-shortcut" href="https://www.hevyapp.com" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block">
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#FF3B30,#FF6B35);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff">🏋️</div>
+              <div style="flex:1">
+                <div style="font-family:var(--serif);font-size:16px;font-weight:500">HEVY</div>
+                <div style="font-size:12px;color:var(--text2)">Gym workouts & lifting history</div>
+              </div>
+              <span style="color:var(--text3)">↗</span>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <!-- Weekly schedule -->
       <div class="sub-page" id="workout-myplan">
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -354,9 +421,33 @@
           </div>
           <div id="myplan-schedule" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px"></div>
         </div>
-      </div><!-- end workout-myplan -->
+      </div>
 
-    </div>
+      <!-- Body tab: weight, photos, measurements -->
+      <div class="sub-page" id="workout-body">
+        <div class="grid-3" style="margin-bottom:20px" id="training-body-stats"></div>
+        <div class="grid-2" style="margin-bottom:16px">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <div class="card-label" style="margin:0">⚖️ Weight trend</div>
+              <button class="btn btn-sm" onclick="openModal('logMetric','weight')">+ Log</button>
+            </div>
+            <div class="chart-wrap"><canvas id="training-weight-chart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-label">Weight log</div>
+            <div id="training-weight-log"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- History: session log -->
+      <div class="sub-page" id="workout-history">
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap" id="muscle-filters"></div>
+        <div id="all-workouts"></div>
+      </div>
+
+    </div><!-- end page-workout -->
 
     <!-- ══ FINANCE ══ -->
     <div class="page" id="page-finance">
@@ -364,75 +455,97 @@
         <div class="header-row">
           <div style="display:flex;align-items:center;gap:12px">
             <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdHI1bWNxaXRyZHI1OWgzZ2RuN20ybzgzcHR4ZnBseWk0bHVrZzY0ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/67ThRZlYBvibtdF9JH/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0">
-            <div><h1>Finance</h1><p>Budget, accounts, debts & savings goals</p></div>
+            <div><h1>Finance</h1><p>Your monthly plan · Your long-term progress</p></div>
           </div>
         </div>
       </div>
       <div class="page-tabs">
-        <button class="page-tab active" onclick="subNav('finance','overview')">📊 Overview</button>
-        <button class="page-tab" onclick="subNav('finance','budget')">📋 Budget</button>
-        <button class="page-tab" onclick="subNav('finance','accounts')">🏦 Accounts</button>
-        <button class="page-tab" onclick="subNav('finance','debts')">💳 Debts</button>
-        <button class="page-tab" onclick="subNav('finance','savings')">🐷 Savings Goals</button>
+        <button class="page-tab active" onclick="subNav('finance','plan')">🧭 Plan</button>
+        <button class="page-tab" onclick="subNav('finance','progress')">� Progress</button>
       </div>
-      <div class="sub-page active" id="finance-overview">
-        <div class="grid-4" style="margin-bottom:20px" id="fin-stats"></div>
-        <div class="grid-2" style="margin-bottom:16px">
-          <div class="card"><div class="card-label">💰 Where the money goes</div><div class="chart-wrap"><canvas id="spendChart"></canvas></div></div>
-          <div class="card"><div class="card-label">📈 Net worth snapshot</div><div class="chart-wrap"><canvas id="networthChart"></canvas></div></div>
-        </div>
-      </div>
-      <div class="sub-page" id="finance-budget">
-        <div class="grid-2" style="margin-bottom:20px;gap:24px">
+
+      <!-- PLAN — monthly blueprint -->
+      <div class="sub-page active" id="finance-plan">
+        <!-- Monthly math-check hero -->
+        <div id="fin-math-hero" style="margin-bottom:16px"></div>
+
+        <!-- Income + Fixed expenses side by side -->
+        <div class="grid-2" style="margin-bottom:16px;gap:16px">
           <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-              <div style="font-size:15px;font-weight:600">💚 Income <span style="font-size:12px;font-weight:400;color:var(--text2)">(Monthly)</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <div style="font-size:15px;font-weight:600">💚 Income <span style="font-size:12px;font-weight:400;color:var(--text2)">monthly</span></div>
               <button class="btn btn-sm btn-accent" onclick="openModal('addIncome')">+ New</button>
             </div>
             <div id="income-list"></div>
-            <div id="income-total" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);text-align:right"></div>
+            <div id="income-total" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);text-align:right"></div>
           </div>
           <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-              <div style="font-size:15px;font-weight:600">🔴 Expenses <span style="font-size:12px;font-weight:400;color:var(--text2)">(Monthly)</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <div style="font-size:15px;font-weight:600">🔴 Fixed expenses <span style="font-size:12px;font-weight:400;color:var(--text2)">monthly</span></div>
               <button class="btn btn-sm btn-accent" onclick="openModal('addExpense')">+ New</button>
             </div>
             <div id="expenses-list"></div>
-            <div id="expenses-total" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);text-align:right"></div>
+            <div id="expenses-total" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);text-align:right"></div>
           </div>
         </div>
-        <div id="budget-leftover"></div>
-      </div>
-      <div class="sub-page" id="finance-accounts">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-          <p style="font-size:13px;color:var(--text2)">All your accounts in one place 🏦</p>
-          <button class="btn btn-sm btn-accent" onclick="openModal('addAccount')">+ Add Account</button>
+
+        <!-- Allocations: debt + savings this month -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-label">📮 Allocations this month</div>
+          <div id="fin-allocations"></div>
         </div>
-        <div style="margin-bottom:24px"><div class="card-label" style="margin-bottom:10px">💰 Savings accounts</div><div id="bank-accounts-list"></div></div>
-        <div><div class="card-label" style="margin-bottom:10px">📈 Investments</div><div id="investments-list"></div></div>
       </div>
-      <div class="sub-page" id="finance-debts">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-          <p style="font-size:13px;color:var(--text2)">Track every card and debt 💳</p>
-          <div style="display:flex;gap:6px">
-            <button class="btn btn-sm btn-accent" onclick="openModal('logDebtPayment')">+ Log Payment</button>
-            <button class="btn btn-sm btn-accent" onclick="openModal('addDebt')">+ Add Debt</button>
+
+      <!-- PROGRESS — long-term view -->
+      <div class="sub-page" id="finance-progress">
+        <!-- Net worth hero -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-label">🪴 Net worth</div>
+          <div id="fin-networth-hero"></div>
+          <div class="chart-wrap" style="margin-top:14px"><canvas id="networthTrendChart"></canvas></div>
+        </div>
+
+        <!-- Inner sub-tabs -->
+        <div class="page-tabs" style="margin-bottom:16px">
+          <button class="page-tab active" onclick="switchProgressTab('savings',this)">🎯 Savings</button>
+          <button class="page-tab" onclick="switchProgressTab('accounts',this)">🏦 Accounts</button>
+          <button class="page-tab" onclick="switchProgressTab('debts',this)">💳 Debts</button>
+        </div>
+
+        <!-- Savings goals -->
+        <div class="progress-tab active" id="progress-tab-savings">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div id="progress-savings-summary" style="font-size:12px;color:var(--text2)"></div>
+            <button class="btn btn-sm btn-accent" onclick="openModal('addSavingsGoal')">+ Add goal</button>
+          </div>
+          <div id="savings-goals-list"></div>
+        </div>
+
+        <!-- Accounts -->
+        <div class="progress-tab" id="progress-tab-accounts">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div id="progress-accounts-summary" style="font-size:12px;color:var(--text2)"></div>
+            <button class="btn btn-sm btn-accent" onclick="openModal('addAccount')">+ Add account</button>
+          </div>
+          <div id="bank-accounts-list" style="margin-bottom:10px"></div>
+          <div id="investments-list"></div>
+        </div>
+
+        <!-- Debts -->
+        <div class="progress-tab" id="progress-tab-debts">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div id="progress-debts-summary" style="font-size:12px;color:var(--text2)"></div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-sm btn-accent" onclick="openModal('logDebtPayment')">+ Log payment</button>
+              <button class="btn btn-sm btn-accent" onclick="openModal('addDebt')">+ Add debt</button>
+            </div>
+          </div>
+          <div id="debt-summary-stats" style="margin-bottom:16px"></div>
+          <div class="grid-2" style="align-items:start">
+            <div id="debts-list"></div>
+            <div id="debt-plan-panel"></div>
           </div>
         </div>
-        <div id="debt-summary-stats" style="margin-bottom:16px"></div>
-        <div class="grid-2" style="align-items:start">
-          <div id="debts-list"></div>
-          <div id="debt-plan-panel"></div>
-        </div>
-        <div style="margin-top:20px" id="debt-history-wrap"></div>
-        <div id="debt-payment-history"></div>
-      </div>
-      <div class="sub-page" id="finance-savings">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-          <p style="font-size:13px;color:var(--text2)">What are you saving towards? 🎯</p>
-          <button class="btn btn-sm btn-accent" onclick="openModal('addSavingsGoal')">+ Add Goal</button>
-        </div>
-        <div id="savings-goals-list"></div>
       </div>
     </div>
 
@@ -440,103 +553,127 @@
     <div class="page" id="page-metrics">
       <div class="page-header">
         <div class="header-row">
-          <div style="display:flex;align-items:center;gap:12px">
-            <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOGd1NjYzcmY1cmVmeDl5YThvZWtxanA5dXpjZ3QzM2hpYnc4c2VvYyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/bmQBu3aSF0DxadphkG/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0">
-            <div><h1>Metrics</h1><p>Track your body, fitness and financial numbers over time</p></div>
+          <div>
+            <h1>Metrics</h1>
+            <p>Daily hydration and financial tracking</p>
           </div>
           <button class="btn btn-accent" onclick="openModal('logMetric')">+ Log entry</button>
         </div>
       </div>
       <div class="page-tabs">
-        <button class="page-tab active" onclick="subNav('metrics','body')">💪 Body</button>
-        <button class="page-tab" onclick="subNav('metrics','fitness')">🏃 Fitness</button>
-        <button class="page-tab" onclick="subNav('metrics','water')">💧 Water</button>
+        <button class="page-tab active" onclick="subNav('metrics','water')">💧 Water</button>
         <button class="page-tab" onclick="subNav('metrics','finance')">💰 Financial</button>
       </div>
-      <div class="sub-page active" id="metrics-body">
-        <div class="grid-3" style="margin-bottom:20px" id="body-stats"></div>
-        <div class="grid-2" style="margin-bottom:16px">
-          <div class="card"><div class="card-label">⚖️ Weight over time (kg)</div><div class="chart-wrap"><canvas id="weightChart"></canvas></div></div>
-          <div class="card"><div class="card-label">📉 Body fat % over time</div><div class="chart-wrap"><canvas id="bodyFatChart"></canvas></div></div>
-        </div>
-        <div class="card"><div class="card-label">Weight log</div><div id="weight-log"></div><button class="btn btn-sm" style="margin-top:12px" onclick="openModal('logMetric','weight')">+ Log weight</button></div>
-      </div>
-      <div class="sub-page" id="metrics-fitness">
-        <div class="grid-3" style="margin-bottom:20px" id="fitness-stats"></div>
-        <div class="grid-2" style="margin-bottom:16px">
-          <div class="card"><div class="card-label">🏃 Runs logged (km)</div><div class="chart-wrap"><canvas id="runsChart"></canvas></div></div>
-          <div class="card"><div class="card-label">👟 Weekly steps (avg)</div><div class="chart-wrap"><canvas id="stepsChart"></canvas></div></div>
-        </div>
-        <div class="card"><div class="card-label">Run log</div><div id="runs-log"></div><button class="btn btn-sm" style="margin-top:12px" onclick="openModal('logMetric','run')">+ Log run</button></div>
-      </div>
-      <div class="sub-page" id="metrics-water">
+      <div class="sub-page active" id="metrics-water">
         <div class="card" style="margin-bottom:16px"><div class="card-label">💧 Water today</div><div id="metrics-water-tracker"></div></div>
         <div class="card"><div class="card-label">💧 7-day hydration</div><div id="metrics-water-history"></div></div>
       </div>
       <div class="sub-page" id="metrics-finance">
         <div class="grid-3" style="margin-bottom:20px" id="finmetric-stats"></div>
-        <div class="card" style="margin-bottom:16px"><div class="card-label">💰 Money saved over time (£)</div><div class="chart-wrap"><canvas id="savedChart"></canvas></div></div>
+        <div class="card" style="margin-bottom:16px"><div class="card-label">� Money saved over time (£)</div><div class="chart-wrap"><canvas id="savedChart"></canvas></div></div>
         <div class="card"><div class="card-label">✅ Achievements logged</div><div id="projects-log"></div><button class="btn btn-sm" style="margin-top:12px" onclick="openModal('logMetric','project')">+ Log achievement</button></div>
       </div>
     </div>
 
     <!-- ══ REVIEWS ══ -->
     <div class="page" id="page-review">
-      <div class="page-header"><div class="header-row"><div style="display:flex;align-items:center;gap:12px"><img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExdHEzd2MwZ3kzNGZ6YnhlamN4NjhoZzR6cTVjdHBuZnY2Zzk2MzEwdyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/zUXNtjMCjPd6S5WCgo/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0"><div><h1>Reviews</h1><p>Monthly and quarterly reflections</p></div></div></div></div>
-      <div class="page-tabs">
-        <button class="page-tab active" onclick="subNav('review','monthly')">📅 Monthly</button>
-        <button class="page-tab" onclick="subNav('review','quarterly')">📆 Quarterly</button>
+      <!-- HERO -->
+      <div class="review-hero">
+        <div class="review-hero-blob review-hero-blob-1"></div>
+        <div class="review-hero-blob review-hero-blob-2"></div>
+        <div class="review-hero-inner">
+          <div class="review-eyebrow" id="review-eyebrow">Monthly reflection</div>
+          <h1 class="review-hero-title" id="review-hero-month">—</h1>
+          <p class="review-hero-prompt" id="review-hero-prompt">—</p>
+          <div class="review-hero-controls">
+            <select id="monthly-month-select" onchange="renderMonthlyReview()" class="review-select"></select>
+            <button class="btn btn-accent" onclick="saveMonthlyReview()">Save review ✓</button>
+          </div>
+        </div>
       </div>
-      <div class="sub-page active" id="review-monthly">
-        <div style="display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap">
-          <select id="monthly-month-select" onchange="renderMonthlyReview()" style="padding:8px 12px;border-radius:var(--radius-sm);border:1.5px solid var(--border2);background:var(--bg2);color:var(--text);font-family:var(--sans);font-size:13px"></select>
-          <button class="btn btn-accent btn-sm" onclick="saveMonthlyReview()">Save review ✓</button>
+
+      <!-- TIMELINE -->
+      <div id="review-timeline" class="review-timeline"></div>
+
+      <!-- STEP 1: LOOK BACK (auto stats) -->
+      <div class="review-step">
+        <div class="review-step-head">
+          <span class="review-step-num">01</span>
+          <div>
+            <div class="review-step-title">Look back</div>
+            <div class="review-step-sub">What the data says about this month</div>
+          </div>
         </div>
-        <div class="grid-2" style="margin-bottom:16px">
-          <div class="card" id="monthly-auto-stats"></div>
-          <div class="card"><div class="card-label">Rate this month (1–10)</div><div id="monthly-ratings"></div></div>
+        <div class="review-auto-grid" id="monthly-auto-stats"></div>
+      </div>
+
+      <!-- STEP 2: RATE & REFLECT -->
+      <div class="review-step">
+        <div class="review-step-head">
+          <span class="review-step-num">02</span>
+          <div>
+            <div class="review-step-title">Rate &amp; reflect</div>
+            <div class="review-step-sub">Six life areas. One word at a time.</div>
+          </div>
         </div>
-        <div class="grid-2" style="margin-bottom:16px">
+        <div class="card"><div class="card-label">How did each area feel?</div><div id="monthly-ratings"></div></div>
+        <div id="smart-prompts" class="smart-prompts"></div>
+        <div class="grid-2" style="margin-top:14px">
           <div class="card"><div class="card-label">🏆 Wins this month</div>
-            <div class="review-prompt"><div class="review-prompt-q">What are you most proud of this month?</div><textarea id="monthly-wins" style="width:100%;min-height:80px;background:#fff;border:1.5px solid var(--border2);border-radius:var(--radius-sm);padding:10px;color:var(--text);font-family:var(--sans);font-size:13px;resize:vertical;outline:none" placeholder="List your wins, big or small..."></textarea></div>
-            <div class="review-prompt"><div class="review-prompt-q">What habit or routine served you well?</div><textarea id="monthly-best-habit" style="width:100%;min-height:60px;background:#fff;border:1.5px solid var(--border2);border-radius:var(--radius-sm);padding:10px;color:var(--text);font-family:var(--sans);font-size:13px;resize:vertical;outline:none" placeholder="e.g. Morning gym sessions kept my energy up..."></textarea></div>
+            <div class="review-prompt"><div class="review-prompt-q">What are you most proud of?</div>
+            <textarea id="monthly-wins" class="review-textarea" placeholder="List your wins, big or small..."></textarea></div>
+            <div class="review-prompt"><div class="review-prompt-q">What habit served you well?</div>
+            <textarea id="monthly-best-habit" class="review-textarea" placeholder="e.g. Morning gym kept my energy up..."></textarea></div>
           </div>
-          <div class="card"><div class="card-label">📚 Lessons & growth</div>
-            <div class="review-prompt"><div class="review-prompt-q">What didn't go to plan? Why?</div><textarea id="monthly-lessons" style="width:100%;min-height:80px;background:#fff;border:1.5px solid var(--border2);border-radius:var(--radius-sm);padding:10px;color:var(--text);font-family:var(--sans);font-size:13px;resize:vertical;outline:none" placeholder="Be honest — what would you do differently?"></textarea></div>
-            <div class="review-prompt"><div class="review-prompt-q">What's one thing you'd tell yourself at the start of this month?</div><textarea id="monthly-advice" style="width:100%;min-height:60px;background:#fff;border:1.5px solid var(--border2);border-radius:var(--radius-sm);padding:10px;color:var(--text);font-family:var(--sans);font-size:13px;resize:vertical;outline:none" placeholder="Hindsight wisdom..."></textarea></div>
+          <div class="card"><div class="card-label">📚 Lessons &amp; growth</div>
+            <div class="review-prompt"><div class="review-prompt-q">What didn't go to plan? Why?</div>
+            <textarea id="monthly-lessons" class="review-textarea" placeholder="Be honest — what would you do differently?"></textarea></div>
+            <div class="review-prompt"><div class="review-prompt-q">One thing you'd tell yourself on day 1?</div>
+            <textarea id="monthly-advice" class="review-textarea" placeholder="Hindsight wisdom..."></textarea></div>
           </div>
         </div>
-        <div class="grid-2" style="margin-bottom:16px">
-          <div class="card"><div class="card-label">🎯 Focus for next month</div>
-            <div class="review-prompt"><div class="review-prompt-q">Top 3 priorities for next month</div><textarea id="monthly-focus" style="width:100%;min-height:80px;background:#fff;border:1.5px solid var(--border2);border-radius:var(--radius-sm);padding:10px;color:var(--text);font-family:var(--sans);font-size:13px;resize:vertical;outline:none" placeholder="1. &#10;2. &#10;3. "></textarea></div>
-            <div class="review-prompt"><div class="review-prompt-q">What will you start, stop, or continue?</div><textarea id="monthly-ssc" style="width:100%;min-height:60px;background:#fff;border:1.5px solid var(--border2);border-radius:var(--radius-sm);padding:10px;color:var(--text);font-family:var(--sans);font-size:13px;resize:vertical;outline:none" placeholder="Start: ...&#10;Stop: ...&#10;Continue: ..."></textarea></div>
+      </div>
+
+      <!-- STEP 3: LOOK FORWARD -->
+      <div class="review-step">
+        <div class="review-step-head">
+          <span class="review-step-num">03</span>
+          <div>
+            <div class="review-step-title">Look forward</div>
+            <div class="review-step-sub">Set the tone for the month ahead</div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card"><div class="card-label">🎯 One focus &amp; 3 micro-goals</div>
+            <div class="review-prompt"><div class="review-prompt-q">If next month had one theme, what would it be?</div>
+            <textarea id="monthly-focus" class="review-textarea" placeholder="e.g. Discipline over motivation"></textarea></div>
+            <div class="review-prompt"><div class="review-prompt-q">Start · Stop · Continue</div>
+            <textarea id="monthly-ssc" class="review-textarea" placeholder="Start: ...&#10;Stop: ...&#10;Continue: ..."></textarea></div>
           </div>
           <div class="card"><div class="card-label">💭 Honest check-in</div>
-            <div class="review-prompt"><div class="review-prompt-q">How are you really feeling right now? (1 = struggling, 10 = thriving)</div><textarea id="monthly-feeling" style="width:100%;min-height:60px;background:#fff;border:1.5px solid var(--border2);border-radius:var(--radius-sm);padding:10px;color:var(--text);font-family:var(--sans);font-size:13px;resize:vertical;outline:none" placeholder="Be real with yourself..."></textarea></div>
-            <div class="review-prompt"><div class="review-prompt-q">What do you need more of in your life right now?</div><textarea id="monthly-need" style="width:100%;min-height:60px;background:#fff;border:1.5px solid var(--border2);border-radius:var(--radius-sm);padding:10px;color:var(--text);font-family:var(--sans);font-size:13px;resize:vertical;outline:none" placeholder="Rest, focus, fun, connection..."></textarea></div>
+            <div class="review-prompt"><div class="review-prompt-q">How are you <em>really</em> feeling right now?</div>
+            <textarea id="monthly-feeling" class="review-textarea" placeholder="Be real with yourself..."></textarea></div>
+            <div class="review-prompt"><div class="review-prompt-q">What do you need more of?</div>
+            <textarea id="monthly-need" class="review-textarea" placeholder="Rest, focus, fun, connection..."></textarea></div>
           </div>
         </div>
-        <div id="past-monthly-reviews"></div>
       </div>
-      <div class="sub-page" id="review-quarterly">
-        <div style="display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap">
-          <select id="quarterly-select" onchange="renderQuarterlyReview()" style="padding:8px 12px;border-radius:var(--radius-sm);border:1.5px solid var(--border2);background:var(--bg2);color:var(--text);font-family:var(--sans);font-size:13px"></select>
-          <button class="btn btn-accent btn-sm" onclick="saveQuarterlyReview()">Save review ✓</button>
+
+      <!-- TRENDS -->
+      <div class="review-step">
+        <div class="review-step-head">
+          <span class="review-step-num">◆</span>
+          <div>
+            <div class="review-step-title">Trends</div>
+            <div class="review-step-sub">How ratings have moved over the last 6 months</div>
+          </div>
         </div>
-        <div class="grid-2" style="margin-bottom:16px">
-          <div class="card" id="quarterly-auto-stats"></div>
-          <div class="card"><div class="card-label">Rate this quarter (1–10)</div><div id="quarterly-ratings"></div></div>
+        <div class="card">
+          <div id="review-trends"></div>
         </div>
-        <div class="grid-2" style="margin-bottom:16px">
-          <div class="card"><div class="card-label">🏆 Quarter highlights</div><textarea id="quarterly-wins" style="width:100%;min-height:110px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);padding:10px;color:var(--text);font-family:var(--sans);font-size:13px;resize:vertical;outline:none" placeholder="Biggest wins?"></textarea></div>
-          <div class="card"><div class="card-label">📚 What held you back</div><textarea id="quarterly-lessons" style="width:100%;min-height:110px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);padding:10px;color:var(--text);font-family:var(--sans);font-size:13px;resize:vertical;outline:none" placeholder="Obstacles and patterns?"></textarea></div>
-        </div>
-        <div class="grid-2" style="margin-bottom:16px">
-          <div class="card"><div class="card-label">🎯 Goals for next quarter</div><textarea id="quarterly-goals" style="width:100%;min-height:100px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);padding:10px;color:var(--text);font-family:var(--sans);font-size:13px;resize:vertical;outline:none" placeholder="What do you want to achieve?"></textarea></div>
-          <div class="card"><div class="card-label">💭 Honest reflection</div><textarea id="quarterly-reflection" style="width:100%;min-height:100px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);padding:10px;color:var(--text);font-family:var(--sans);font-size:13px;resize:vertical;outline:none" placeholder="How are you feeling overall?"></textarea></div>
-        </div>
-        <div id="past-quarterly-reviews"></div>
       </div>
+
+      <div id="past-monthly-reviews"></div>
     </div>
 
     <!-- ══ PROJECTS (apprenticeship removed — now in Roadmap) ══ -->
@@ -581,6 +718,7 @@
         <div class="card"><div class="card-label">This week</div><div id="gratitude-wins"></div></div>
         <div class="card"><div class="card-label">Gratitude streak</div><div id="gratitude-stats"></div></div>
       </div>
+      <div class="card" style="margin-bottom:16px"><div class="card-label">☁️ Themes — what you mention most</div><div id="gratitude-themes"></div></div>
       <div class="card"><div class="card-label">All entries</div><div id="gratitude-all"></div></div>
     </div>
 
@@ -627,47 +765,42 @@
         </div>
       </div>
 
-      <!-- Week stats row -->
-      <div id="weekly-stats-row" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:16px"></div>
+      <!-- 1. Hero: This week I will… -->
+      <div class="wp-hero">
+        <div class="wp-hero-label"><span class="pulse-dot"></span>This week I will…</div>
+        <div id="wp-priorities"></div>
+        <div class="wp-hero-footer" id="wp-progress-footer"></div>
+      </div>
 
-      <!-- Daily priorities grid -->
+      <!-- 2. Schedule — 7-day strip -->
       <div class="card" style="margin-bottom:16px">
-        <div class="card-label">📋 Daily priorities this week</div>
-        <div id="weekly-daily-priorities"></div>
+        <div class="card-label">� The week at a glance</div>
+        <div id="wp-schedule"></div>
+        <div class="wp-schedule-hint">Tap a priority to pin it to a specific day. Roadmap items with due dates appear automatically.</div>
       </div>
 
-      <div class="grid-2" style="margin-bottom:16px">
-        <div class="card">
-          <div class="card-label">Top 3 priorities this week</div>
-          <div id="weekly-priorities"></div>
-          <div style="display:flex;gap:8px;margin-top:14px">
-            <button class="btn btn-accent btn-sm" onclick="saveWeeklyPlan()" style="flex:1;justify-content:center">Save plan</button>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-label" style="margin-bottom:6px">Intention for the week</div>
-          <textarea id="weekly-intention" style="width:100%;min-height:70px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);padding:10px;color:var(--text);font-family:var(--sans);font-size:13px;resize:vertical;outline:none;margin-bottom:12px" placeholder="What energy do you want to bring?"></textarea>
-          <div class="card-label" style="margin-bottom:6px">End of week reflection</div>
-          <textarea id="weekly-reflection" style="width:100%;min-height:70px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);padding:10px;color:var(--text);font-family:var(--sans);font-size:13px;resize:vertical;outline:none" placeholder="How did the week go?"></textarea>
-        </div>
-      </div>
-
-      <!-- Week activity timeline -->
+      <!-- 3. What's coming up — combined -->
       <div class="card" style="margin-bottom:16px">
-        <div class="card-label">This week's activity</div>
-        <div id="weekly-activity-timeline"></div>
+        <div class="card-label">⏳ Coming up this week</div>
+        <div id="wp-coming-up"></div>
       </div>
 
-      <!-- Mood check-in -->
-      <div class="card" style="margin-bottom:16px"><div class="card-label">Daily mood check-in</div><div id="daily-checkin-grid"></div></div>
+      <!-- 4. Reflection / intention (adaptive) -->
+      <div class="card wp-reflect-card" style="margin-bottom:16px">
+        <div class="card-label" id="wp-reflect-label">✍️ Intention &amp; reflection</div>
+        <div id="wp-reflect-prompt" class="wp-reflect-prompt"></div>
+        <div id="weekly-intention-wrap"><div class="wp-reflect-sublabel">Intention — what energy do you want to bring?</div>
+        <textarea id="weekly-intention" class="wp-reflect-textarea" placeholder="Set a tone for the week…"></textarea></div>
+        <div id="weekly-reflection-wrap" style="margin-top:12px"><div class="wp-reflect-sublabel">End of week reflection</div>
+        <textarea id="weekly-reflection" class="wp-reflect-textarea" placeholder="What did you learn? What do you want to change?"></textarea></div>
+        <div class="wp-reflect-footer"><span id="wp-reflect-saved" class="wp-reflect-saved"></span></div>
+      </div>
 
-      <!-- Habit snapshot -->
-      <div class="card" style="margin-bottom:16px"><div class="card-label">Habit snapshot this week</div><div id="weekly-habit-snapshot"></div></div>
-
-      <!-- Roadmap items due this week -->
-      <div class="card" style="margin-bottom:16px"><div class="card-label">🗓️ Roadmap items due this week</div><div id="weekly-roadmap-due"></div></div>
-
-      <div class="card"><div class="card-label">Goals needing attention this week</div><div id="weekly-goals-attention"></div></div>
+      <!-- 5. Trimmed review strip — minimal stats for context -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-label">📊 How the week went</div>
+        <div id="wp-review-strip"></div>
+      </div>
     </div>
 
     <!-- ══ INSIGHTS ══ -->
@@ -699,6 +832,12 @@
           <div class="card-label">🌡️ Mood trend — last 14 days</div>
           <div class="chart-wrap"><canvas id="insightMoodChart"></canvas></div>
         </div>
+      </div>
+
+      <!-- Mood correlations -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-label">✨ Mood correlations</div>
+        <div id="mood-correlations"></div>
       </div>
 
       <!-- Smart insights grid -->
@@ -758,13 +897,16 @@
         </div>
       </div>
       <div class="page-tabs">
-        <button class="page-tab active" onclick="subNav('skincare','am')">☀️ Morning</button>
-        <button class="page-tab" onclick="subNav('skincare','pm')">🌙 Evening</button>
-        <button class="page-tab" onclick="subNav('skincare','guasha')">🪨 Gua Sha</button>
+        <button class="page-tab active" onclick="subNav('skincare','today')">✨ Today</button>
+        <button class="page-tab" onclick="subNav('skincare','routine')">📋 Routine</button>
+        <button class="page-tab" onclick="subNav('skincare','guide')">📖 Guide</button>
       </div>
 
-      <!-- AM Routine -->
-      <div class="sub-page active" id="skincare-am">
+      <!-- Today -->
+      <div class="sub-page active" id="skincare-today"></div>
+
+      <!-- Routine (editable) -->
+      <div class="sub-page" id="skincare-routine">
         <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
           <div style="padding:16px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px">
             <span style="font-size:28px">☀️</span>
@@ -772,18 +914,6 @@
           </div>
           <div id="skincare-am-steps"></div>
         </div>
-        <div class="card">
-          <div class="card-label">⏱ Realistic Results</div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:8px">
-            <div class="card-sm" style="border-left:3px solid var(--gold)"><div style="font-size:13px;font-weight:600">4–6 weeks</div><div style="font-size:11px;color:var(--text2);margin-top:4px">Skin texture starts improving</div></div>
-            <div class="card-sm" style="border-left:3px solid var(--accent)"><div style="font-size:13px;font-weight:600">8–12 weeks</div><div style="font-size:11px;color:var(--text2);margin-top:4px">PIH visibly fading</div></div>
-            <div class="card-sm" style="border-left:3px solid var(--teal)"><div style="font-size:13px;font-weight:600">6 months</div><div style="font-size:11px;color:var(--text2);margin-top:4px">Significant, consistent results</div></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- PM Routine -->
-      <div class="sub-page" id="skincare-pm">
         <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
           <div style="padding:16px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px">
             <span style="font-size:28px">🌙</span>
@@ -792,33 +922,18 @@
           <div id="skincare-pm-steps"></div>
         </div>
         <div class="card" style="margin-bottom:16px">
-          <div class="card-label">📋 Weekly Night Schedule</div>
-          <div style="margin-top:8px">
-            <div style="display:grid;grid-template-columns:80px 1fr;gap:0;font-size:12px">
-              <div style="padding:8px 10px;font-weight:600;color:var(--text3);border-bottom:1px solid var(--border)">Night</div>
-              <div style="padding:8px 10px;font-weight:600;color:var(--text3);border-bottom:1px solid var(--border)">Active</div>
-              <div style="padding:8px 10px;border-bottom:1px solid var(--border)">Monday</div><div style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text2)">Topicals Faded + Gua Sha</div>
-              <div style="padding:8px 10px;border-bottom:1px solid var(--border)">Tuesday</div><div style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text2)">Topicals Faded</div>
-              <div style="padding:8px 10px;border-bottom:1px solid var(--border)">Wednesday</div><div style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text2)">Topicals Faded + Gua Sha</div>
-              <div style="padding:8px 10px;border-bottom:1px solid var(--border)">Thursday</div><div style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text2)">Topicals Faded</div>
-              <div style="padding:8px 10px;border-bottom:1px solid var(--border)">Friday</div><div style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text2)">Topicals Faded + Gua Sha</div>
-              <div style="padding:8px 10px;border-bottom:1px solid var(--border)">Saturday</div><div style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text2)">Topicals Faded</div>
-              <div style="padding:8px 10px">Sunday</div><div style="padding:8px 10px;color:var(--text2)">Rest — cleanse, toner, HA, moisturise, oil only</div>
-            </div>
-          </div>
+          <div class="card-label">🧪 Actives library</div>
+          <div class="modal-sub" style="padding:0 0 10px 0;font-size:12px">Your treatments — what you rotate through. Adding a retinol later? Just hit "Add active" when it arrives.</div>
+          <div id="skincare-actives-list"></div>
         </div>
-        <div class="card" style="background:var(--accent-dim);border-color:rgba(160,82,45,0.15)">
-          <div class="card-label" style="color:var(--accent)">🛒 Optional Add-On</div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
-            <span style="font-size:13px;font-weight:500">The Ordinary Alpha Arbutin 2% + HA</span>
-            <span style="font-size:12px;color:var(--text3)">~£9</span>
-          </div>
-          <div style="font-size:12px;color:var(--text2);margin-top:6px;line-height:1.6">Use PM before moisturiser for an extra PIH-fading boost. Not essential — your current routine is already strong.</div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-label">📋 Weekly night schedule</div>
+          <div id="skincare-night-schedule"></div>
         </div>
       </div>
 
-      <!-- Gua Sha Guide -->
-      <div class="sub-page" id="skincare-guasha">
+      <!-- Guide (static reference) -->
+      <div class="sub-page" id="skincare-guide">
         <div class="card" style="margin-bottom:16px">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
             <span style="font-size:28px">🪨</span>
@@ -838,7 +953,7 @@
           <div style="padding:12px 20px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600">Step 3 — Continue Routine</div>
           <div style="padding:12px 20px;font-size:12px;color:var(--text2);line-height:1.7">Apply serums and moisturiser as normal: Simple HA → Topicals Faded → NMF Moisturiser → Dr. Organic oil to seal. Your skin will absorb everything beautifully after gua sha.</div>
         </div>
-        <div class="card">
+        <div class="card" style="margin-bottom:16px">
           <div class="card-label">Golden Rules</div>
           <div style="font-size:12px;color:var(--text2);line-height:2;margin-top:6px">
             ✦ Never use on dry skin — always have slip from oil or serum<br>
@@ -848,6 +963,14 @@
             ✦ Some redness after is normal — it fades within minutes<br>
             ✦ Never use over active breakouts or broken skin<br>
             ✦ Results build over weeks — consistency is everything
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-label">⏱ Realistic results</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:8px">
+            <div class="card-sm" style="border-left:3px solid var(--gold)"><div style="font-size:13px;font-weight:600">4–6 weeks</div><div style="font-size:11px;color:var(--text2);margin-top:4px">Skin texture starts improving</div></div>
+            <div class="card-sm" style="border-left:3px solid var(--accent)"><div style="font-size:13px;font-weight:600">8–12 weeks</div><div style="font-size:11px;color:var(--text2);margin-top:4px">PIH visibly fading</div></div>
+            <div class="card-sm" style="border-left:3px solid var(--teal)"><div style="font-size:13px;font-weight:600">6 months</div><div style="font-size:11px;color:var(--text2);margin-top:4px">Significant, consistent results</div></div>
           </div>
         </div>
       </div>
