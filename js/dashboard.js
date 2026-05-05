@@ -51,9 +51,12 @@ var CONTEXTUAL_QUOTES={
 function renderDashboard(){
   var now=new Date();var todayKey=localDateKey(now);
   var ctx=getTimeContext();
-  // Auto night mode after 9pm / before 5am
-  if(ctx.slot==='night')document.body.classList.add('night-mode');
-  else document.body.classList.remove('night-mode');
+  // Auto night mode (only if user hasn't set a manual preference)
+  var themePref=null;try{themePref=localStorage.getItem('lh_theme')}catch(e){}
+  if(!themePref){
+    if(ctx.slot==='night')document.body.classList.add('night-mode');
+    else document.body.classList.remove('night-mode');
+  }
   var gEl=document.getElementById('dash-greeting');if(gEl)gEl.innerHTML=ctx.greeting+', <em>Kai</em>.';
   // Apply time-based class to hero
   var hero=document.getElementById('hero');
@@ -72,13 +75,54 @@ function renderDashboard(){
   }
   loadDailyHighlight();
 
+  // End-of-month review nudge (28th onwards)
+  var nudgeEl=document.getElementById('dash-review-nudge');
+  if(nudgeEl){
+    var dayOfMonth=now.getDate();
+    var monthEnd=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+    var monthKey=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+    var existing=(STATE.reviews&&STATE.reviews.monthly&&STATE.reviews.monthly[monthKey]);
+    // Count overdue roadmap items
+    var todayK=localDateKey(now);
+    var overdueCount=0;
+    if(typeof RM_MONTHS!=='undefined'){
+      RM_MONTHS.forEach(function(m){
+        m.sections.forEach(function(sec,si){
+          sec.items.forEach(function(item,ii){
+            if(rmIsDone(m.id,si,ii))return;
+            var due=item.dueDate;
+            var addedMatch=(STATE.roadmapAdded||[]).find(function(a){return a.mid===m.id&&a.si===si&&a.text===item.text});
+            if(addedMatch&&addedMatch.dueDate)due=addedMatch.dueDate;
+            if(due&&due<todayK)overdueCount++;
+          });
+        });
+      });
+    }
+
+    var nudges=[];
+    if(overdueCount>0){
+      nudges.push('<div class="review-nudge" onclick="nav(\'roadmap\')" style="background:linear-gradient(135deg,rgba(229,57,53,0.1),rgba(217,123,108,0.08))"><div class="review-nudge-icon" style="background:rgba(229,57,53,0.15)">⚠️</div><div class="review-nudge-body"><div class="review-nudge-title">'+overdueCount+' roadmap item'+(overdueCount===1?'':'s')+' overdue</div><div class="review-nudge-sub">Tap to review and update your timeline.</div></div><div class="review-nudge-arrow">→</div></div>');
+    }
+    if(dayOfMonth>=monthEnd-2&&!existing){
+      var monthName=now.toLocaleDateString('en-GB',{month:'long'});
+      nudges.push('<div class="review-nudge" onclick="nav(\'review\')"><div class="review-nudge-icon">🌙</div><div class="review-nudge-body"><div class="review-nudge-title">'+monthName+' is almost wrapped.</div><div class="review-nudge-sub">Time for your monthly review — 10 mins of honest reflection.</div></div><div class="review-nudge-arrow">→</div></div>');
+    }
+    nudgeEl.innerHTML=nudges.join('');
+  }
+
   var goalsDone=STATE.goals.filter(function(g){return g.done}).length;
-  var habitsToday=STATE.habits.filter(function(h){return h.logs[todayKey]}).length;
+  // Only count habits that are expected today (daily + weekly ones that haven't hit their target)
+  var expectedHabits=STATE.habits.filter(function(h){
+    var status=habitDayStatus(h,todayKey);
+    return status==='done'||status==='todo';  // exclude 'rest' (monthly/bi-monthly not today, or weekly already hit)
+  });
+  var habitsToday=expectedHabits.filter(function(h){return h.logs[todayKey]}).length;
+  var habitsTotal=expectedHabits.length;
   var rmProgress=function(){var td=0,ti=0;RM_MONTHS.forEach(function(m){var p=rmGetProgress(m);td+=p.done;ti+=p.total});return ti===0?0:Math.round(td/ti*100)}();
 
   var priData=(function(){var wk=weekKey(now);var plan=(STATE.weeklyPlans||{})[wk]||{};var pris=(plan.priorities||[]).filter(function(p){return p&&p.trim()});var done=0;var td=plan.prioritiesDone||{};pris.forEach(function(_,i){if(td[i])done++});return {done:done,total:pris.length}})();
   var priPct=priData.total>0?Math.round(priData.done/priData.total*100):0;
-  var habPct=STATE.habits.length>0?Math.round(habitsToday/STATE.habits.length*100):0;
+  var habPct=habitsTotal>0?Math.round(habitsToday/habitsTotal*100):0;
 
   // Smart hero subtext
   if(dEl){
@@ -90,32 +134,57 @@ function renderDashboard(){
     dEl.innerHTML=dateStr+'. '+insight;
   }
 
-  // Smart focus card — 50/50 habits + daily priorities (day-scoped)
+  // Smart focus card — habits + daily tasks (today-scoped, no roadmap)
   var focusStatEl=document.getElementById('focus-stat');
   var focusSubEl=document.getElementById('focus-sub');
   var focusBarsEl=document.getElementById('focus-bars');
+  var focusLabelEl=document.getElementById('focus-score-label');
   if(focusStatEl&&focusSubEl&&focusBarsEl){
     if(!STATE.dailyPriorities)STATE.dailyPriorities={};
     var todayPris=STATE.dailyPriorities[todayKey]||[];
     var priDone=todayPris.filter(function(p){return p.done}).length;
     var priTotal=todayPris.length;
-    var dailyPriPct=priTotal>0?Math.round((priDone/priTotal)*100):0;
-    // Weighted score: if no priorities set, use habits only
-    var overall=priTotal>0?Math.round((habPct+dailyPriPct)/2):habPct;
+    var totalDone=habitsToday+priDone;
+    var totalAll=habitsTotal+priTotal;
+    var overallPct=totalAll>0?Math.round((totalDone/totalAll)*100):0;
+
     var msg;
-    if(overall>=75)msg='You\'re <em>flying</em>. Keep it going.';
-    else if(overall>=50)msg='Good rhythm today — one more win to go.';
-    else if(overall>=25)msg='Small steps compound. Pick one thing.';
-    else msg='A fresh start. Begin with the smallest win.';
-    if(!focusStatEl.querySelector('.focus-stat-num')){
-      focusStatEl.innerHTML='<span class="focus-stat-num">0</span><span class="focus-stat-suffix"> /100</span>';
+    if(totalAll===0){
+      msg='Add a habit or today\'s first task to get going.';
+    }else if(overallPct>=100){
+      msg='Everything ticked. <em>Beautiful day.</em>';
+    }else if(overallPct>=75){
+      msg='You\'re <em>flying</em>. One or two to go.';
+    }else if(overallPct>=50){
+      msg='Good rhythm today — halfway there.';
+    }else if(overallPct>=25){
+      msg='Small steps compound. Pick one thing.';
+    }else if(totalDone>0){
+      msg='First one\'s down. Keep the momentum.';
+    }else{
+      msg='A fresh start. Begin with the smallest win.';
     }
-    var numEl=focusStatEl.querySelector('.focus-stat-num');
-    tickNumber(numEl,String(overall),1000);
+
+    // Render as "done / total" rather than "/100"
+    focusStatEl.innerHTML=totalAll===0
+      ? '<span class="focus-stat-num">—</span>'
+      : '<span class="focus-stat-num">'+totalDone+'</span><span class="focus-stat-suffix"> / '+totalAll+'</span>';
+    if(focusLabelEl){
+      focusLabelEl.textContent=totalAll===0?'Nothing tracked today yet' : 'Habits + tasks done today';
+    }
     focusSubEl.innerHTML=msg;
-    var barsHtml=focusBar('✅','Habits',habitsToday+'/'+STATE.habits.length,habPct,'var(--grad-green)');
+
+    var barsHtml='';
+    if(habitsTotal>0){
+      barsHtml+=focusBar('✅','Habits',habitsToday+'/'+habitsTotal,habPct,'var(--grad-green)');
+    }else{
+      barsHtml+='<div class="focus-bar focus-bar-empty"><span class="focus-bar-icon">✅</span><span class="focus-bar-label">No habits due today</span><button class="focus-bar-cta" onclick="nav(\'habits\')">Set one →</button></div>';
+    }
     if(priTotal>0){
+      var dailyPriPct=Math.round((priDone/priTotal)*100);
       barsHtml+=focusBar('📝','Tasks',priDone+'/'+priTotal,dailyPriPct,'var(--grad-accent)');
+    }else{
+      barsHtml+='<div class="focus-bar focus-bar-empty"><span class="focus-bar-icon">📝</span><span class="focus-bar-label">No tasks added yet</span><button class="focus-bar-cta" onclick="document.getElementById(\'daily-pri-input\')&&document.getElementById(\'daily-pri-input\').focus()">Add one →</button></div>';
     }
     focusBarsEl.innerHTML=barsHtml;
     setTimeout(function(){
@@ -125,10 +194,13 @@ function renderDashboard(){
     },80);
   }
 
-  // Mini stat orbs on the right
-  setStat('priorities',priData.done+' / '+priData.total,priPct);
-  setStat('habits',habitsToday+' / '+STATE.habits.length,habPct);
-  setStat('roadmap',rmProgress+'%',rmProgress);
+  // Side stat orbs — today-scoped only (habits + daily tasks)
+  var todayPrisForStats=(STATE.dailyPriorities||{})[todayKey]||[];
+  var priDoneToday=todayPrisForStats.filter(function(p){return p.done}).length;
+  var priTotalToday=todayPrisForStats.length;
+  var priPctToday=priTotalToday>0?Math.round(priDoneToday/priTotalToday*100):0;
+  setStat('habits',habitsTotal>0?(habitsToday+' / '+habitsTotal):'—',habPct);
+  setStat('tasks-today',priTotalToday>0?(priDoneToday+' / '+priTotalToday):'—',priPctToday);
 
   var ppEl=document.getElementById('dash-priorities-preview');
   if(ppEl){
@@ -171,10 +243,82 @@ function renderDashboard(){
   var fpEl=document.getElementById('dash-finance-preview');
   if(fpEl)fpEl.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px"><div style="background:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.4);border-radius:12px;padding:14px;text-align:center"><div style="font-size:10px;color:var(--neutral);text-transform:uppercase;letter-spacing:.05em;font-weight:600">Savings</div><div style="font-size:20px;font-family:var(--serif);font-weight:600;color:var(--secondary);margin-top:4px">'+fmtMoney(tSav)+'</div></div><div style="background:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.4);border-radius:12px;padding:14px;text-align:center"><div style="font-size:10px;color:var(--neutral);text-transform:uppercase;letter-spacing:.05em;font-weight:600">Total debt</div><div style="font-size:20px;font-family:var(--serif);font-weight:600;color:var(--primary);margin-top:4px">'+fmtMoney(tDebt)+'</div></div></div><div style="font-size:11px;color:var(--on-surface-variant)">'+fmtMoney(tInc)+' in \u00b7 '+fmtMoney(tExp)+' out \u00b7 <span style="color:'+(left>=0?'var(--mint)':'var(--red)')+';font-weight:600">'+fmtMoney(Math.abs(left))+' '+(left>=0?'left over':'over')+'</span></div><button class="btn btn-ghost btn-sm" onclick="nav(\'finance\')" style="margin-top:8px;width:100%;justify-content:center">View finance \u2192</button>';
   var rpEl=document.getElementById('dash-roadmap-preview');
-  if(rpEl){var curRM=RM_MONTHS.find(function(m){return m.year===now.getFullYear().toString()&&m.name===now.toLocaleDateString('en-GB',{month:'long'})});if(!curRM)curRM=RM_MONTHS[0];var rp=rmGetProgress(curRM);var nextItems=[];curRM.sections.forEach(function(sec,si){sec.items.forEach(function(item,ii){if(!rmIsDone(curRM.id,si,ii))nextItems.push({text:item.text})})});rpEl.innerHTML='<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="font-weight:600">'+curRM.name+' '+curRM.year+'</span><span style="color:'+rmPctColor(rp.pct)+'">'+rp.pct+'%</span></div><div class="pbar-wrap"><div class="pbar" style="width:'+rp.pct+'%;background:'+rmPctColor(rp.pct)+'"></div></div><div style="font-size:11px;color:var(--text3)">'+rp.done+'/'+rp.total+' tasks done</div></div>'+(nextItems.length?nextItems.slice(0,3).map(function(i){return '<div style="font-size:11px;color:var(--text2);padding:5px 0;border-bottom:1px solid var(--border);display:flex;gap:6px"><span style="color:var(--text3)">\u2192</span>'+i.text+'</div>'}).join(''):'<div style="font-size:11px;color:var(--mint);padding:8px 0">\u2713 All tasks complete this month!</div>')+'<button class="btn btn-ghost btn-sm" onclick="nav(\'roadmap\')" style="margin-top:8px;width:100%;justify-content:center">Open Roadmap \u2192</button>'}
+  if(rpEl){
+    var curRM=RM_MONTHS.find(function(m){return m.year===now.getFullYear().toString()&&m.name===now.toLocaleDateString('en-GB',{month:'long'})});
+    if(!curRM)curRM=RM_MONTHS[0];
+    var rp=rmGetProgress(curRM);
+    var wkStart=weekKey(now);
+    var wkDaysArr=weekDays(wkStart);
+    var wkEnd=wkDaysArr[6];
+    var todayK=localDateKey(now);
+    var overdue=[],dueWk=[],nextItems=[];
+    RM_MONTHS.forEach(function(m){
+      m.sections.forEach(function(sec,si){
+        sec.items.forEach(function(item,ii){
+          if(rmIsDone(m.id,si,ii))return;
+          var due=item.dueDate;
+          var addedMatch=(STATE.roadmapAdded||[]).find(function(a){return a.mid===m.id&&a.si===si&&a.text===item.text});
+          if(addedMatch&&addedMatch.dueDate)due=addedMatch.dueDate;
+          if(due){
+            if(due<todayK)overdue.push({text:item.text,due:due});
+            else if(due>=wkStart&&due<=wkEnd)dueWk.push({text:item.text,due:due});
+          }
+        });
+      });
+    });
+    curRM.sections.forEach(function(sec,si){
+      sec.items.forEach(function(item,ii){
+        if(!rmIsDone(curRM.id,si,ii)&&!item.dueDate)nextItems.push({text:item.text});
+      });
+    });
+
+    var html='<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="font-weight:600">'+curRM.name+' '+curRM.year+'</span><span style="color:'+rmPctColor(rp.pct)+'">'+rp.pct+'%</span></div><div class="pbar-wrap"><div class="pbar" style="width:'+rp.pct+'%;background:'+rmPctColor(rp.pct)+'"></div></div><div style="font-size:11px;color:var(--text3)">'+rp.done+'/'+rp.total+' tasks done</div></div>';
+
+    if(overdue.length){
+      html+='<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--red);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em">\u26A0\uFE0F Overdue \u2014 '+overdue.length+'</div>'+overdue.slice(0,3).map(function(i){return '<div style="font-size:11px;color:var(--fg);padding:5px 0;border-bottom:1px solid var(--border);display:flex;gap:6px;align-items:center"><span style="color:var(--red);font-size:10px">\u25CF</span>'+i.text+' <span style="color:var(--red);font-size:10px;margin-left:auto;white-space:nowrap">'+fmtDate(i.due)+'</span></div>';}).join('')+'</div>';
+    }
+    if(dueWk.length){
+      html+='<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--accent-dark);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em">\uD83D\uDCC5 Due this week \u2014 '+dueWk.length+'</div>'+dueWk.slice(0,3).map(function(i){return '<div style="font-size:11px;color:var(--fg);padding:5px 0;border-bottom:1px solid var(--border);display:flex;gap:6px;align-items:center"><span style="color:var(--accent-dark);font-size:10px">\u25CF</span>'+i.text+' <span style="color:var(--text2);font-size:10px;margin-left:auto;white-space:nowrap">'+fmtDate(i.due)+'</span></div>';}).join('')+'</div>';
+    }
+    if(!overdue.length&&!dueWk.length){
+      html+=(nextItems.length?'<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em">Up next this month</div>'+nextItems.slice(0,3).map(function(i){return '<div style="font-size:11px;color:var(--text2);padding:5px 0;border-bottom:1px solid var(--border);display:flex;gap:6px"><span style="color:var(--text3)">\u2192</span>'+i.text+'</div>';}).join(''):'<div style="font-size:11px;color:var(--mint);padding:8px 0">\u2713 All tasks complete this month!</div>');
+    }
+    html+='<button class="btn btn-ghost btn-sm" onclick="nav(\'roadmap\')" style="margin-top:8px;width:100%;justify-content:center">Open Roadmap \u2192</button>';
+    rpEl.innerHTML=html;
+  }
 }
 
-function quickToggleHabit(hid,day){var h=STATE.habits.find(function(x){return x.id===hid});if(!h)return;var wasDone=h.logs[day];h.logs[day]=!h.logs[day];saveState();renderDashboard();if(!wasDone&&h.logs[day]){var s=habitStreak(h);if(s===7||s===14||s===21||s===30){fireConfetti();showCelebrationToast(h.name+' — '+s+' day streak!','🔥')}}}
+// ── CELEBRATIONS ──
+// Fires a big celebration when both habits and today's tasks are fully done.
+// Only counts if there's something being tracked (>=1 of each, or >=2 total).
+function checkAllDoneToday(){
+  var todayKey=localDateKey(new Date());
+  var expectedHabits=STATE.habits.filter(function(h){
+    var status=habitDayStatus(h,todayKey);
+    return status==='done'||status==='todo';
+  });
+  var habitsDone=expectedHabits.filter(function(h){return h.logs[todayKey]}).length;
+  var habitsTotal=expectedHabits.length;
+  var pris=(STATE.dailyPriorities||{})[todayKey]||[];
+  var prisDone=pris.filter(function(p){return p.done}).length;
+  var prisTotal=pris.length;
+
+  // Need at least 2 items tracked in total, and both categories (if present) fully done
+  var totalTracked=habitsTotal+prisTotal;
+  if(totalTracked<2)return;
+  var habitsComplete=habitsTotal===0||habitsDone===habitsTotal;
+  var prisComplete=prisTotal===0||prisDone===prisTotal;
+  if(!habitsComplete||!prisComplete)return;
+
+  celebrateOnce('all-done-today',function(){
+    setTimeout(function(){
+      fireConfetti({count:160,duration:3200,colors:['#a0522d','#c9973a','#d4845a','#6b9e7a','#c97b6e','#f59e0b','#E8A87C']});
+      showCelebrationToast('Day complete. Everything ticked.','🌟');
+    },350);
+  });
+}
+
+function quickToggleHabit(hid,day){var h=STATE.habits.find(function(x){return x.id===hid});if(!h)return;var wasDone=h.logs[day];h.logs[day]=!h.logs[day];saveState();renderDashboard();if(!wasDone&&h.logs[day]){var s=habitStreak(h);if(s===7||s===14||s===21||s===30){fireConfetti();showCelebrationToast(h.name+' — '+s+' day streak!','🔥')}if(day===localDateKey(new Date()))checkAllDoneToday()}}
 function toggleDashPriority(idx){var wk=weekKey(new Date());if(!STATE.weeklyPlans)STATE.weeklyPlans={};if(!STATE.weeklyPlans[wk])STATE.weeklyPlans[wk]={priorities:[]};if(!STATE.weeklyPlans[wk].prioritiesDone)STATE.weeklyPlans[wk].prioritiesDone={};STATE.weeklyPlans[wk].prioritiesDone[idx]=!STATE.weeklyPlans[wk].prioritiesDone[idx];saveState();renderDashboard()}
 
 // GOALS (simplified)
@@ -205,6 +349,13 @@ h+='<div style="font-size:15px;font-weight:600;'+(isDone?'text-decoration:line-t
 if(go.desc)h+='<div style="font-size:12px;color:var(--text2);margin-top:3px;'+(isDone?'text-decoration:line-through':'')+'">'+go.desc+'</div>';
 /* Deadline */
 if(go.deadline){h+='<div style="font-size:11px;margin-top:6px;color:'+(overdue?'var(--red)':'var(--text3)')+'">📅 '+(isDone?'Completed':'Due '+fmtDate(go.deadline)+(dl>0?' · '+dl+' days left':''))+'</div>'}
+/* Live progress + linked badge */
+var srcInfo=getGoalSource(go);
+var livePct=goalPct(go);
+var progressDisplay=srcInfo.source!=='manual'?srcInfo.progress:go.progress;
+h+='<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-size:11px;color:var(--text2);font-weight:500">'+progressDisplay+(go.unit||'')+' / '+go.target+(go.unit||'')+'</span><span style="font-size:11px;font-weight:600;color:'+pbarColor(livePct)+'">'+livePct+'%</span></div><div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+livePct+'%;background:'+pbarColor(livePct)+';border-radius:3px;transition:width .4s"></div></div>';
+if(srcInfo.label)h+='<div style="font-size:10px;color:var(--mint);margin-top:4px;font-weight:500">'+srcInfo.label+'</div>';
+h+='</div>';
 h+='<button class="goal-roadmap-link" onclick="nav(\'roadmap\')">\ud83d\uddd3\ufe0f Monthly steps in Roadmap</button>';
 h+='</div>';
 /* Actions */
@@ -212,9 +363,9 @@ h+='<div class="goal-actions"><button class="btn btn-sm btn-ghost" onclick="open
 h+='</div></div>';return h}).join('')}
 function filterGoals(cat,btn){goalFilter=cat;document.querySelectorAll('#goal-filters .filter-btn').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');renderGoals()}
 function toggleGoalDone(id){var goal=STATE.goals.find(function(x){return x.id===id});if(!goal)return;var wasDone=goal.done;goal.done=!goal.done;if(goal.done)goal.progress=goal.target;saveState();renderGoals();if(!wasDone&&goal.done){fireConfetti({count:150,duration:3000});showCelebrationToast('Goal complete: '+goal.name,'🎯')}}
-function saveGoal(){var name=((document.getElementById('m-gname')||{}).value||'').trim();if(!name)return;var cat=(document.getElementById('m-gcat')||{}).value||'Personal';var badges={Finance:'fin',Fitness:'fit',Career:'car',Personal:'per'};STATE.goals.push({id:g(),name:name,cat:cat,badge:badges[cat]||'per',desc:(document.getElementById('m-gdesc')||{}).value||'',target:100,unit:'%',direction:'up',deadline:(document.getElementById('m-gdeadline')||{}).value||'2026-12-31',progress:0,done:false,subGoals:[]});saveState();closeModal();renderGoals()}
+function saveGoal(){var name=((document.getElementById('m-gname')||{}).value||'').trim();if(!name)return;var cat=(document.getElementById('m-gcat')||{}).value||'Personal';var badges={Finance:'fin',Fitness:'fit',Career:'car',Personal:'per'};var target=Number((document.getElementById('m-gtarget')||{}).value)||100;var unit=(document.getElementById('m-gunit')||{}).value||'%';var direction=(document.getElementById('m-gdir')||{}).value||'up';STATE.goals.push({id:g(),name:name,cat:cat,badge:badges[cat]||'per',desc:(document.getElementById('m-gdesc')||{}).value||'',target:target,unit:unit,direction:direction,deadline:(document.getElementById('m-gdeadline')||{}).value||'2026-12-31',progress:direction==='up'?0:target*2,done:false,subGoals:[]});saveState();closeModal();renderGoals()}
 function updateGoalProgress(id){var goal=STATE.goals.find(function(x){return x.id===id});if(!goal)return;var wasDone=goalPct(goal)>=100;goal.progress=Number((document.getElementById('m-gprogress')||{}).value)||0;saveState();closeModal();renderGoals();if(!wasDone&&goalPct(goal)>=100){fireConfetti({count:150,duration:3000});showCelebrationToast('Goal complete: '+goal.name,'🎯')}}
-function editGoalSave(id){var goal=STATE.goals.find(function(x){return x.id===id});if(!goal)return;goal.name=(document.getElementById('m-gname')||{}).value||goal.name;goal.deadline=(document.getElementById('m-gdeadline')||{}).value||goal.deadline;goal.desc=(document.getElementById('m-gdesc')||{}).value||'';var cat=(document.getElementById('m-gcat')||{}).value;if(cat){goal.cat=cat;var badges={Finance:'fin',Fitness:'fit',Career:'car',Personal:'per'};goal.badge=badges[cat]||goal.badge}saveState();closeModal();renderGoals()}
+function editGoalSave(id){var goal=STATE.goals.find(function(x){return x.id===id});if(!goal)return;goal.name=(document.getElementById('m-gname')||{}).value||goal.name;goal.deadline=(document.getElementById('m-gdeadline')||{}).value||goal.deadline;goal.desc=(document.getElementById('m-gdesc')||{}).value||'';var cat=(document.getElementById('m-gcat')||{}).value;if(cat){goal.cat=cat;var badges={Finance:'fin',Fitness:'fit',Career:'car',Personal:'per'};goal.badge=badges[cat]||goal.badge}var manualEl=document.getElementById('m-gmanual');if(manualEl){goal.manualOverride=manualEl.value==='1';if(goal.manualOverride){var p=document.getElementById('m-gprogress');if(p&&p.value!=='')goal.progress=Number(p.value)}}saveState();closeModal();renderGoals()}
 function deleteGoal(id){confirmDelete('Delete this goal?',function(){STATE.goals=STATE.goals.filter(function(g){return g.id!==id});saveState();renderGoals()})}
 function saveMetric(type){if(!STATE.metrics)STATE.metrics={};var date=(document.getElementById('m-mdate')||{}).value||localDateKey(new Date());var note=(document.getElementById('m-mnote')||{}).value||'';var entry={id:g(),date:date};if(type==='project'){var name=((document.getElementById('m-mname')||{}).value||'').trim();if(!name)return;entry.name=name}else if(type==='run'){var val=(document.getElementById('m-mval')||{}).value;if(!val)return;entry.distance=Number(val);entry.time=(document.getElementById('m-mtime')||{}).value||'';entry.note=note}else if(type==='moneySaved'){var val=(document.getElementById('m-mval')||{}).value;if(!val)return;entry.amount=Number(val);entry.note=note}else{var val=(document.getElementById('m-mval')||{}).value;if(!val)return;entry.value=Number(val);entry.note=note}if(!STATE.metrics[type])STATE.metrics[type]=[];STATE.metrics[type].push(entry);saveState();closeModal();renderMetrics();if(type==='run'){var rrEl=document.getElementById('recent-runs-workout');if(rrEl)renderWorkout()}}
 
@@ -239,9 +390,29 @@ function addDailyPri(){
 function toggleDailyPri(dateKey,idx){
   var list=(STATE.dailyPriorities||{})[dateKey];
   if(!list||!list[idx])return;
+  var wasDone=list[idx].done;
   list[idx].done=!list[idx].done;
   saveState();
   renderDashboard();
+  // Only celebrate on the today list, and only when ticking ON
+  var todayKey=localDateKey(new Date());
+  if(dateKey===todayKey&&!wasDone&&list[idx].done){
+    var doneCount=list.filter(function(p){return p.done}).length;
+    // First task of the day — subtle toast
+    if(doneCount===1){
+      celebrateOnce('first-task',function(){
+        showCelebrationToast('First one done. Momentum starts here.','✨');
+      });
+    }
+    // All tasks done (and there were at least 2)
+    if(doneCount===list.length&&list.length>=2){
+      celebrateOnce('all-tasks',function(){
+        fireConfetti({count:80,duration:2000});
+        showCelebrationToast('All tasks ticked — nice work.','📝');
+      });
+    }
+    checkAllDoneToday();
+  }
 }
 function deleteDailyPri(dateKey,idx){
   var list=(STATE.dailyPriorities||{})[dateKey];
@@ -351,4 +522,70 @@ function toggleArchiveTask(dateKey,idx){
   list[idx].done=!list[idx].done;
   saveState();
   renderTasksArchive();
+}
+
+
+// ── DASHBOARD TABS ──
+function switchDashTab(tab,btn){
+  document.querySelectorAll('#page-dashboard .page-tab').forEach(function(b){b.classList.remove('active')});
+  document.querySelectorAll('.dash-tab').forEach(function(p){p.classList.remove('active')});
+  if(btn)btn.classList.add('active');
+  var el=document.getElementById('dash-tab-'+tab);
+  if(el)el.classList.add('active');
+  if(tab==='life')renderLifeTab();
+}
+
+// ── LIFE TAB ──
+function renderLifeTab(){
+  // Goals snapshot — top 3 in-progress with progress bars
+  var gSnapEl=document.getElementById('dash-goals-snapshot');
+  if(gSnapEl){
+    var active=(STATE.goals||[]).filter(function(g){return !g.done});
+    var top3=active.slice(0,3);
+    if(!top3.length){
+      gSnapEl.innerHTML='<div class="empty" style="padding:20px 0">No active goals. <a href="#" onclick="nav(\'goals\');return false" style="color:var(--accent-dark)">Set one →</a></div>';
+    }else{
+      gSnapEl.innerHTML=top3.map(function(go){
+        var pct=goalPct(go);
+        var src=getGoalSource(go);
+        var progressDisplay=src.source!=='manual'?src.progress:go.progress;
+        return '<div style="padding:10px 0;border-bottom:1px solid var(--border)">'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+            +'<div style="font-size:13px;font-weight:500">'+go.name+'</div>'
+            +'<span style="font-size:11px;font-weight:600;color:'+pbarColor(pct)+'">'+pct+'%</span>'
+          +'</div>'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">'
+            +'<div class="pbar-wrap" style="flex:1;margin:0"><div class="pbar" style="width:'+pct+'%;background:'+pbarColor(pct)+'"></div></div>'
+            +'<span style="font-size:11px;color:var(--text2);white-space:nowrap">'+progressDisplay+(go.unit||'')+' / '+go.target+(go.unit||'')+'</span>'
+          +'</div>'
+          +'</div>';
+      }).join('')+'<button class="btn btn-ghost btn-sm" onclick="nav(\'goals\')" style="margin-top:10px;width:100%;justify-content:center">View all goals →</button>';
+    }
+  }
+
+  // Reviews snapshot — last monthly review
+  var rSnapEl=document.getElementById('dash-reviews-snapshot');
+  if(rSnapEl){
+    var reviews=(STATE.reviews&&STATE.reviews.monthly)||{};
+    var keys=Object.keys(reviews).sort().reverse();
+    if(!keys.length){
+      rSnapEl.innerHTML='<div class="empty" style="padding:20px 0">No reviews yet. <a href="#" onclick="nav(\'review\');return false" style="color:var(--accent-dark)">Start reflecting →</a></div>';
+    }else{
+      var lastKey=keys[0];
+      var r=reviews[lastKey];
+      var parts=lastKey.split('-');
+      var monthLabel=new Date(Number(parts[0]),Number(parts[1])-1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+      var avg=0;
+      if(r.ratings){
+        var vals=Object.values(r.ratings);
+        avg=vals.length?Math.round(vals.reduce(function(s,v){return s+v},0)/vals.length*10)/10:0;
+      }
+      var color=avg>=7?'var(--mint)':avg>=5?'var(--gold)':'var(--accent-dark)';
+      rSnapEl.innerHTML='<div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--border)">'
+        +'<div style="width:52px;height:52px;border-radius:50%;background:'+color+';color:var(--white);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:20px;font-weight:500;flex-shrink:0">'+avg+'</div>'
+        +'<div style="flex:1"><div style="font-size:14px;font-weight:600">'+monthLabel+'</div>'+(r.focus?'<div style="font-size:11px;color:var(--text2);margin-top:2px;line-height:1.4">🎯 '+r.focus.split('\n')[0].slice(0,80)+(r.focus.length>80?'…':'')+'</div>':'<div style="font-size:11px;color:var(--text3);margin-top:2px">No focus set</div>')+'</div>'
+        +'</div>'
+        +'<button class="btn btn-ghost btn-sm" onclick="nav(\'review\')" style="margin-top:10px;width:100%;justify-content:center">Open Reviews →</button>';
+    }
+  }
 }

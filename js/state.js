@@ -88,7 +88,9 @@ var DEFAULT_STATE = {
   metrics:{weight:[],bodyFat:[],steps:[],runs:[],moneySaved:[],projectsDone:[]},
   weeklyPlans:{},reviews:{monthly:{},quarterly:{}},
   dailyPriorities:{},
+  trainingEvents:[],
   journal:{},mood:{},dailyHighlights:{},
+  skincare:{startedOn:null,products:{am:[],pm:[]},actives:[],nightSchedule:{},guaShaLog:{},activeLog:{},photos:[]},
   projects:[
     {id:'prj1',name:'Thailand Trip Planning',status:'active',cat:'Personal',desc:'Anniversary trip \u2014 29 November 2026',deadline:'2026-11-01',tasks:[{id:'t4',text:'Set budget',done:false},{id:'t5',text:'Book flights',done:false},{id:'t6',text:'Book accommodation',done:false},{id:'t7',text:'Sort travel insurance',done:false}],color:'#6b9e7a'},
     {id:'prj2',name:'GitHub Portfolio',status:'active',cat:'Career',desc:'Build 2-3 public data projects before Oct 2026',deadline:'2026-10-01',tasks:[{id:'t8',text:'Create GitHub account',done:false},{id:'t9',text:'Publish first EDA project',done:false},{id:'t10',text:'Publish second project',done:false}],color:'#d4845a'},

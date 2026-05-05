@@ -20,31 +20,204 @@ function getWeeklyPlanData(){
 }
 
 function renderWorkout(){
-  var sessions=STATE.workouts||[];
-  var thisWeek=sessions.filter(function(w){return w.date>=weekKey(new Date())});
-  var runs=((STATE.metrics||{}).run||[]);
-  var thisMonthRuns=runs.filter(function(r){return r.date&&r.date.startsWith(new Date().toISOString().slice(0,7))});
-  var totalKm=thisMonthRuns.reduce(function(s,r){return s+Number(r.distance||0)},0);
-
-  var wsEl=document.getElementById('workout-stats');
-  if(wsEl)wsEl.innerHTML=
-    '<div class="card" style="border-top:3px solid var(--accent)"><div class="card-label">This week</div><div class="stat-big">'+thisWeek.length+'</div><div class="stat-sub">sessions</div></div>'
-    +'<div class="card" style="border-top:3px solid var(--mauve)"><div class="card-label">Total sessions</div><div class="stat-big">'+sessions.length+'</div><div class="stat-sub">all time</div></div>'
-    +'<div class="card" style="border-top:3px solid var(--teal)"><div class="card-label">Runs this month</div><div class="stat-big">'+thisMonthRuns.length+'</div><div class="stat-sub">'+totalKm.toFixed(1)+' km</div></div>'
-    +'<div class="card" style="border-top:3px solid var(--gold)"><div class="card-label">Total runs</div><div class="stat-big">'+runs.length+'</div><div class="stat-sub">all time</div></div>';
-
-  var recent=sessions.slice(-5).reverse();
-  var rEl=document.getElementById('recent-workouts');
-  if(rEl)rEl.innerHTML=recent.length?recent.map(function(w){return sessionCard(w)}).join(''):'<div class="empty"><div class="empty-icon">&#127947;&#65039;</div>No sessions yet.</div>';
-
-  var recentRuns=runs.slice().sort(function(a,b){return b.date.localeCompare(a.date)}).slice(0,5);
-  var rrEl=document.getElementById('recent-runs-workout');
-  if(rrEl)rrEl.innerHTML=recentRuns.length?recentRuns.map(function(r){
-    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-size:18px">&#127939;</span><div style="flex:1"><div style="font-size:13px;font-weight:500">'+r.distance+'km'+(r.time?' · '+r.time:'')+'</div><div style="font-size:11px;color:var(--text2)">'+fmtDate(r.date)+(r.note?' · '+r.note:'')+'</div></div></div>';
-  }).join(''):'<div class="empty" style="padding:20px 0"><div class="empty-icon">&#127939;</div>No runs yet.</div>';
-
-  renderAllWorkouts();
+  renderTrainingOverview();
   renderMyPlanSchedule();
+  renderAllWorkouts();
+}
+
+function renderTrainingOverview(){
+  var now=new Date();
+  var wk=weekKey(now);
+  var days=weekDays(wk);
+  var todayKey=localDateKey(now);
+  var sessions=STATE.workouts||[];
+  var runs=((STATE.metrics||{}).run||[]);
+
+  // Merge sessions + runs for this week
+  var weekItems=sessions.filter(function(w){return days.indexOf(w.date)!==-1})
+    .concat(runs.filter(function(r){return days.indexOf(r.date)!==-1}).map(function(r){return {type:'Run',date:r.date,isRun:true}}));
+  var weekCount=weekItems.length;
+
+  // Weekly target — count non-rest days from the plan
+  var plan=getWeeklyPlanData();
+  var target=plan.filter(function(d){return d.type&&d.type.toLowerCase()!=='rest'}).length;
+
+  // Update header counters
+  var cEl=document.getElementById('training-week-count');
+  if(cEl)cEl.innerHTML=weekCount+'<span style="font-size:18px;color:var(--text2);font-weight:400"> / '+target+'</span>';
+  var tEl=document.getElementById('training-week-target');
+  if(tEl){
+    var remaining=Math.max(0,target-weekCount);
+    tEl.textContent=weekCount>=target?'Target hit — extra credit!':remaining+' more to hit your weekly target';
+  }
+
+  // Week day grid — show what's logged each day
+  var gridEl=document.getElementById('training-week-grid');
+  if(gridEl){
+    var dayLabels=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    gridEl.innerHTML='<div class="training-week-grid">'+days.map(function(d,i){
+      var items=weekItems.filter(function(x){return x.date===d});
+      var isToday=d===todayKey;
+      var isPast=d<todayKey;
+      var pd=plan[(i+6)%7];  // align to plan order (starts Mon)
+      var planType=pd?pd.type:'';
+      var statusClass='';
+      if(items.length>0)statusClass='done';
+      else if(isPast&&planType.toLowerCase()!=='rest')statusClass='missed';
+      else if(isToday)statusClass='today';
+      return '<div class="training-day '+statusClass+'">'
+        +'<div class="training-day-name">'+dayLabels[i]+'</div>'
+        +'<div class="training-day-plan">'+(planType||'—')+'</div>'
+        +'<div class="training-day-logged">'+(items.length>0?items.map(function(x){return '✓ '+(x.type||x.name||'session')}).join('<br>'):(statusClass==='missed'?'missed':'—'))+'</div>'
+        +'</div>';
+    }).join('')+'</div>';
+  }
+
+  // Weekly streak — consecutive weeks hitting target
+  var streak=0;
+  for(var wi=0;wi<52;wi++){
+    var checkDate=new Date(now);checkDate.setDate(checkDate.getDate()-wi*7);
+    var checkWk=weekKey(checkDate);
+    var checkDays=weekDays(checkWk);
+    var checkCount=sessions.filter(function(w){return checkDays.indexOf(w.date)!==-1}).length
+      +runs.filter(function(r){return checkDays.indexOf(r.date)!==-1}).length;
+    if(checkCount>=target)streak++;
+    else if(wi>0)break;  // allow current week to still be incomplete
+  }
+  var sEl=document.getElementById('training-streak');
+  if(sEl)sEl.textContent=streak;
+  var ssEl=document.getElementById('training-streak-sub');
+  if(ssEl)ssEl.textContent=streak===0?'hit your target to start':'weeks hitting target';
+
+  // This month breakdown
+  var monthKey=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  var monthSessions=sessions.filter(function(w){return w.date&&w.date.startsWith(monthKey)});
+  var monthRuns=runs.filter(function(r){return r.date&&r.date.startsWith(monthKey)});
+  var totalMonth=monthSessions.length+monthRuns.length;
+  var mcEl=document.getElementById('training-month-count');
+  if(mcEl)mcEl.textContent=totalMonth;
+  var types={};
+  monthSessions.forEach(function(w){var t=w.type||'Session';types[t]=(types[t]||0)+1});
+  if(monthRuns.length)types['Run']=monthRuns.length;
+  var breakdownStr=Object.keys(types).map(function(t){return types[t]+' '+t.toLowerCase()}).join(' · ')||'no sessions yet';
+  var mbEl=document.getElementById('training-month-breakdown');
+  if(mbEl)mbEl.textContent=breakdownStr;
+
+  // Last session
+  var allDated=sessions.concat(runs.map(function(r){return {type:'Run',date:r.date,note:r.distance+'km'}}));
+  allDated.sort(function(a,b){return b.date.localeCompare(a.date)});
+  var last=allDated[0];
+  var lsEl=document.getElementById('training-last-session');
+  if(lsEl)lsEl.textContent=last?(last.type||last.name||'Session'):'—';
+  var lwEl=document.getElementById('training-last-when');
+  if(lwEl){
+    if(!last)lwEl.textContent='log your first';
+    else{
+      var dayDiff=Math.floor((now-new Date(last.date))/86400000);
+      lwEl.textContent=dayDiff===0?'today':dayDiff===1?'yesterday':dayDiff+' days ago';
+    }
+  }
+
+  // Events
+  renderTrainingEvents();
+
+  // Body stats
+  renderTrainingBody();
+}
+
+function renderTrainingEvents(){
+  var el=document.getElementById('training-events');
+  if(!el)return;
+  var events=STATE.trainingEvents||[];
+  var now=new Date();
+  var upcoming=events.filter(function(e){return new Date(e.date)>=now}).sort(function(a,b){return a.date.localeCompare(b.date)});
+  if(!upcoming.length){
+    el.innerHTML='<div class="empty-prompt-mini">No events scheduled. Add your Hyrox race, half marathon, or any target date.</div>';
+    return;
+  }
+  el.innerHTML=upcoming.map(function(e){
+    var d=new Date(e.date);
+    var daysAway=Math.ceil((d-now)/86400000);
+    var urgency=daysAway<=14?'var(--accent-dark)':daysAway<=60?'var(--gold)':'var(--text2)';
+    return '<div class="training-event">'
+      +'<div class="training-event-date"><div class="training-event-num">'+d.getDate()+'</div><div class="training-event-mon">'+d.toLocaleDateString('en-GB',{month:'short'}).toUpperCase()+'</div></div>'
+      +'<div class="training-event-body"><div class="training-event-title">'+e.name+'</div>'
+      +'<div class="training-event-sub" style="color:'+urgency+'">'+daysAway+' days away'+(e.note?' · '+e.note:'')+'</div></div>'
+      +'<button class="btn-danger" onclick="deleteTrainingEvent(\''+e.id+'\')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px">×</button>'
+      +'</div>';
+  }).join('');
+}
+
+function deleteTrainingEvent(id){
+  STATE.trainingEvents=(STATE.trainingEvents||[]).filter(function(e){return e.id!==id});
+  saveState();renderTrainingOverview();
+}
+
+function saveTrainingEvent(){
+  var name=((document.getElementById('m-event-name')||{}).value||'').trim();
+  var date=((document.getElementById('m-event-date')||{}).value||'').trim();
+  var note=((document.getElementById('m-event-note')||{}).value||'').trim();
+  if(!name||!date)return;
+  if(!STATE.trainingEvents)STATE.trainingEvents=[];
+  STATE.trainingEvents.push({id:g(),name:name,date:date,note:note});
+  saveState();closeModal();renderTrainingOverview();
+}
+
+function renderTrainingBody(){
+  var el=document.getElementById('training-body-stats');
+  if(!el)return;
+  var weights=((STATE.metrics||{}).weight||[]).slice().sort(function(a,b){return a.date.localeCompare(b.date)});
+  if(!weights.length){
+    el.innerHTML='<div class="empty-prompt-mini" style="grid-column:1/-1">No weight data yet. Log your first entry to see trends.</div>';
+    return;
+  }
+  var latest=weights[weights.length-1];
+  var first=weights[0];
+  var delta=latest.value-first.value;
+  var goalW=STATE.weightGoal||80;
+  var toGoal=latest.value-goalW;
+  el.innerHTML=
+    '<div class="stat-card"><div class="stat-orb blue">⚖️</div><div class="card-label">Current</div><div class="stat-big">'+latest.value+'<span style="font-size:16px;color:var(--text2)"> kg</span></div><div class="stat-sub">'+fmtDate(latest.date)+'</div></div>'
+    +'<div class="stat-card"><div class="stat-orb '+(delta<=0?'green':'accent')+'">📉</div><div class="card-label">Change</div><div class="stat-big">'+(delta>=0?'+':'')+delta.toFixed(1)+'<span style="font-size:16px;color:var(--text2)"> kg</span></div><div class="stat-sub">since start</div></div>'
+    +'<div class="stat-card"><div class="stat-orb gold">🎯</div><div class="card-label">To goal</div><div class="stat-big">'+(toGoal>0?toGoal.toFixed(1):'✓')+'<span style="font-size:16px;color:var(--text2)"> kg</span></div><div class="stat-sub">goal: '+goalW+' kg</div></div>';
+  // Render log
+  var logEl=document.getElementById('training-weight-log');
+  if(logEl){
+    logEl.innerHTML=weights.slice().reverse().slice(0,10).map(function(w){
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-weight:600">'+w.value+' kg</span><span style="font-size:12px;color:var(--text2)">'+fmtDate(w.date)+'</span></div>';
+    }).join('');
+  }
+  // Chart
+  var ctx=document.getElementById('training-weight-chart');
+  if(ctx){
+    if(ctx._ch)ctx._ch.destroy();
+    ctx._ch=new Chart(ctx,{type:'line',data:{labels:weights.map(function(w){return fmtDate(w.date)}),datasets:[{data:weights.map(function(w){return w.value}),borderColor:'#D97B6C',backgroundColor:'rgba(217,123,108,0.08)',tension:0.3,pointRadius:3,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8A8278',font:{size:10}}},y:{ticks:{color:'#8A8278',font:{size:10},callback:function(v){return v+'kg'}}}}}});
+  }
+}
+
+// Quick log today — one tap
+function quickLogToday(type){
+  var today=localDateKey(new Date());
+  if(type==='Rest'){
+    if(!STATE.workouts)STATE.workouts=[];
+    STATE.workouts.push({id:g(),date:today,type:'Rest',name:'Rest day',note:''});
+  }else if(type==='Run'){
+    openModal('logRun');return;
+  }else{
+    if(!STATE.workouts)STATE.workouts=[];
+    STATE.workouts.push({id:g(),date:today,type:type,name:type,note:''});
+    autoTickHabit('gym',today);
+  }
+  saveState();renderWorkout();
+  // First workout of the week = bigger celebration
+  var wkStart=weekKey(new Date());
+  var sessionsThisWeek=(STATE.workouts||[]).filter(function(s){return s.date>=wkStart&&s.type!=='Rest'});
+  if(type!=='Rest'&&sessionsThisWeek.length===1){
+    fireConfetti({count:80,duration:2200});
+    showCelebrationToast(type+' logged — first session of the week!','💪');
+  }else{
+    showCelebrationToast(type+' logged','💪');
+  }
 }
 
 function sessionCard(w){
@@ -63,7 +236,6 @@ function renderAllWorkouts(){
   var el=document.getElementById('all-workouts');if(!el)return;
   var all=(STATE.workouts||[]).slice().reverse();
   if(!all.length){el.innerHTML='<div class="empty">No sessions yet</div>';return}
-  // Build filter buttons
   var fEl=document.getElementById('muscle-filters');
   if(fEl){
     var types=['All'];
@@ -82,7 +254,6 @@ function filterWorkouts(type,btn){
   el.innerHTML=filtered.length?filtered.map(function(w){return sessionCard(w)}).join(''):'<div class="empty">No sessions for '+type+'</div>';
 }
 
-// Quick log — simple session type logging
 function saveQuickLog(){
   var type=(document.getElementById('m-qltype')||{}).value;
   if(!type)return;
@@ -92,50 +263,7 @@ function saveQuickLog(){
   STATE.workouts.push({id:g(),date:date,type:type,name:type,note:note,muscleGroups:[type]});
   autoTickHabit('gym',date);
   saveState();closeModal();renderWorkout();
-}
-
-// Runs
-function renderRunsTab(){
-  var runs=((STATE.metrics||{}).run||[]).slice().sort(function(a,b){return a.date.localeCompare(b.date)});
-  var totalKm=runs.reduce(function(s,r){return s+Number(r.distance||0)},0);
-  var thisMonth=new Date().toISOString().slice(0,7);
-  var monthRuns=runs.filter(function(r){return r.date&&r.date.startsWith(thisMonth)});
-  var monthKm=monthRuns.reduce(function(s,r){return s+Number(r.distance||0)},0);
-  var bestRun=runs.length?runs.reduce(function(b,r){return Number(r.distance||0)>Number(b.distance||0)?r:b},runs[0]):null;
-  var allPaces=runs.filter(function(r){return r.time&&r.distance}).map(function(r){var p=r.time.split(':');return (Number(p[0]||0)+Number(p[1]||0)/60)/Number(r.distance)});
-  var avgPace=allPaces.length?(allPaces.reduce(function(s,v){return s+v},0)/allPaces.length):0;
-  var fourWeeksAgo=new Date();fourWeeksAgo.setDate(fourWeeksAgo.getDate()-28);
-  var recentRuns=runs.filter(function(r){return new Date(r.date)>=fourWeeksAgo});
-  var weeklyAvgKm=recentRuns.length?(recentRuns.reduce(function(s,r){return s+Number(r.distance||0)},0)/4):0;
-
-  // PBs — exclude 1km
-  var pbDistances=[{label:'5km',dist:5,tol:0.3},{label:'10km',dist:10,tol:0.5},{label:'Half Marathon',dist:21.1,tol:1},{label:'Marathon',dist:42.2,tol:2}];
-  var pbsEl=document.getElementById('run-pbs');
-  if(pbsEl){var pbHtml='';pbDistances.forEach(function(pb){
-    var matching=runs.filter(function(r){return r.time&&r.distance&&Math.abs(Number(r.distance)-pb.dist)<=pb.tol});
-    if(matching.length){var best=matching.reduce(function(b,r){var pA=r.time.split(':');var minsA=Number(pA[0]||0)*60+Number(pA[1]||0);var pB=b.time.split(':');var minsB=Number(pB[0]||0)*60+Number(pB[1]||0);return minsA<minsB?r:b},matching[0]);
-      pbHtml+='<div class="card-sm" style="text-align:center;border-top:3px solid var(--gold)"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">'+pb.label+'</div><div style="font-size:20px;font-family:var(--serif);font-weight:600;color:var(--gold)">'+best.time+'</div><div style="font-size:10px;color:var(--text3);margin-top:4px">'+fmtDate(best.date)+'</div></div>';
-    }else{pbHtml+='<div class="card-sm" style="text-align:center;opacity:0.5"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">'+pb.label+'</div><div style="font-size:20px;font-family:var(--serif);color:var(--text3)">—</div><div style="font-size:10px;color:var(--text3);margin-top:4px">no data</div></div>'}
-  });pbsEl.innerHTML=pbHtml}
-
-  var rsEl=document.getElementById('run-stats');
-  if(rsEl)rsEl.innerHTML='<div class="card" style="border-top:3px solid var(--teal)"><div class="card-label">Total distance</div><div class="stat-big">'+totalKm.toFixed(1)+'</div><div class="stat-sub">km · '+runs.length+' runs</div></div><div class="card" style="border-top:3px solid var(--accent)"><div class="card-label">This month</div><div class="stat-big">'+monthKm.toFixed(1)+'</div><div class="stat-sub">km · '+monthRuns.length+' runs</div></div><div class="card" style="border-top:3px solid var(--gold)"><div class="card-label">Longest run</div><div class="stat-big">'+(bestRun?bestRun.distance:'—')+'</div><div class="stat-sub">'+(bestRun?'km · '+fmtDate(bestRun.date):'no runs yet')+'</div></div><div class="card" style="border-top:3px solid #8b5cf6"><div class="card-label">Avg pace</div><div class="stat-big">'+(avgPace?avgPace.toFixed(2):'—')+'</div><div class="stat-sub">'+(avgPace?'min/km':'no data')+'</div></div><div class="card" style="border-top:3px solid #ec4899"><div class="card-label">Weekly avg</div><div class="stat-big">'+weeklyAvgKm.toFixed(1)+'</div><div class="stat-sub">km / week (4wk)</div></div>';
-
-  // Charts
-  if(runCharts.dist){runCharts.dist.destroy();delete runCharts.dist}
-  if(runCharts.pace){runCharts.pace.destroy();delete runCharts.pace}
-  var dCtx=document.getElementById('runDistChart');
-  if(dCtx&&runs.length)runCharts.dist=new Chart(dCtx,{type:'bar',data:{labels:runs.map(function(r){return fmtDate(r.date)}),datasets:[{data:runs.map(function(r){return Number(r.distance||0)}),backgroundColor:'rgba(95,158,160,0.4)',borderColor:'#5f9ea0',borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#b89870',font:{size:10}}},y:{ticks:{color:'#b89870',font:{size:10},callback:function(v){return v+'km'}}}}}});
-  var pacePoints=runs.filter(function(r){return r.time&&r.distance}).map(function(r){var parts=r.time.split(':');var mins=Number(parts[0]||0)+(Number(parts[1]||0)/60);return {date:r.date,pace:Math.round(mins/Number(r.distance)*100)/100}});
-  var pCtx=document.getElementById('runPaceChart');
-  if(pCtx&&pacePoints.length)runCharts.pace=new Chart(pCtx,{type:'line',data:{labels:pacePoints.map(function(p){return fmtDate(p.date)}),datasets:[{data:pacePoints.map(function(p){return p.pace}),borderColor:'#a0522d',backgroundColor:'rgba(160,82,45,0.08)',tension:.3,pointRadius:4,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#b89870',font:{size:10}}},y:{reverse:true,ticks:{color:'#b89870',font:{size:10},callback:function(v){return v.toFixed(1)+' min/km'}}}}}});
-
-  // Run list
-  var rlEl=document.getElementById('runs-list-workout');
-  if(rlEl)rlEl.innerHTML=runs.length?runs.slice().reverse().map(function(r){
-    var pStr='';if(r.time&&r.distance){var pp=r.time.split(':');var pm=(Number(pp[0]||0)+Number(pp[1]||0)/60)/Number(r.distance);pStr=' · '+pm.toFixed(2)+' min/km'}
-    return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)"><span style="font-size:20px">&#127939;</span><div style="flex:1"><div style="font-size:13px;font-weight:500">'+r.distance+'km'+(r.time?' · '+r.time:'')+pStr+'</div><div style="font-size:11px;color:var(--text2)">'+fmtDate(r.date)+(r.note?' · '+r.note:'')+'</div></div><button class="btn btn-sm btn-danger" onclick="deleteRunFromWorkout(\''+r.id+'\')">&#215;</button></div>';
-  }).join(''):'<div class="empty"><div class="empty-icon">&#127939;</div>No runs logged yet.</div>';
+  showCelebrationToast(type+' session logged','💪');
 }
 
 function saveRunFromWorkout(){
@@ -146,15 +274,17 @@ function saveRunFromWorkout(){
   if(!STATE.metrics)STATE.metrics={};if(!STATE.metrics.run)STATE.metrics.run=[];
   STATE.metrics.run.push({id:g(),date:date,distance:Number(dist),time:time,note:note});
   autoTickHabit('run',date);saveState();closeModal();renderWorkout();
-  var runsTab=document.getElementById('workout-runs');
-  if(runsTab&&runsTab.classList.contains('active'))renderRunsTab();
+  var distNum=Number(dist);
+  if(distNum>=10){fireConfetti({count:110,duration:2600,colors:['#5A8FB0','#7CA5C2','#6b9e7a','#d4845a']});showCelebrationToast(distNum+'km run — beast mode.','🏃')}
+  else if(distNum>=5){fireConfetti({count:70,duration:2000,colors:['#5A8FB0','#7CA5C2','#6b9e7a']});showCelebrationToast(distNum+'km logged — nice one.','🏃')}
+  else{showCelebrationToast(distNum+'km run logged','🏃')}
 }
 
 function deleteRunFromWorkout(id){
   confirmDelete('Delete this run?',function(){
     if(!STATE.metrics||!STATE.metrics.run)return;
     STATE.metrics.run=STATE.metrics.run.filter(function(r){return r.id!==id});
-    saveState();renderRunsTab();renderWorkout();
+    saveState();renderWorkout();
   });
 }
 
@@ -165,6 +295,7 @@ function renderMyPlanSchedule(){
   var colorMap={
     'Upper':{bg:'var(--accent-dim)',br:'rgba(160,82,45,0.2)',c:'var(--accent)',badge:'badge-fin'},
     'Lower':{bg:'var(--accent-dim)',br:'rgba(160,82,45,0.2)',c:'var(--accent)',badge:'badge-fin'},
+    'Gym':{bg:'var(--accent-dim)',br:'rgba(160,82,45,0.2)',c:'var(--accent)',badge:'badge-fin'},
     'Hyrox':{bg:'var(--mauve-dim)',br:'rgba(155,123,138,0.25)',c:'var(--mauve)',badge:'badge-fit'},
     'Run':{bg:'var(--mint-dim)',br:'rgba(107,158,122,0.25)',c:'var(--mint)',badge:'badge-per'},
     'Rest':{bg:'var(--bg3)',br:'var(--border)',c:'var(--text3)',badge:''},
@@ -190,3 +321,4 @@ function savePlanDay(){
   STATE.weeklyPlan=plan;
   saveState();closeModal();renderMyPlanSchedule();
 }
+
