@@ -21,6 +21,13 @@ loadFromCloud(function(){
   if(!STATE.metrics.projectsDone)STATE.metrics.projectsDone=[];
   if(!STATE.reviews.monthly)STATE.reviews.monthly={};
   (STATE.debts||[]).forEach(function(d){if(!d.startingBalance){var dPaid=(STATE.debtPayments||[]).filter(function(p){return p.debtId===d.id}).reduce(function(s,p){return s+Number(p.amount)},0);d.startingBalance=Number(d.balance)+dPaid}});
+  // Backfill startDate on existing habits — use earliest log date, or today if no logs
+  (STATE.habits||[]).forEach(function(h){
+    if(h.startDate)return;
+    var logKeys=h.logs?Object.keys(h.logs):[];
+    if(logKeys.length){logKeys.sort();h.startDate=logKeys[0]}
+    else h.startDate=localDateKey(new Date());
+  });
   // Auto-correct "debt free" type goals: target should be 0, startProgress = initial debt total
   (STATE.goals||[]).forEach(function(go){
     var name=(go.name||'').toLowerCase();

@@ -269,7 +269,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-0.02em}
 .sidebar{
   position:fixed;top:0;left:0;
   width:280px;height:100vh;
-  background:rgba(248,245,241,0.96);
+  background:var(--glass-strong);
   backdrop-filter:blur(30px) saturate(1.4);
   -webkit-backdrop-filter:blur(30px) saturate(1.4);
   border-right:1px solid var(--border);
@@ -3151,3 +3151,131 @@ body.night-mode .debt-row{background:var(--panel)}
 body.night-mode .debt-row-body{background:rgba(240,235,227,0.04)}
 body.night-mode .debt-target-input{background:var(--panel)}
 body.night-mode .debt-row-note{background:var(--panel)}
+
+body.night-mode .sidebar{background:rgba(42,36,56,0.96)}
+
+/* Habit dot — pre-start state (habit didn't exist yet) */
+.dot.pre-start{
+  background:transparent;
+  border-style:dashed;
+  border-color:rgba(26,26,31,0.08);
+  color:transparent;
+  cursor:default;
+  opacity:0.5;
+}
+.dot.pre-start:hover{transform:none;border-color:rgba(26,26,31,0.08)}
+body.night-mode .dot.pre-start{border-color:rgba(240,235,227,0.1)}
+
+/* Dashboard workout quick-log */
+.dash-quick-log{
+  display:flex;gap:6px;flex-wrap:wrap;
+  margin:4px 0 12px;
+  padding-bottom:10px;
+  border-bottom:1px solid var(--border);
+}
+.dash-ql-btn{
+  flex:1;min-width:62px;
+  padding:7px 8px;
+  background:var(--bg3);
+  border:1px solid var(--border);
+  border-radius:var(--radius-pill);
+  font-family:var(--sans);
+  font-size:11px;font-weight:600;
+  color:var(--text2);
+  cursor:pointer;
+  transition:all 160ms var(--ease);
+  white-space:nowrap;
+  display:flex;align-items:center;justify-content:center;gap:3px;
+}
+.dash-ql-btn:hover{
+  background:var(--accent-dim);
+  border-color:var(--accent);
+  color:var(--accent-dark);
+  transform:translateY(-1px);
+}
+.dash-ql-btn:active{transform:scale(0.95)}
+body.night-mode .dash-ql-btn{background:rgba(240,235,227,0.06)}
+
+/* ── Dashboard: weekly top-3 ── */
+.dash-w3{display:flex;flex-direction:column;gap:6px}
+.dash-w3-row{
+  display:flex;align-items:center;gap:10px;
+  padding:4px 0;
+}
+.dash-w3-tick{
+  width:24px;height:24px;border-radius:50%;
+  border:2px solid var(--accent);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  cursor:pointer;
+  font-size:11px;font-weight:700;color:var(--accent);
+  background:transparent;
+  transition:all 180ms var(--ease);
+}
+.dash-w3-tick:hover{transform:scale(1.1)}
+.dash-w3-row.done .dash-w3-tick{
+  background:var(--mint);border-color:var(--mint);color:#fff;
+}
+.dash-w3-input{
+  flex:1;min-width:0;
+  padding:6px 10px;
+  background:var(--bg3);
+  border:1.5px solid transparent;
+  border-radius:var(--radius-sm);
+  color:var(--fg);
+  font-family:var(--sans);font-size:13px;font-weight:500;
+  outline:none;
+  transition:all 160ms var(--ease);
+}
+.dash-w3-input:focus{
+  background:var(--white);
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(217,123,108,0.1);
+}
+.dash-w3-row.done .dash-w3-input{
+  text-decoration:line-through;color:var(--text3);
+}
+.dash-w3-hint{
+  font-size:11px;color:var(--text3);font-style:italic;
+  padding:8px 2px 2px;
+}
+.dash-w3-foot{
+  font-size:11px;color:var(--text2);
+  padding:8px 2px 2px;
+  border-top:1px solid var(--border);margin-top:4px;
+}
+.dash-w3-foot strong{color:var(--fg)}
+
+/* ── Dashboard: inline gratitude ── */
+.dash-gr-prompt{
+  font-size:12px;color:var(--text2);font-style:italic;
+  margin-bottom:10px;
+}
+.dash-gr-fields{
+  display:flex;flex-direction:column;gap:8px;
+}
+.dash-gr-fields input{
+  padding:9px 12px;
+  background:var(--bg3);
+  border:1.5px solid var(--border2);
+  border-radius:var(--radius-sm);
+  color:var(--fg);
+  font-family:var(--sans);font-size:13px;
+  outline:none;
+  transition:border-color 160ms var(--ease);
+}
+.dash-gr-fields input:focus{border-color:var(--accent)}
+.dash-gr-fields .btn{align-self:flex-end;min-width:80px}
+.dash-gr-done{display:flex;flex-direction:column;gap:6px}
+.dash-gr-line{
+  display:flex;align-items:flex-start;gap:8px;
+  padding:6px 0;
+  font-size:12px;color:var(--fg);
+  border-bottom:1px solid var(--border);
+}
+.dash-gr-line:last-of-type{border-bottom:none}
+.dash-gr-emoji{flex-shrink:0}
+.dash-gr-more{margin-top:6px;width:100%;justify-content:center}
+
+body.night-mode .dash-w3-input{background:rgba(240,235,227,0.06)}
+body.night-mode .dash-w3-input:focus{background:rgba(240,235,227,0.12)}
+body.night-mode .dash-gr-fields input{background:rgba(240,235,227,0.06)}
