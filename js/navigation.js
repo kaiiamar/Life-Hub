@@ -204,9 +204,10 @@ function habitWeekPct(h,wk){
 }
 
 // Is the habit "on track" for today?
-// Returns: 'done', 'todo', 'rest' (not expected today), 'missed'
+// Returns: 'done', 'todo', 'rest' (not expected today), 'missed', 'pre-start' (before habit existed)
 function habitDayStatus(h,dateKey){
   var f=(h.freq||'daily').toLowerCase();
+  if(h.startDate&&dateKey<h.startDate)return 'pre-start';
   if(h.logs&&h.logs[dateKey])return 'done';
   if(f==='daily')return 'todo';
   // For weekly frequencies, check if they've already hit their target this week
@@ -235,7 +236,7 @@ function nav(page){
     document.querySelectorAll('.topnav-link').forEach(function(b){b.classList.remove('active')});
     pageEl.classList.add('active');
     document.querySelectorAll('.nav-item').forEach(function(b){if(b.getAttribute('onclick')==="nav('"+page+"')")b.classList.add('active')});
-    var mainPages=['dashboard','weekly','habits','workout','skincare','gratitude'];
+    var mainPages=['dashboard','habits','workout','skincare','gratitude'];
     var matched=false;
     document.querySelectorAll('.topnav-link').forEach(function(b){if(b.getAttribute('data-page')===page){b.classList.add('active');matched=true}});
     // If not a main tab, highlight the More button instead
@@ -243,7 +244,7 @@ function nav(page){
       var moreBtn=document.getElementById('topnav-more-btn');
       if(moreBtn)moreBtn.classList.add('active');
     }
-    var titles={dashboard:'Dashboard',roadmap:'Roadmap',goals:'Goals',habits:'Habits',workout:'Gym',finance:'Finance',metrics:'Metrics',review:'Reviews',weekly:'Weekly Plan',insights:'Insights',projects:'Projects',relationships:'Relationships',gratitude:'Gratitude',watchlist:'Watch List',wishlist:'Wishlist',skincare:'Skincare',tasks:'Tasks'};
+    var titles={dashboard:'Dashboard',goals:'Goals',habits:'Habits',workout:'Gym',finance:'Finance',review:'Reviews',insights:'Insights',relationships:'Relationships',gratitude:'Gratitude',watchlist:'Watch List',wishlist:'Wishlist',skincare:'Skincare',tasks:'Tasks'};
     var mTitle=document.getElementById('mobile-title');if(mTitle)mTitle.textContent=titles[page]||'';
     closeSidebar();
     renderPage(page);
@@ -262,9 +263,9 @@ function nav(page){
   }
 }
 
-function subNav(section,tab){var btns=document.querySelectorAll('#page-'+section+' .page-tab');var pages=document.querySelectorAll('#page-'+section+' .sub-page');btns.forEach(function(b){b.classList.remove('active')});pages.forEach(function(p){p.classList.remove('active')});event.target.classList.add('active');var spEl=document.getElementById(section+'-'+tab);if(spEl)spEl.classList.add('active');if(section==='finance'){renderFinance(tab);if(tab!=='overview')refreshRoadmapLiveCards()}if(section==='workout'){if(tab==='history')renderAllWorkouts();if(tab==='body')renderTrainingBody();if(tab==='myplan')renderMyPlanSchedule();if(tab==='overview')renderTrainingOverview()}if(section==='metrics'){if(tab==='water')renderMetricsWater();else if(tab==='finance')renderFinanceMetrics()}if(section==='review'){if(tab==='monthly')renderMonthlyReview()}}
+function subNav(section,tab){var btns=document.querySelectorAll('#page-'+section+' .page-tab');var pages=document.querySelectorAll('#page-'+section+' .sub-page');btns.forEach(function(b){b.classList.remove('active')});pages.forEach(function(p){p.classList.remove('active')});event.target.classList.add('active');var spEl=document.getElementById(section+'-'+tab);if(spEl)spEl.classList.add('active');if(section==='finance'){renderFinance(tab);if(tab!=='overview')refreshRoadmapLiveCards()}if(section==='workout'){if(tab==='history')renderAllWorkouts();if(tab==='body')renderTrainingBody();if(tab==='myplan')renderMyPlanSchedule();if(tab==='overview')renderTrainingOverview()}if(section==='review'){if(tab==='monthly')renderMonthlyReview()}}
 
-function renderPage(page){if(page==='dashboard')renderDashboard();if(page==='roadmap')renderRoadmap();if(page==='goals')renderGoals();if(page==='habits')renderHabits();if(page==='workout')renderWorkout();if(page==='finance')renderFinance('plan');if(page==='metrics')renderMetrics();if(page==='review')renderReview();if(page==='weekly')renderWeeklyPlan();if(page==='insights')renderInsights();if(page==='projects')renderProjects();if(page==='relationships')renderRelationships();if(page==='gratitude')renderGratitude();if(page==='watchlist')renderWatchlist();if(page==='wishlist')renderWishlist();if(page==='skincare')renderSkincare();if(page==='tasks')renderTasksArchive()}
+function renderPage(page){if(page==='dashboard')renderDashboard();if(page==='goals')renderGoals();if(page==='habits')renderHabits();if(page==='workout')renderWorkout();if(page==='finance')renderFinance('plan');if(page==='review')renderReview();if(page==='insights')renderInsights();if(page==='relationships')renderRelationships();if(page==='gratitude')renderGratitude();if(page==='watchlist')renderWatchlist();if(page==='wishlist')renderWishlist();if(page==='skincare')renderSkincare();if(page==='tasks')renderTasksArchive()}
 
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('mobile-overlay').classList.toggle('open')}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('mobile-overlay').classList.remove('open')}

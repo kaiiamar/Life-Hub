@@ -243,49 +243,12 @@ function renderDashboard(){
   var fpEl=document.getElementById('dash-finance-preview');
   if(fpEl)fpEl.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px"><div style="background:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.4);border-radius:12px;padding:14px;text-align:center"><div style="font-size:10px;color:var(--neutral);text-transform:uppercase;letter-spacing:.05em;font-weight:600">Savings</div><div style="font-size:20px;font-family:var(--serif);font-weight:600;color:var(--secondary);margin-top:4px">'+fmtMoney(tSav)+'</div></div><div style="background:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.4);border-radius:12px;padding:14px;text-align:center"><div style="font-size:10px;color:var(--neutral);text-transform:uppercase;letter-spacing:.05em;font-weight:600">Total debt</div><div style="font-size:20px;font-family:var(--serif);font-weight:600;color:var(--primary);margin-top:4px">'+fmtMoney(tDebt)+'</div></div></div><div style="font-size:11px;color:var(--on-surface-variant)">'+fmtMoney(tInc)+' in \u00b7 '+fmtMoney(tExp)+' out \u00b7 <span style="color:'+(left>=0?'var(--mint)':'var(--red)')+';font-weight:600">'+fmtMoney(Math.abs(left))+' '+(left>=0?'left over':'over')+'</span></div><button class="btn btn-ghost btn-sm" onclick="nav(\'finance\')" style="margin-top:8px;width:100%;justify-content:center">View finance \u2192</button>';
   var rpEl=document.getElementById('dash-roadmap-preview');
-  if(rpEl){
-    var curRM=RM_MONTHS.find(function(m){return m.year===now.getFullYear().toString()&&m.name===now.toLocaleDateString('en-GB',{month:'long'})});
-    if(!curRM)curRM=RM_MONTHS[0];
-    var rp=rmGetProgress(curRM);
-    var wkStart=weekKey(now);
-    var wkDaysArr=weekDays(wkStart);
-    var wkEnd=wkDaysArr[6];
-    var todayK=localDateKey(now);
-    var overdue=[],dueWk=[],nextItems=[];
-    RM_MONTHS.forEach(function(m){
-      m.sections.forEach(function(sec,si){
-        sec.items.forEach(function(item,ii){
-          if(rmIsDone(m.id,si,ii))return;
-          var due=item.dueDate;
-          var addedMatch=(STATE.roadmapAdded||[]).find(function(a){return a.mid===m.id&&a.si===si&&a.text===item.text});
-          if(addedMatch&&addedMatch.dueDate)due=addedMatch.dueDate;
-          if(due){
-            if(due<todayK)overdue.push({text:item.text,due:due});
-            else if(due>=wkStart&&due<=wkEnd)dueWk.push({text:item.text,due:due});
-          }
-        });
-      });
-    });
-    curRM.sections.forEach(function(sec,si){
-      sec.items.forEach(function(item,ii){
-        if(!rmIsDone(curRM.id,si,ii)&&!item.dueDate)nextItems.push({text:item.text});
-      });
-    });
+  if(rpEl){rpEl.innerHTML=''}  // legacy: roadmap page removed, element may no longer exist
 
-    var html='<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="font-weight:600">'+curRM.name+' '+curRM.year+'</span><span style="color:'+rmPctColor(rp.pct)+'">'+rp.pct+'%</span></div><div class="pbar-wrap"><div class="pbar" style="width:'+rp.pct+'%;background:'+rmPctColor(rp.pct)+'"></div></div><div style="font-size:11px;color:var(--text3)">'+rp.done+'/'+rp.total+' tasks done</div></div>';
-
-    if(overdue.length){
-      html+='<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--red);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em">\u26A0\uFE0F Overdue \u2014 '+overdue.length+'</div>'+overdue.slice(0,3).map(function(i){return '<div style="font-size:11px;color:var(--fg);padding:5px 0;border-bottom:1px solid var(--border);display:flex;gap:6px;align-items:center"><span style="color:var(--red);font-size:10px">\u25CF</span>'+i.text+' <span style="color:var(--red);font-size:10px;margin-left:auto;white-space:nowrap">'+fmtDate(i.due)+'</span></div>';}).join('')+'</div>';
-    }
-    if(dueWk.length){
-      html+='<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--accent-dark);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em">\uD83D\uDCC5 Due this week \u2014 '+dueWk.length+'</div>'+dueWk.slice(0,3).map(function(i){return '<div style="font-size:11px;color:var(--fg);padding:5px 0;border-bottom:1px solid var(--border);display:flex;gap:6px;align-items:center"><span style="color:var(--accent-dark);font-size:10px">\u25CF</span>'+i.text+' <span style="color:var(--text2);font-size:10px;margin-left:auto;white-space:nowrap">'+fmtDate(i.due)+'</span></div>';}).join('')+'</div>';
-    }
-    if(!overdue.length&&!dueWk.length){
-      html+=(nextItems.length?'<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em">Up next this month</div>'+nextItems.slice(0,3).map(function(i){return '<div style="font-size:11px;color:var(--text2);padding:5px 0;border-bottom:1px solid var(--border);display:flex;gap:6px"><span style="color:var(--text3)">\u2192</span>'+i.text+'</div>';}).join(''):'<div style="font-size:11px;color:var(--mint);padding:8px 0">\u2713 All tasks complete this month!</div>');
-    }
-    html+='<button class="btn btn-ghost btn-sm" onclick="nav(\'roadmap\')" style="margin-top:8px;width:100%;justify-content:center">Open Roadmap \u2192</button>';
-    rpEl.innerHTML=html;
-  }
+  // Weekly top-3 priorities (moved from old Weekly Plan tab)
+  renderDashWeeklyTop3();
+  // Inline gratitude prompt (low-friction)
+  renderDashGratitudeInline();
 }
 
 // ── CELEBRATIONS ──
@@ -587,5 +550,114 @@ function renderLifeTab(){
         +'</div>'
         +'<button class="btn btn-ghost btn-sm" onclick="nav(\'review\')" style="margin-top:10px;width:100%;justify-content:center">Open Reviews →</button>';
     }
+  }
+}
+
+
+// ── DASHBOARD: WEEKLY TOP-3 (moved from Weekly Plan tab) ──
+// Shares STATE.weeklyPlans so data survives the tab removal.
+function renderDashWeeklyTop3(){
+  var el=document.getElementById('dash-weekly-top3');
+  if(!el)return;
+  var wk=weekKey(new Date());
+  if(!STATE.weeklyPlans)STATE.weeklyPlans={};
+  if(!STATE.weeklyPlans[wk])STATE.weeklyPlans[wk]={priorities:['','',''],prioritiesDone:{}};
+  var plan=STATE.weeklyPlans[wk];
+  if(!plan.priorities)plan.priorities=['','',''];
+  if(!plan.prioritiesDone)plan.prioritiesDone={};
+
+  var setCount=plan.priorities.filter(function(p){return p&&p.trim()}).length;
+  var doneCount=plan.priorities.filter(function(p,i){return p&&p.trim()&&plan.prioritiesDone[i]}).length;
+
+  var html='<div class="dash-w3">';
+  html+=plan.priorities.map(function(val,i){
+    var done=!!plan.prioritiesDone[i];
+    var safe=(val||'').replace(/"/g,'&quot;');
+    return '<div class="dash-w3-row'+(done?' done':'')+'">'
+      +'<div class="dash-w3-tick" onclick="toggleDashWeeklyTop3('+i+')">'+(done?'✓':(i+1))+'</div>'
+      +'<input type="text" class="dash-w3-input" value="'+safe+'" placeholder="Top priority '+(i+1)+'…" onblur="saveDashWeeklyTop3('+i+',this.value)" onkeydown="if(event.key===\'Enter\'){this.blur()}">'
+      +'</div>';
+  }).join('');
+  if(setCount===0){
+    html+='<div class="dash-w3-hint">Pick up to 3 things you want done by end of week.</div>';
+  }else{
+    html+='<div class="dash-w3-foot"><strong>'+doneCount+'</strong> of <strong>'+setCount+'</strong> done this week</div>';
+  }
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+function saveDashWeeklyTop3(idx,val){
+  var wk=weekKey(new Date());
+  if(!STATE.weeklyPlans)STATE.weeklyPlans={};
+  if(!STATE.weeklyPlans[wk])STATE.weeklyPlans[wk]={priorities:['','',''],prioritiesDone:{}};
+  if(!STATE.weeklyPlans[wk].priorities)STATE.weeklyPlans[wk].priorities=['','',''];
+  STATE.weeklyPlans[wk].priorities[idx]=val;
+  saveState();
+  renderDashWeeklyTop3();
+}
+
+function toggleDashWeeklyTop3(idx){
+  var wk=weekKey(new Date());
+  if(!STATE.weeklyPlans)STATE.weeklyPlans={};
+  if(!STATE.weeklyPlans[wk])STATE.weeklyPlans[wk]={priorities:['','',''],prioritiesDone:{}};
+  var p=STATE.weeklyPlans[wk];
+  if(!p.prioritiesDone)p.prioritiesDone={};
+  var wasDone=!!p.prioritiesDone[idx];
+  p.prioritiesDone[idx]=!wasDone;
+  saveState();
+  renderDashWeeklyTop3();
+  // Celebration
+  if(!wasDone){
+    var set=p.priorities.filter(function(x){return x&&x.trim()});
+    var done=p.priorities.filter(function(x,i){return x&&x.trim()&&p.prioritiesDone[i]}).length;
+    if(set.length>=2&&done===set.length){
+      if(typeof celebrateOnce==='function'){
+        celebrateOnce('weekly-top3-done',function(){
+          fireConfetti({count:110,duration:2400});
+          showCelebrationToast('All weekly priorities ticked — strong week.','🎯');
+        });
+      }
+    }
+  }
+}
+
+// ── DASHBOARD: INLINE GRATITUDE PROMPT ──
+function renderDashGratitudeInline(){
+  var el=document.getElementById('dash-gratitude-inline');
+  if(!el)return;
+  var todayKey=localDateKey(new Date());
+  var entries=(STATE.gratitude||[]).filter(function(e){return e.date===todayKey});
+  if(entries.length){
+    el.innerHTML='<div class="dash-gr-done">'
+      +entries.map(function(e){
+        return (e.wins?'<div class="dash-gr-line"><span class="dash-gr-emoji">🏆</span>'+escapeHtml(e.wins)+'</div>':'')
+             +(e.gratitude?'<div class="dash-gr-line"><span class="dash-gr-emoji">🙏</span>'+escapeHtml(e.gratitude.split('\n')[0])+'</div>':'');
+      }).join('')
+      +'<button class="btn btn-ghost btn-sm dash-gr-more" onclick="openModal(\'addGratitude\')">+ Add another</button>'
+      +'</div>';
+  }else{
+    el.innerHTML=''
+      +'<div class="dash-gr-prompt">What went well today?</div>'
+      +'<div class="dash-gr-fields">'
+        +'<input type="text" id="dash-gr-win" placeholder="🏆 One win…" onkeydown="if(event.key===\'Enter\')dashSaveGratitudeInline()">'
+        +'<input type="text" id="dash-gr-thankful" placeholder="🙏 One thing you\'re thankful for…" onkeydown="if(event.key===\'Enter\')dashSaveGratitudeInline()">'
+        +'<button class="btn btn-accent btn-sm" onclick="dashSaveGratitudeInline()">Save</button>'
+      +'</div>';
+  }
+}
+
+function dashSaveGratitudeInline(){
+  var win=((document.getElementById('dash-gr-win')||{}).value||'').trim();
+  var thankful=((document.getElementById('dash-gr-thankful')||{}).value||'').trim();
+  if(!win&&!thankful)return;
+  if(!STATE.gratitude)STATE.gratitude=[];
+  var today=localDateKey(new Date());
+  var isFirstEver=STATE.gratitude.length===0;
+  STATE.gratitude.push({id:g(),date:today,wins:win,gratitude:thankful});
+  saveState();
+  renderDashGratitudeInline();
+  if(typeof celebrateGratitudeMilestone==='function'){
+    celebrateGratitudeMilestone(today,isFirstEver);
   }
 }

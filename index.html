@@ -30,7 +30,6 @@
       <div class="topnav-links">
         <div class="topnav-pill-indicator" id="topnav-pill"></div>
         <button class="topnav-link active" data-page="dashboard" onclick="nav('dashboard')">Dashboard</button>
-        <button class="topnav-link" data-page="weekly" onclick="nav('weekly')">Week</button>
         <button class="topnav-link" data-page="habits" onclick="nav('habits')">Habits</button>
         <button class="topnav-link" data-page="workout" onclick="nav('workout')">Gym</button>
         <button class="topnav-link" data-page="skincare" onclick="nav('skincare')">Skincare</button>
@@ -39,14 +38,11 @@
           <button class="topnav-link" id="topnav-more-btn">More <span style="font-size:10px">▾</span></button>
           <div class="topnav-dropdown" id="topnav-dropdown">
             <button class="topnav-drop-item" onclick="nav('tasks')">✅ Tasks archive</button>
-            <button class="topnav-drop-item" onclick="nav('roadmap')">�️ Roadmap</button>
             <button class="topnav-drop-item" onclick="nav('goals')">🎯 Goals</button>
-            <button class="topnav-drop-item" onclick="nav('finance')">� Finance</button>
-            <button class="topnav-drop-item" onclick="nav('metrics')">� Metrics</button>
+            <button class="topnav-drop-item" onclick="nav('finance')">💸 Finance</button>
             <div class="topnav-drop-divider"></div>
-            <button class="topnav-drop-item" onclick="nav('review')">� Reviews</button>
+            <button class="topnav-drop-item" onclick="nav('review')">🌙 Reviews</button>
             <button class="topnav-drop-item" onclick="nav('insights')">💡 Insights</button>
-            <button class="topnav-drop-item" onclick="nav('projects')">🗂️ Projects</button>
             <button class="topnav-drop-item" onclick="nav('relationships')">🤎 Relationships</button>
             <button class="topnav-drop-item" onclick="nav('watchlist')">🎬 Watch List</button>
             <button class="topnav-drop-item" onclick="nav('wishlist')">🛍️ Wishlist</button>
@@ -76,17 +72,13 @@
     </div>
     <div class="nav-section">
       <button class="nav-item active" onclick="nav('dashboard')">🏠 Dashboard</button>
-      <button class="nav-item" onclick="nav('roadmap')">🗓️ Roadmap</button>
-      <button class="nav-item" onclick="nav('weekly')">📋 Weekly Plan</button>
       <button class="nav-item" onclick="nav('goals')">🎯 Goals</button>
       <button class="nav-item" onclick="nav('habits')">✅ Habits</button>
       <button class="nav-item" onclick="nav('workout')">🏋️ Workouts</button>
       <button class="nav-item" onclick="nav('finance')">💸 Finance</button>
-      <button class="nav-item" onclick="nav('metrics')">📊 Metrics</button>
       <button class="nav-item" onclick="nav('review')">📝 Reviews</button>
       <button class="nav-item" onclick="nav('gratitude')">🙏 Gratitude</button>
       <button class="nav-item" onclick="nav('insights')">💡 Insights</button>
-      <button class="nav-item" onclick="nav('projects')">🗂️ Projects</button>
       <button class="nav-item" onclick="nav('relationships')">🤎 Relationships</button>
       <button class="nav-item" onclick="nav('skincare')">✨ Skincare</button>
       <button class="nav-item" onclick="nav('watchlist')">🎬 Watch List</button>
@@ -183,6 +175,13 @@
         <div class="bento-row-3">
           <div class="card">
             <div class="card-label">🏋️ Recent activity</div>
+            <div class="dash-quick-log">
+              <button class="dash-ql-btn" onclick="quickLogToday('Upper')" title="Log upper body">💪 Upper</button>
+              <button class="dash-ql-btn" onclick="quickLogToday('Lower')" title="Log lower body">🦵 Lower</button>
+              <button class="dash-ql-btn" onclick="quickLogToday('Hyrox')" title="Log Hyrox">⚡ Hyrox</button>
+              <button class="dash-ql-btn" onclick="openModal('logRun')" title="Log a run">🏃 Run</button>
+              <button class="dash-ql-btn" onclick="quickLogToday('Rest')" title="Log a rest day">🌿 Rest</button>
+            </div>
             <div id="dash-workouts-preview"></div>
           </div>
           <div class="card">
@@ -196,8 +195,12 @@
         </div>
         <div style="margin-top:14px">
           <div class="card">
-            <div class="card-label">🗓️ Roadmap — this month</div>
-            <div id="dash-roadmap-preview"></div>
+            <div class="card-label">� Quick gratitude</div>
+            <div id="dash-gratitude-inline"></div>
+          </div>
+          <div class="card" style="margin-top:14px">
+            <div class="card-label">📋 This week's top 3</div>
+            <div id="dash-weekly-top3"></div>
           </div>
         </div>
       </div>
@@ -220,57 +223,16 @@
       <div id="dash-stats" style="display:none"></div>
     </div>
 
-    <!-- ══ ROADMAP ══ -->
-    <div class="page" id="page-roadmap">
-      <div class="page-header">
-        <div class="header-row">
-          <div style="display:flex;align-items:center;gap:12px">
-            <img src="https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3ajZoMHp5OXV6ODQ2YnBkYTFhbmx0ODB4cnp2eWFrdDEzZ2I0azEwNSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/fedkQvBUfTrasTTyUO/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0">
-            <div>
-              <h1>Roadmap</h1>
-              <p>Month-by-month plan · March 2026 → March 2027 · Linked to your live data</p>
-            </div>
-          </div>
-        </div>
-      </div>
-      <!-- Overall progress -->
-      <div class="roadmap-overall" id="rm-overall">
-        <div class="rov-stat"><div class="rov-val" id="rm-total-done">0</div><div class="rov-label">Done</div></div>
-        <div class="rov-stat"><div class="rov-val" id="rm-total-items">0</div><div class="rov-label">Total</div></div>
-        <div class="rov-bar-wrap">
-          <div class="rov-bar-label"><span>Overall progress</span><span id="rm-total-pct">0%</span></div>
-          <div class="rov-bar-bg"><div class="rov-bar-fill" id="rm-total-bar" style="width:0%"></div></div>
-        </div>
-      </div>
-      <!-- Focus card for current month -->
-      <div id="rm-focus-card"></div>
-      <!-- Toolbar -->
-      <div class="rm-toolbar">
-        <button class="rm-toggle" id="rm-hide-done" onclick="rmToggleHideDone()">Hide completed</button>
-        <button class="rm-toggle" id="rm-collapse-all" onclick="rmCollapseCompleted()">Collapse done sections</button>
-        <button class="btn btn-sm" onclick="rmJumpToCurrent()" style="margin-left:auto">📍 This month</button>
-      </div>
-      <!-- Tab nav -->
-      <div class="rm-tab-nav-wrap">
-        <div class="rm-tab-nav" id="rm-tab-nav"></div>
-      </div>
-      <!-- Panels -->
-      <div class="rm-panels" id="rm-panels"></div>
-    </div>
-
-    <!-- ══ GOALS (simplified — high-level only, milestones now in Roadmap) ══ -->
+    <!-- ══ GOALS (simplified — high-level only) ══ -->
     <div class="page" id="page-goals">
       <div class="page-header">
         <div class="header-row">
           <div style="display:flex;align-items:center;gap:12px">
             <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdmV2ZjJqc2c4Y2FyOGh0ZzY0N3VrMGs4bDloNTYyaW8zcmx1cGZmdSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/GXZVx7kiFQ1IuZpB8o/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0">
-            <div><h1>Goals</h1><p>Annual goals and progress · Milestones tracked in <button class="btn btn-sm btn-ghost" onclick="nav('roadmap')" style="padding:2px 8px;font-size:12px">Roadmap</button></p></div>
+            <div><h1>Goals</h1><p>Annual goals and progress</p></div>
           </div>
           <button class="btn btn-accent" onclick="openModal('addGoal')">+ Add Goal</button>
         </div>
-      </div>
-      <div style="background:var(--teal-dim);border:1px solid rgba(95,158,160,0.3);border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:12px;color:#1a4a4a">
-        💡 <strong>Tip:</strong> This page tracks your high-level annual goals. Monthly action steps and milestones live in the <button onclick="nav('roadmap')" style="background:none;border:none;color:var(--teal);cursor:pointer;font-weight:600;font-size:12px;font-family:var(--sans)">🗓️ Roadmap</button> tab — no need to duplicate sub-goals here.
       </div>
       <div id="goals-summary" style="margin-bottom:16px"></div>
       <div class="filter-row" id="goal-filters">
@@ -549,32 +511,6 @@
       </div>
     </div>
 
-    <!-- ══ METRICS ══ -->
-    <div class="page" id="page-metrics">
-      <div class="page-header">
-        <div class="header-row">
-          <div>
-            <h1>Metrics</h1>
-            <p>Daily hydration and financial tracking</p>
-          </div>
-          <button class="btn btn-accent" onclick="openModal('logMetric')">+ Log entry</button>
-        </div>
-      </div>
-      <div class="page-tabs">
-        <button class="page-tab active" onclick="subNav('metrics','water')">💧 Water</button>
-        <button class="page-tab" onclick="subNav('metrics','finance')">💰 Financial</button>
-      </div>
-      <div class="sub-page active" id="metrics-water">
-        <div class="card" style="margin-bottom:16px"><div class="card-label">💧 Water today</div><div id="metrics-water-tracker"></div></div>
-        <div class="card"><div class="card-label">💧 7-day hydration</div><div id="metrics-water-history"></div></div>
-      </div>
-      <div class="sub-page" id="metrics-finance">
-        <div class="grid-3" style="margin-bottom:20px" id="finmetric-stats"></div>
-        <div class="card" style="margin-bottom:16px"><div class="card-label">� Money saved over time (£)</div><div class="chart-wrap"><canvas id="savedChart"></canvas></div></div>
-        <div class="card"><div class="card-label">✅ Achievements logged</div><div id="projects-log"></div><button class="btn btn-sm" style="margin-top:12px" onclick="openModal('logMetric','project')">+ Log achievement</button></div>
-      </div>
-    </div>
-
     <!-- ══ REVIEWS ══ -->
     <div class="page" id="page-review">
       <!-- HERO -->
@@ -676,29 +612,6 @@
       <div id="past-monthly-reviews"></div>
     </div>
 
-    <!-- ══ PROJECTS (apprenticeship removed — now in Roadmap) ══ -->
-    <div class="page" id="page-projects">
-      <div class="page-header">
-        <div class="header-row">
-          <div style="display:flex;align-items:center;gap:12px">
-            <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdHdlZTY2djNjMWZnMTN6Z2o1YXEyMm5yeGhnMzVuejJwYmYybTI4cSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/0IAPszdB8MMjPxNhFL/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0">
-            <div><h1>Projects</h1><p>Active work · <button class="btn btn-sm btn-ghost" onclick="nav('roadmap')" style="padding:2px 8px;font-size:12px">Apprenticeship milestones in Roadmap</button></p></div>
-          </div>
-          <button class="btn btn-accent" onclick="openModal('addProject')">+ Add Project</button>
-        </div>
-      </div>
-      <div style="background:var(--teal-dim);border:1px solid rgba(95,158,160,0.3);border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:12px;color:#1a4a4a">
-        💡 Apprenticeship task milestones (submit assignment, major project, etc.) are tracked in the <button onclick="nav('roadmap')" style="background:none;border:none;color:var(--teal);cursor:pointer;font-weight:600;font-size:12px;font-family:var(--sans)">🗓️ Roadmap</button> tab month by month.
-      </div>
-      <div class="filter-row" id="project-filters">
-        <button class="filter-btn active" onclick="filterProjects('all',this)">All</button>
-        <button class="filter-btn" onclick="filterProjects('active',this)">Active</button>
-        <button class="filter-btn" onclick="filterProjects('paused',this)">Paused</button>
-        <button class="filter-btn" onclick="filterProjects('done',this)">Done</button>
-      </div>
-      <div id="projects-container"></div>
-    </div>
-
     <!-- ══ RELATIONSHIPS ══ -->
     <div class="page" id="page-relationships">
       <div class="page-header"><div class="header-row"><div style="display:flex;align-items:center;gap:12px"><img src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExeXdsZDJobDE4MmlpeWx0amo0dWFqNXdiZnllYmtpeXljYzc4eWhrMiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/OvpA7YvA9INE7bgGOy/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0"><div><h1>Relationships</h1><p>Stay connected with the people who matter most</p></div></div><button class="btn btn-accent" onclick="openModal('addRelationship')">+ Add Person</button></div></div>
@@ -747,60 +660,6 @@
       </div>
       <div id="wish-stats" style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap"></div>
       <div id="wishlist-container"></div>
-    </div>
-
-    <!-- ══ WEEKLY PLAN ══ -->
-    <div class="page" id="page-weekly">
-      <div class="page-header">
-        <div class="header-row">
-          <div style="display:flex;align-items:center;gap:12px">
-            <img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExdmRoanQwM3duajNiNmxuODN0eXplcW11bmEwODdrcG1wOTdxMDUyNSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/4ffHrJgxWofJ8E7qum/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0">
-            <div><h1>Weekly Plan</h1><p>Set intentions. Plan your week.</p></div>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <button class="btn" onclick="changeWeeklyWeek(-1)">← Prev</button>
-            <span id="weekly-week-label" style="font-size:13px;font-weight:600;min-width:160px;text-align:center"></span>
-            <button class="btn" onclick="changeWeeklyWeek(1)">Next →</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 1. Hero: This week I will… -->
-      <div class="wp-hero">
-        <div class="wp-hero-label"><span class="pulse-dot"></span>This week I will…</div>
-        <div id="wp-priorities"></div>
-        <div class="wp-hero-footer" id="wp-progress-footer"></div>
-      </div>
-
-      <!-- 2. Schedule — 7-day strip -->
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-label">� The week at a glance</div>
-        <div id="wp-schedule"></div>
-        <div class="wp-schedule-hint">Tap a priority to pin it to a specific day. Roadmap items with due dates appear automatically.</div>
-      </div>
-
-      <!-- 3. What's coming up — combined -->
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-label">⏳ Coming up this week</div>
-        <div id="wp-coming-up"></div>
-      </div>
-
-      <!-- 4. Reflection / intention (adaptive) -->
-      <div class="card wp-reflect-card" style="margin-bottom:16px">
-        <div class="card-label" id="wp-reflect-label">✍️ Intention &amp; reflection</div>
-        <div id="wp-reflect-prompt" class="wp-reflect-prompt"></div>
-        <div id="weekly-intention-wrap"><div class="wp-reflect-sublabel">Intention — what energy do you want to bring?</div>
-        <textarea id="weekly-intention" class="wp-reflect-textarea" placeholder="Set a tone for the week…"></textarea></div>
-        <div id="weekly-reflection-wrap" style="margin-top:12px"><div class="wp-reflect-sublabel">End of week reflection</div>
-        <textarea id="weekly-reflection" class="wp-reflect-textarea" placeholder="What did you learn? What do you want to change?"></textarea></div>
-        <div class="wp-reflect-footer"><span id="wp-reflect-saved" class="wp-reflect-saved"></span></div>
-      </div>
-
-      <!-- 5. Trimmed review strip — minimal stats for context -->
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-label">📊 How the week went</div>
-        <div id="wp-review-strip"></div>
-      </div>
     </div>
 
     <!-- ══ INSIGHTS ══ -->

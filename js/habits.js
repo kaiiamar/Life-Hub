@@ -53,19 +53,22 @@ function renderHabitRow(h,days,todayKey){
   }
 
   // Default: weekly dot grid for daily / Nx/week / weekly
+  var dayLetters=['S','M','T','W','T','F','S'];
   return '<div class="habit-row">'
     +'<div style="width:170px;flex-shrink:0;display:flex;align-items:center;gap:4px">'
       +'<div style="flex:1;min-width:0"><div class="habit-name">'+h.name+'</div><div class="habit-freq">'+h.freq+'</div></div>'
       +'<button style="border:none;background:none;padding:2px;font-size:11px;color:var(--text3);cursor:pointer;flex-shrink:0" onclick="openModal(\'editHabit\',\''+h.id+'\')" title="Edit">\u270F\uFE0F</button>'
     +'</div>'
-    +'<div class="habit-dots" style="flex:1">'+days.map(function(d){
+    +'<div class="habit-dots" style="flex:1">'+days.map(function(d,i){
       var status=habitDayStatus(h,d);
       var isT=d===todayKey;
       var cls='dot';
       if(status==='done')cls+=' done';
       else if(status==='rest')cls+=' rest';
+      else if(status==='pre-start')cls+=' pre-start';
       else if(isT)cls+=' today';
-      return '<div class="'+cls+'" onclick="toggleHabit(\''+h.id+'\',\''+d+'\')" title="'+status+'">'+(status==='done'?'&#10003;':status==='rest'?'':'')+'</div>';
+      var inner=status==='done'?'&#10003;':status==='pre-start'?'':dayLetters[i];
+      return '<div class="'+cls+'" onclick="toggleHabit(\''+h.id+'\',\''+d+'\')" title="'+status+'">'+inner+'</div>';
     }).join('')+'</div>'
     +'<div class="streak-badge">'+(streak>0?'&#128293;'+streak:'')+'</div>'
   +'</div>';
@@ -165,7 +168,8 @@ function saveHabit(){
     name:name,
     freq:(document.getElementById('m-hfreq')||{}).value||'daily',
     badge:(document.getElementById('m-hbadge')||{}).value||'per',
-    logs:{}
+    logs:{},
+    startDate:localDateKey(new Date())
   });
   saveState();closeModal();renderHabits();
 }

@@ -6,9 +6,16 @@ var todayKey=localDateKey(new Date());
 
 // Pulse check
 var scores=[];
-// Habits — % completed last 30 days
+// Habits — % completed since habit start, within last 30 days
 var habitTotal=0,habitDone=0;
-STATE.habits.forEach(function(h){last30.forEach(function(d){habitTotal++;if(h.logs[d])habitDone++})});
+STATE.habits.forEach(function(h){
+  var startKey=h.startDate||last30[last30.length-1];  // if no startDate, default to 30 days ago
+  last30.forEach(function(d){
+    if(d<startKey)return;  // skip days before habit existed
+    habitTotal++;
+    if(h.logs[d])habitDone++;
+  });
+});
 var habitPct=habitTotal>0?Math.round(habitDone/habitTotal*100):0;
 scores.push({label:'Habits',pct:habitPct,color:'var(--accent)',tip:habitPct>=70?'Solid consistency':'Try to hit at least 70%'});
 // Goals — average progress across all goals
@@ -72,7 +79,13 @@ renderInsightMoodChart();
 
 // Smart insight cards
 var cards=[];
-var habitScores=STATE.habits.map(function(h){var done=last30.filter(function(d){return h.logs[d]}).length;return {name:h.name,pct:Math.round(done/30*100)}}).sort(function(a,b){return b.pct-a.pct});
+var habitScores=STATE.habits.map(function(h){
+  var startKey=h.startDate||last30[last30.length-1];
+  var eligibleDays=last30.filter(function(d){return d>=startKey});
+  var done=eligibleDays.filter(function(d){return h.logs[d]}).length;
+  var denom=Math.max(1,eligibleDays.length);
+  return {name:h.name,pct:Math.round(done/denom*100),daysTracked:eligibleDays.length};
+}).sort(function(a,b){return b.pct-a.pct});
 if(habitScores.length){var best=habitScores[0];var worst=habitScores[habitScores.length-1];cards.push(mkInsightCard('🏆','Strongest habit',best.name+' — '+best.pct+'% in the last 30 days','positive'));if(worst.pct<40)cards.push(mkInsightCard('⚠️','Needs attention',worst.name+' is only '+worst.pct+'% this month. What small change could help?','warning'))}
 var atRisk=STATE.goals.filter(function(g){var p=goalPct(g);var dl=Math.ceil((new Date(g.deadline)-new Date())/86400000);return p<30&&dl<90&&dl>0});
 if(atRisk.length)cards.push(mkInsightCard('🚨','Goals at risk',atRisk.map(function(g){return g.name}).join(', ')+' — under 90 days with under 30% progress.','danger'));
@@ -122,7 +135,7 @@ var weeks=[[],[],[],[]];
 for(var w=0;w<4;w++){for(var d=0;d<7;d++){weeks[w].push(last30[w*7+d])}}
 var labels=['This week','1 week ago','2 weeks ago','3 weeks ago'].reverse();
 weeks.reverse();
-var data=weeks.map(function(wk){var total=0,done=0;STATE.habits.forEach(function(h){wk.forEach(function(d){if(d){total++;if(h.logs[d])done++}})});return total>0?Math.round(done/total*100):0});
+var data=weeks.map(function(wk){var total=0,done=0;STATE.habits.forEach(function(h){var startKey=h.startDate||'';wk.forEach(function(d){if(d&&d>=startKey){total++;if(h.logs[d])done++}})});return total>0?Math.round(done/total*100):0});
 var ctx=document.getElementById('insightHabitChart');
 if(!ctx)return;
 if(ctx._insChart)ctx._insChart.destroy();
