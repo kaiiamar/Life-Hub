@@ -33,11 +33,6 @@ scores.push({label:'Gym',pct:gymPct,color:'var(--mauve)',tip:gymCount+'/'+gymTar
 var moodDays=last30.filter(function(d){return (STATE.mood||{})[d]&&(STATE.mood||{})[d].mood});
 var moodAvg=moodDays.length?Math.round(moodDays.reduce(function(s,d){return s+Number(STATE.mood[d].mood)},0)/moodDays.length*20):0;
 scores.push({label:'Mood',pct:moodAvg,color:'var(--peach)',tip:moodDays.length?moodDays.length+' days logged':'Log your mood daily for better insights'});
-// Roadmap — current month progress only
-var curRmMonth=RM_MONTHS[rmGetCurrentMonthIdx?rmGetCurrentMonthIdx():0];
-var curRmProg=curRmMonth?rmGetProgress(curRmMonth):{done:0,total:0};
-var rmPct=curRmProg.total>0?Math.round(curRmProg.done/curRmProg.total*100):0;
-scores.push({label:'Roadmap',pct:rmPct,color:'var(--teal)',tip:curRmProg.done+'/'+curRmProg.total+' items this month'});
 // Priorities — % of daily priorities completed last 30 days
 var priDone=0,priTotal=0;
 last30.forEach(function(d){
@@ -100,7 +95,6 @@ if(leftover<0)cards.push(mkInsightCard('⚠️','Overspending','Expenses exceed 
 var thisWeekWo=(STATE.workouts||[]).filter(function(w){return w.date>=weekKey(new Date())}).length;
 if(thisWeekWo===0)cards.push(mkInsightCard('🏋️','No gym sessions yet this week','You still have time — go smash it!','warning'));
 else if(thisWeekWo>=3)cards.push(mkInsightCard('💪','Strong gym week!',thisWeekWo+' sessions this week. Consistency is key!','positive'));
-cards.push(mkInsightCard('🗓️','Roadmap progress',rmPct+'% of your overall plan completed. <button onclick="nav(\'roadmap\')" style="background:none;border:none;color:var(--teal);cursor:pointer;font-weight:600;font-size:13px;font-family:var(--sans)">View Roadmap →</button>',rmPct>=50?'positive':'info'));
 var grid=document.getElementById('insights-grid');
 if(grid)grid.innerHTML=cards.length?cards.join(''):'<div class="card" style="text-align:center;padding:40px;grid-column:1/-1"><div style="font-size:36px;margin-bottom:12px">🌿</div><div style="font-size:14px;color:var(--text2)">Start logging to unlock insights!</div></div>';
 

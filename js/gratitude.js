@@ -40,8 +40,32 @@ function renderWaterInto(el){
   var today=localDateKey(new Date());
   if(!STATE.water)STATE.water={};
   var glasses=STATE.water[today]||0;
-  var target=8;
-  el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font-size:10px;font-weight:700;color:var(--neutral);text-transform:uppercase;letter-spacing:.06em">Hydration</span><span style="font-size:11px;font-weight:700;color:var(--secondary)">'+glasses+'/'+target+'</span></div><div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding:8px 0">'+Array.from({length:target},function(_,i){var filled=i<glasses;return '<span onclick="logWaterGlass('+(filled?i:i+1)+')" style="font-size:24px;cursor:pointer;transition:all .15s;opacity:'+(filled?'1':'0.25')+'">\uD83D\uDCA7</span>'}).join('')+'</div>'+(glasses>0?'<button class="btn btn-ghost btn-sm" onclick="logWaterGlass('+(glasses-1)+')" style="margin-top:8px;width:100%;justify-content:center;font-size:10px">Undo last</button>':'');
+  var target=Number((STATE.waterSettings&&STATE.waterSettings.target)||8);
+  var ml=Number((STATE.waterSettings&&STATE.waterSettings.glassMl)||250);
+  var totalMl=glasses*ml;
+  var targetMl=target*ml;
+  var totalL=(totalMl/1000).toFixed(totalMl>=1000?1:2);
+  var targetL=(targetMl/1000).toFixed(targetMl>=1000?1:2);
+  var pct=Math.min(100,Math.round((glasses/Math.max(1,target))*100));
+  var progressColor=glasses>=target?'var(--mint)':glasses>=Math.ceil(target/2)?'var(--secondary)':'var(--text2)';
+
+  el.innerHTML=''
+    +'<div class="water-hero">'
+      +'<div class="water-num"><span class="water-glasses">'+glasses+'</span><span class="water-divider">/</span><span class="water-target">'+target+'</span><span class="water-unit">glasses</span></div>'
+      +'<div class="water-ml">'+totalL+'L of '+targetL+'L · '+pct+'%</div>'
+    +'</div>'
+    +'<div class="water-bar"><div class="water-bar-fill" style="width:'+pct+'%;background:'+progressColor+'"></div></div>'
+    +'<div class="water-glass-row">'
+      +Array.from({length:target},function(_,i){
+        var filled=i<glasses;
+        return '<button class="water-glass'+(filled?' filled':'')+'" onclick="logWaterGlass('+(filled?i:i+1)+')" title="Glass '+(i+1)+'">💧</button>';
+      }).join('')
+    +'</div>'
+    +'<div class="water-actions">'
+      +'<button class="btn btn-sm btn-accent" onclick="logWaterGlass('+(glasses+1)+')">+ Add glass</button>'
+      +(glasses>0?'<button class="btn btn-sm btn-ghost" onclick="logWaterGlass('+(glasses-1)+')">Undo</button>':'')
+      +'<button class="btn btn-sm btn-ghost" onclick="openModal(\'waterSettings\')" title="Adjust target or glass size">⚙️</button>'
+    +'</div>';
 }
 function renderDashWater(){renderWaterInto(document.getElementById('dash-water-tracker'))}
 function renderMetricsWater(){
@@ -55,10 +79,11 @@ function renderMetricsWater(){
     var count=(STATE.water||{})[k]||0;
     days.push({date:d,key:k,count:count});
   }
+  var target=Number((STATE.waterSettings&&STATE.waterSettings.target)||8);
   hEl.innerHTML='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:10px;padding:10px 0">'+days.map(function(d){
-    var pct=Math.min(100,(d.count/8)*100);
+    var pct=Math.min(100,(d.count/target)*100);
     var dayLabel=d.date.toLocaleDateString('en-GB',{weekday:'short'});
-    return '<div style="text-align:center"><div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">'+dayLabel+'</div><div style="height:80px;background:var(--bg3);border-radius:10px;position:relative;overflow:hidden;display:flex;align-items:flex-end"><div style="width:100%;height:'+pct+'%;background:linear-gradient(180deg,#7CA5C2,#A5C4DC);transition:height 0.5s var(--ease)"></div></div><div style="font-size:11px;font-weight:600;color:var(--fg);margin-top:6px">'+d.count+'/8</div></div>';
+    return '<div style="text-align:center"><div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">'+dayLabel+'</div><div style="height:80px;background:var(--bg3);border-radius:10px;position:relative;overflow:hidden;display:flex;align-items:flex-end"><div style="width:100%;height:'+pct+'%;background:linear-gradient(180deg,#7CA5C2,#A5C4DC);transition:height 0.5s var(--ease)"></div></div><div style="font-size:11px;font-weight:600;color:var(--fg);margin-top:6px">'+d.count+'/'+target+'</div></div>';
   }).join('')+'</div>';
 }
 function logWaterGlass(count){
@@ -69,13 +94,26 @@ function logWaterGlass(count){
   saveState();
   renderDashWater();
   renderMetricsWater();
-  // Celebrate hitting the 8-glass goal (crossing, not already there)
-  if(prev<8&&STATE.water[today]>=8){
+  // Celebrate hitting the daily target (crossing, not already there)
+  var target=Number((STATE.waterSettings&&STATE.waterSettings.target)||8);
+  if(prev<target&&STATE.water[today]>=target){
     celebrateOnce('water-goal',function(){
       fireConfetti({count:60,duration:1800,colors:['#7CA5C2','#A5C4DC','#5A8FB0','#89B5D1']});
-      showCelebrationToast('Hydration goal hit — 8 glasses!','💧');
+      showCelebrationToast('Hydration goal hit!','💧');
     });
   }
+}
+
+function saveWaterSettings(){
+  var t=Number((document.getElementById('m-water-target')||{}).value)||8;
+  var ml=Number((document.getElementById('m-water-ml')||{}).value)||250;
+  if(!STATE.waterSettings)STATE.waterSettings={};
+  STATE.waterSettings.target=Math.max(1,Math.min(20,t));
+  STATE.waterSettings.glassMl=Math.max(50,Math.min(2000,ml));
+  saveState();
+  closeModal();
+  renderDashWater();
+  renderMetricsWater();
 }
 
 

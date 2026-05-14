@@ -82,26 +82,18 @@ function renderDashboard(){
     var monthEnd=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
     var monthKey=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
     var existing=(STATE.reviews&&STATE.reviews.monthly&&STATE.reviews.monthly[monthKey]);
-    // Count overdue roadmap items
-    var todayK=localDateKey(now);
-    var overdueCount=0;
-    if(typeof RM_MONTHS!=='undefined'){
-      RM_MONTHS.forEach(function(m){
-        m.sections.forEach(function(sec,si){
-          sec.items.forEach(function(item,ii){
-            if(rmIsDone(m.id,si,ii))return;
-            var due=item.dueDate;
-            var addedMatch=(STATE.roadmapAdded||[]).find(function(a){return a.mid===m.id&&a.si===si&&a.text===item.text});
-            if(addedMatch&&addedMatch.dueDate)due=addedMatch.dueDate;
-            if(due&&due<todayK)overdueCount++;
-          });
-        });
-      });
-    }
 
     var nudges=[];
-    if(overdueCount>0){
-      nudges.push('<div class="review-nudge" onclick="nav(\'roadmap\')" style="background:linear-gradient(135deg,rgba(229,57,53,0.1),rgba(217,123,108,0.08))"><div class="review-nudge-icon" style="background:rgba(229,57,53,0.15)">⚠️</div><div class="review-nudge-body"><div class="review-nudge-title">'+overdueCount+' roadmap item'+(overdueCount===1?'':'s')+' overdue</div><div class="review-nudge-sub">Tap to review and update your timeline.</div></div><div class="review-nudge-arrow">→</div></div>');
+    // Evening gratitude nudge — after 6pm with nothing logged today
+    var todayK_n=localDateKey(now);
+    var hasGratitudeToday=(STATE.gratitude||[]).some(function(e){return e.date===todayK_n});
+    var hr=now.getHours();
+    if(hr>=18&&hr<23&&!hasGratitudeToday){
+      var dismissedKey='lh_gr_nudge_dismissed:'+todayK_n;
+      var dismissed=false;try{dismissed=!!sessionStorage.getItem(dismissedKey)}catch(e){}
+      if(!dismissed){
+        nudges.push('<div class="review-nudge" onclick="document.getElementById(\'dash-gr-win\')&&document.getElementById(\'dash-gr-win\').focus()" style="background:linear-gradient(135deg,rgba(234,208,170,0.15),rgba(217,123,108,0.08))"><div class="review-nudge-icon" style="background:rgba(234,208,170,0.25)">🙏</div><div class="review-nudge-body"><div class="review-nudge-title">Wind-down moment</div><div class="review-nudge-sub">Nothing logged in your gratitude yet today. One line takes 10 seconds.</div></div><button class="review-nudge-arrow" onclick="event.stopPropagation();dismissGratitudeNudge()" title="Dismiss for today" style="background:none;border:none;color:var(--text3);font-size:14px;cursor:pointer;padding:4px 8px">×</button></div>');
+      }
     }
     if(dayOfMonth>=monthEnd-2&&!existing){
       var monthName=now.toLocaleDateString('en-GB',{month:'long'});
@@ -118,7 +110,6 @@ function renderDashboard(){
   });
   var habitsToday=expectedHabits.filter(function(h){return h.logs[todayKey]}).length;
   var habitsTotal=expectedHabits.length;
-  var rmProgress=function(){var td=0,ti=0;RM_MONTHS.forEach(function(m){var p=rmGetProgress(m);td+=p.done;ti+=p.total});return ti===0?0:Math.round(td/ti*100)}();
 
   var priData=(function(){var wk=weekKey(now);var plan=(STATE.weeklyPlans||{})[wk]||{};var pris=(plan.priorities||[]).filter(function(p){return p&&p.trim()});var done=0;var td=plan.prioritiesDone||{};pris.forEach(function(_,i){if(td[i])done++});return {done:done,total:pris.length}})();
   var priPct=priData.total>0?Math.round(priData.done/priData.total*100):0;
@@ -330,7 +321,7 @@ function saveGoal(){var name=((document.getElementById('m-gname')||{}).value||''
 function updateGoalProgress(id){var goal=STATE.goals.find(function(x){return x.id===id});if(!goal)return;var wasDone=goalPct(goal)>=100;goal.progress=Number((document.getElementById('m-gprogress')||{}).value)||0;saveState();closeModal();renderGoals();if(!wasDone&&goalPct(goal)>=100){fireConfetti({count:150,duration:3000});showCelebrationToast('Goal complete: '+goal.name,'🎯')}}
 function editGoalSave(id){var goal=STATE.goals.find(function(x){return x.id===id});if(!goal)return;goal.name=(document.getElementById('m-gname')||{}).value||goal.name;goal.deadline=(document.getElementById('m-gdeadline')||{}).value||goal.deadline;goal.desc=(document.getElementById('m-gdesc')||{}).value||'';var cat=(document.getElementById('m-gcat')||{}).value;if(cat){goal.cat=cat;var badges={Finance:'fin',Fitness:'fit',Career:'car',Personal:'per'};goal.badge=badges[cat]||goal.badge}var manualEl=document.getElementById('m-gmanual');if(manualEl){goal.manualOverride=manualEl.value==='1';if(goal.manualOverride){var p=document.getElementById('m-gprogress');if(p&&p.value!=='')goal.progress=Number(p.value)}}saveState();closeModal();renderGoals()}
 function deleteGoal(id){confirmDelete('Delete this goal?',function(){STATE.goals=STATE.goals.filter(function(g){return g.id!==id});saveState();renderGoals()})}
-function saveMetric(type){if(!STATE.metrics)STATE.metrics={};var date=(document.getElementById('m-mdate')||{}).value||localDateKey(new Date());var note=(document.getElementById('m-mnote')||{}).value||'';var entry={id:g(),date:date};if(type==='project'){var name=((document.getElementById('m-mname')||{}).value||'').trim();if(!name)return;entry.name=name}else if(type==='run'){var val=(document.getElementById('m-mval')||{}).value;if(!val)return;entry.distance=Number(val);entry.time=(document.getElementById('m-mtime')||{}).value||'';entry.note=note}else if(type==='moneySaved'){var val=(document.getElementById('m-mval')||{}).value;if(!val)return;entry.amount=Number(val);entry.note=note}else{var val=(document.getElementById('m-mval')||{}).value;if(!val)return;entry.value=Number(val);entry.note=note}if(!STATE.metrics[type])STATE.metrics[type]=[];STATE.metrics[type].push(entry);saveState();closeModal();renderMetrics();if(type==='run'){var rrEl=document.getElementById('recent-runs-workout');if(rrEl)renderWorkout()}}
+function saveMetric(type){if(!STATE.metrics)STATE.metrics={};var date=(document.getElementById('m-mdate')||{}).value||localDateKey(new Date());var note=(document.getElementById('m-mnote')||{}).value||'';var entry={id:g(),date:date};if(type==='project'){var name=((document.getElementById('m-mname')||{}).value||'').trim();if(!name)return;entry.name=name}else if(type==='run'){var val=(document.getElementById('m-mval')||{}).value;if(!val)return;entry.distance=Number(val);entry.time=(document.getElementById('m-mtime')||{}).value||'';entry.note=note}else if(type==='moneySaved'){var val=(document.getElementById('m-mval')||{}).value;if(!val)return;entry.amount=Number(val);entry.note=note}else{var val=(document.getElementById('m-mval')||{}).value;if(!val)return;entry.value=Number(val);entry.note=note}if(!STATE.metrics[type])STATE.metrics[type]=[];STATE.metrics[type].push(entry);saveState();closeModal();if(type==='weight'&&typeof renderTrainingBody==='function'){var bodyEl=document.getElementById('workout-body');if(bodyEl&&bodyEl.classList.contains('active'))renderTrainingBody()}if(type==='run'){var rrEl=document.getElementById('recent-runs-workout');if(rrEl)renderWorkout()}}
 
 
 
@@ -637,8 +628,14 @@ function renderDashGratitudeInline(){
       +'<button class="btn btn-ghost btn-sm dash-gr-more" onclick="openModal(\'addGratitude\')">+ Add another</button>'
       +'</div>';
   }else{
+    var hr=new Date().getHours();
+    var prompt;
+    if(hr<12)prompt='What\'s one thing you\'re looking forward to today?';
+    else if(hr<17)prompt='What went well so far?';
+    else if(hr<21)prompt='Wind down. What\'s one win from today?';
+    else prompt='Before bed — what\'s one thing you\'re grateful for?';
     el.innerHTML=''
-      +'<div class="dash-gr-prompt">What went well today?</div>'
+      +'<div class="dash-gr-prompt">'+prompt+'</div>'
       +'<div class="dash-gr-fields">'
         +'<input type="text" id="dash-gr-win" placeholder="🏆 One win…" onkeydown="if(event.key===\'Enter\')dashSaveGratitudeInline()">'
         +'<input type="text" id="dash-gr-thankful" placeholder="🙏 One thing you\'re thankful for…" onkeydown="if(event.key===\'Enter\')dashSaveGratitudeInline()">'
@@ -659,5 +656,20 @@ function dashSaveGratitudeInline(){
   renderDashGratitudeInline();
   if(typeof celebrateGratitudeMilestone==='function'){
     celebrateGratitudeMilestone(today,isFirstEver);
+  }
+}
+
+
+// Dismiss the evening gratitude nudge for the day
+function dismissGratitudeNudge(){
+  var todayK=localDateKey(new Date());
+  try{sessionStorage.setItem('lh_gr_nudge_dismissed:'+todayK,'1')}catch(e){}
+  var nudgeEl=document.getElementById('dash-review-nudge');
+  if(nudgeEl){
+    // Remove just the gratitude nudge
+    var children=nudgeEl.querySelectorAll('.review-nudge');
+    children.forEach(function(c){
+      if(c.textContent.indexOf('Wind-down')>-1)c.remove();
+    });
   }
 }
