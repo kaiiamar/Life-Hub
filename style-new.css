@@ -691,7 +691,10 @@ h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-0.02em}
 .goal-title{font-size:15px;font-weight:600;cursor:pointer}
 .goal-title:hover{color:var(--accent-dark)}
 .goal-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;font-size:12px;color:var(--text2)}
-.goal-actions{display:flex;gap:4px;flex-shrink:0}
+.goal-actions{
+  position:absolute;top:14px;right:14px;
+  display:flex;gap:4px;flex-shrink:0;z-index:2;
+}
 .goal-roadmap-link{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--blue);background:var(--blue-dim);padding:3px 10px;border-radius:var(--radius-pill);cursor:pointer;border:none;font-weight:500;transition:all 200ms var(--ease);margin-top:4px}
 .goal-roadmap-link:hover{background:rgba(124,165,194,0.22)}
 
@@ -902,8 +905,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-0.02em}
   .filter-btn{flex-shrink:0;white-space:nowrap}
   .workout-card{padding:12px 14px}
   .fin-summary{grid-template-columns:1fr 1fr}
-  .goal-item{padding:16px}
-  .goal-actions{flex-direction:column;gap:2px}
+  .goal-item{padding:16px;padding-right:80px}
   .weekly-7grid{grid-template-columns:repeat(4,1fr)!important}
   .page-header img,.header-row img{width:60px!important;height:60px!important}
   .habit-row{flex-wrap:wrap}
@@ -3526,6 +3528,10 @@ body.night-mode .dash-w-anchor-input:focus{background:rgba(240,235,227,0.08)}
   background:linear-gradient(135deg,var(--accent),var(--accent-dark));
   box-shadow:0 1px 2px rgba(217,123,108,0.25);
 }
+body.night-mode .hb-strip-cell.done{
+  background:linear-gradient(135deg,#E8A87C,#D97B6C);
+  box-shadow:0 0 6px rgba(232,168,124,0.4),inset 0 1px 0 rgba(255,255,255,0.2);
+}
 .hb-strip-cell.today{
   border:1.5px solid var(--accent);
   background:rgba(217,123,108,0.12);
@@ -3818,4 +3824,17 @@ body.night-mode .hb-period{background:rgba(240,235,227,0.06);color:var(--text3)}
   font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;
   color:var(--text3);
   padding:4px 12px 4px;
+}
+
+
+.hb-strip-wrap{position:relative}
+.hb-strip-hint{
+  font-size:9px;color:var(--text3);
+  text-align:right;margin-top:4px;
+  font-style:italic;
+  opacity:0;transition:opacity 200ms var(--ease);
+}
+.hb-strip-wrap:hover .hb-strip-hint{opacity:1}
+@media(hover:none){
+  .hb-strip-hint{opacity:1}
 }

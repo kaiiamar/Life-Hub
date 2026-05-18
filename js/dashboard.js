@@ -226,10 +226,8 @@ function renderDashboard(){
     html+='</div>';
 
     // Today's tasks
-    html+='<div class="dash-today-head"><span class="dash-today-label">✅ Today</span>'
-      +(todayPris.length?'<span class="dash-today-count">'+todayPris.filter(function(p){return p.done}).length+'/'+todayPris.length+'</span>':'')
-      +'</div>';
     if(todayPris.length){
+      html+='<div class="dash-today-head"><span class="dash-today-label">✅ Today</span><span class="dash-today-count">'+todayPris.filter(function(p){return p.done}).length+'/'+todayPris.length+'</span></div>';
       html+=todayPris.map(function(p,i){
         var done=p.done;
         return '<div class="daily-pri-row'+(done?' done':'')+'">'
@@ -239,11 +237,9 @@ function renderDashboard(){
           +'<button class="daily-pri-action daily-pri-delete" title="Remove" onclick="deleteDailyPri(\''+todayKey+'\','+i+')">×</button>'
           +'</div>';
       }).join('');
-    }else{
-      html+='<div class="empty-prompt-mini">What do you need to get done today?</div>';
     }
     html+='<div class="daily-pri-add-row">'
-      +'<input type="text" id="daily-pri-input" placeholder="Add a task for today..." onkeydown="if(event.key===\'Enter\'){addDailyPri()}">'
+      +'<input type="text" id="daily-pri-input" placeholder="'+(todayPris.length?'Add another task…':'What do you need to get done today?')+'" onkeydown="if(event.key===\'Enter\'){addDailyPri()}">'
       +'<button class="daily-pri-add-btn" onclick="addDailyPri()">+</button>'
       +'</div>';
     ppEl.innerHTML=html;
@@ -358,7 +354,10 @@ sumEl.innerHTML=sh}else if(sumEl){sumEl.innerHTML=''}
 var filtered=all;if(goalFilter==='Done')filtered=all.filter(function(g){return g.done});else if(goalFilter==='Active')filtered=all.filter(function(g){return !g.done});else if(goalFilter!=='all')filtered=all.filter(function(g){return g.cat===goalFilter});
 var el=document.getElementById('goals-container');if(!el)return;if(!filtered.length){el.innerHTML='<div class="empty"><div class="empty-icon">\ud83c\udfaf</div>'+(total>0?'No goals match this filter':'No goals yet. Add one!')+'</div>';return}
 el.innerHTML=filtered.map(function(go){var isDone=go.done;var dl=daysLeft(go.deadline);var col=catColors[go.cat]||'var(--accent)';var overdue=!isDone&&dl<0;
-var h='<div class="card goal-item" style="margin-bottom:12px;border-left:4px solid '+col+';'+(isDone?'opacity:0.65;':'')+'"><div style="display:flex;align-items:flex-start;gap:14px">';
+var h='<div class="card goal-item" style="position:relative;margin-bottom:12px;border-left:4px solid '+col+';'+(isDone?'opacity:0.65;':'')+'">';
+/* Actions — pinned top-right */
+h+='<div class="goal-actions"><button class="btn btn-sm btn-ghost" onclick="openModal(\'editGoal\',\''+go.id+'\')" title="Edit">✎</button><button class="btn btn-sm btn-danger" onclick="deleteGoal(\''+go.id+'\')" title="Delete">×</button></div>';
+h+='<div style="display:flex;align-items:flex-start;gap:14px">';
 /* Tickbox */
 h+='<div onclick="toggleGoalDone(\''+go.id+'\')" style="width:28px;height:28px;border-radius:50%;border:2px solid '+(isDone?'var(--mint)':col)+';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;transition:all .15s;background:'+(isDone?'var(--mint)':'transparent')+'">'+(isDone?'<span style="color:#fff;font-size:14px;font-weight:700">✓</span>':'')+'</div>';
 /* Content */
@@ -395,8 +394,6 @@ h+='<div class="goal-substep-add-row">'
   +'<button class="goal-substep-add-btn" onclick="addGoalSubStep(\''+go.id+'\')">+</button>'
   +'</div>';
 h+='</div>';
-/* Actions */
-h+='<div class="goal-actions"><button class="btn btn-sm btn-ghost" onclick="openModal(\'editGoal\',\''+go.id+'\')">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteGoal(\''+go.id+'\')">×</button></div>';
 h+='</div></div>';return h}).join('')}
 function filterGoals(cat,btn){goalFilter=cat;document.querySelectorAll('#goal-filters .filter-btn').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');renderGoals()}
 function toggleGoalDone(id){var goal=STATE.goals.find(function(x){return x.id===id});if(!goal)return;var wasDone=goal.done;goal.done=!goal.done;if(goal.done)goal.progress=goal.target;saveState();renderGoals();if(!wasDone&&goal.done){fireConfetti({count:150,duration:3000});showCelebrationToast('Goal complete: '+goal.name,'🎯')}}
