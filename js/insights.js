@@ -74,6 +74,66 @@ renderInsightMoodChart();
 
 // Smart insight cards
 var cards=[];
+
+// ── Week-vs-last-week deltas (item 9) ──
+var thisWkStart=weekKey(new Date());
+var thisWkDays=weekDays(thisWkStart);
+var lastWkStartDate=new Date(thisWkStart);lastWkStartDate.setDate(lastWkStartDate.getDate()-7);
+var lastWkStart=localDateKey(lastWkStartDate);
+var lastWkDays=weekDays(lastWkStart);
+
+// Habit completion delta
+var thisWkHabit={done:0,total:0};
+var lastWkHabit={done:0,total:0};
+STATE.habits.forEach(function(h){
+  var startKey=h.startDate||'';
+  thisWkDays.forEach(function(d){
+    if(d>todayKey)return;
+    if(d<startKey)return;
+    thisWkHabit.total++;
+    if(h.logs[d])thisWkHabit.done++;
+  });
+  lastWkDays.forEach(function(d){
+    if(d<startKey)return;
+    lastWkHabit.total++;
+    if(h.logs[d])lastWkHabit.done++;
+  });
+});
+var thisWkPct=thisWkHabit.total>0?Math.round(thisWkHabit.done/thisWkHabit.total*100):0;
+var lastWkPct=lastWkHabit.total>0?Math.round(lastWkHabit.done/lastWkHabit.total*100):0;
+if(thisWkHabit.total>0&&lastWkHabit.total>0){
+  var delta=thisWkPct-lastWkPct;
+  var arrow=delta>0?'↑':delta<0?'↓':'→';
+  var tone=delta>=10?'positive':delta<=-10?'warning':'info';
+  var deltaText=delta===0?'About the same as last week':(delta>0?'+'+delta:delta)+' percentage points '+(delta>0?'better':'worse')+' than last week';
+  cards.push(mkInsightCard('📈','Habits '+arrow+' '+thisWkPct+'%',deltaText,tone));
+}
+
+// Workouts delta
+var thisWkWo=(STATE.workouts||[]).filter(function(w){return thisWkDays.indexOf(w.date)!==-1&&w.type!=='Rest'}).length;
+var lastWkWo=(STATE.workouts||[]).filter(function(w){return lastWkDays.indexOf(w.date)!==-1&&w.type!=='Rest'}).length;
+if(thisWkWo+lastWkWo>0){
+  var woDelta=thisWkWo-lastWkWo;
+  var woArrow=woDelta>0?'↑':woDelta<0?'↓':'→';
+  var woTone=woDelta>0?'positive':woDelta<0?'warning':'info';
+  var woText=woDelta===0?'Same as last week':(woDelta>0?'+'+woDelta:woDelta)+' compared to last week';
+  cards.push(mkInsightCard('🏋️','Sessions '+woArrow+' '+thisWkWo,woText,woTone));
+}
+
+// Mood delta
+var thisWkMood=thisWkDays.filter(function(d){return d<=todayKey&&(STATE.mood||{})[d]&&(STATE.mood||{})[d].mood});
+var lastWkMood=lastWkDays.filter(function(d){return (STATE.mood||{})[d]&&(STATE.mood||{})[d].mood});
+if(thisWkMood.length>0&&lastWkMood.length>0){
+  var thisAvg=thisWkMood.reduce(function(s,d){return s+Number((STATE.mood||{})[d].mood)},0)/thisWkMood.length;
+  var lastAvg=lastWkMood.reduce(function(s,d){return s+Number((STATE.mood||{})[d].mood)},0)/lastWkMood.length;
+  var moodDelta=Math.round((thisAvg-lastAvg)*10)/10;
+  if(Math.abs(moodDelta)>=0.5){
+    var moodArrow=moodDelta>0?'↑':'↓';
+    var moodTone=moodDelta>0?'positive':'warning';
+    cards.push(mkInsightCard('🌈','Mood '+moodArrow+' '+thisAvg.toFixed(1),(moodDelta>0?'+'+moodDelta:moodDelta)+' from last week\'s '+lastAvg.toFixed(1),moodTone));
+  }
+}
+
 var habitScores=STATE.habits.map(function(h){
   var startKey=h.startDate||last30[last30.length-1];
   var eligibleDays=last30.filter(function(d){return d>=startKey});

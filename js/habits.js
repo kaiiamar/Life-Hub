@@ -1,77 +1,142 @@
-// HABITS — frequency-aware rendering
+// HABITS — frequency-aware rendering (redesigned)
 // ============================================================
 
+var habitFilter='all';
+
+var HABIT_CAT_META={
+  fit:{label:'Fitness',color:'#9b87be',emoji:'💪'},
+  fin:{label:'Finance',color:'#D4845A',emoji:'💸'},
+  car:{label:'Career',color:'#C9973A',emoji:'💼'},
+  per:{label:'Personal',color:'#6B9E7A',emoji:'🌿'}
+};
+
 function renderHabits(){
-  var days=weekDays(activeWeek);
   var todayKey=localDateKey(new Date());
-  var dl=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-
-  var dhEl=document.getElementById('day-headers');
-  if(dhEl)dhEl.innerHTML=days.map(function(d,i){
-    return '<div style="width:28px;text-align:center"><div style="font-size:10px;color:var(--text3)">'+dl[i]+'</div><div style="font-size:11px;color:'+(d===todayKey?'var(--accent)':'var(--text3)')+'">'+new Date(d).getDate()+'</div></div>';
-  }).join('');
-
-  var wkStart=new Date(activeWeek);
-  var wkEnd=new Date(activeWeek);wkEnd.setDate(wkEnd.getDate()+6);
   var wlEl=document.getElementById('habit-week-label');
-  if(wlEl)wlEl.textContent=fmtDate(wkStart.toISOString())+' \u2013 '+fmtDate(wkEnd.toISOString());
+  if(wlEl){
+    var wkStart=new Date(activeWeek);
+    var wkEnd=new Date(activeWeek);wkEnd.setDate(wkEnd.getDate()+6);
+    wlEl.textContent=fmtDate(wkStart.toISOString())+' \u2013 '+fmtDate(wkEnd.toISOString());
+  }
+
+  // Filters
+  var fEl=document.getElementById('habit-filters');
+  if(fEl){
+    var counts={all:STATE.habits.length};
+    Object.keys(HABIT_CAT_META).forEach(function(k){counts[k]=STATE.habits.filter(function(h){return h.badge===k}).length});
+    var btns=[{key:'all',label:'All',color:'var(--accent-dark)'}];
+    Object.keys(HABIT_CAT_META).forEach(function(k){
+      var m=HABIT_CAT_META[k];
+      if(counts[k]>0)btns.push({key:k,label:m.emoji+' '+m.label,color:m.color});
+    });
+    fEl.innerHTML=btns.map(function(b){
+      var active=habitFilter===b.key;
+      return '<button class="habit-filter-btn'+(active?' active':'')+'" onclick="setHabitFilter(\''+b.key+'\')" style="'+(active?'background:'+b.color+';color:#fff;border-color:'+b.color:'')+'">'+b.label+' <span class="habit-filter-count">'+counts[b.key]+'</span></button>';
+    }).join('');
+  }
 
   var hgEl=document.getElementById('habits-grid');
   if(!hgEl)return;
-  hgEl.innerHTML=STATE.habits.map(function(h){
-    return renderHabitRow(h,days,todayKey);
-  }).join('');
-
-  var soEl=document.getElementById('streak-overview');
-  if(soEl)soEl.innerHTML=STATE.habits.map(function(h){return renderStreakRow(h)}).join('');
-}
-
-function renderHabitRow(h,days,todayKey){
-  var f=(h.freq||'daily').toLowerCase();
-  var streak=habitStreak(h);
-  var wk=weekKey(new Date());
-  var wpct=habitWeekPct(h,wk);
-
-  // For monthly / bi-monthly, show a different view: current period status + last few periods
-  if(f==='monthly'||f==='bi-monthly'){
-    var done=habitPeriodStatus(h,f);
-    return '<div class="habit-row">'
-      +'<div style="width:170px;flex-shrink:0;display:flex;align-items:center;gap:4px">'
-        +'<div style="flex:1;min-width:0"><div class="habit-name">'+h.name+'</div><div class="habit-freq">'+h.freq+'</div></div>'
-        +'<button style="border:none;background:none;padding:2px;font-size:11px;color:var(--text3);cursor:pointer;flex-shrink:0" onclick="openModal(\'editHabit\',\''+h.id+'\')" title="Edit">\u270F\uFE0F</button>'
-      +'</div>'
-      +'<div style="flex:1;display:flex;align-items:center;gap:8px">'
-        +'<button class="btn btn-sm '+(done.thisPeriod?'':'btn-accent')+'" onclick="toggleHabitToday(\''+h.id+'\')">'
-          +(done.thisPeriod?'✓ Done this '+(f==='monthly'?'month':'fortnight'):'Log for this '+(f==='monthly'?'month':'fortnight'))
-        +'</button>'
-        +'<div style="display:flex;gap:3px">'+done.lastPeriods.map(function(p){
-          return '<div class="period-dot'+(p.done?' done':'')+'" title="'+p.label+'"></div>';
-        }).join('')+'</div>'
-      +'</div>'
-      +'<div class="streak-badge">'+(streak>0?'&#128293;'+streak:'')+'</div>'
-    +'</div>';
+  var habits=(STATE.habits||[]).filter(function(h){return habitFilter==='all'||h.badge===habitFilter});
+  if(!habits.length){
+    hgEl.innerHTML='<div class="empty" style="padding:40px 20px;text-align:center"><div style="font-size:36px;margin-bottom:10px">✅</div><div style="font-size:13px;color:var(--text2)">'+(habitFilter==='all'?'No habits yet. Tap + Add Habit to start.':'No habits in this category.')+'</div></div>';
+    return;
   }
 
-  // Default: weekly dot grid for daily / Nx/week / weekly
-  var dayLetters=['S','M','T','W','T','F','S'];
-  return '<div class="habit-row">'
-    +'<div style="width:170px;flex-shrink:0;display:flex;align-items:center;gap:4px">'
-      +'<div style="flex:1;min-width:0"><div class="habit-name">'+h.name+'</div><div class="habit-freq">'+h.freq+'</div></div>'
-      +'<button style="border:none;background:none;padding:2px;font-size:11px;color:var(--text3);cursor:pointer;flex-shrink:0" onclick="openModal(\'editHabit\',\''+h.id+'\')" title="Edit">\u270F\uFE0F</button>'
-    +'</div>'
-    +'<div class="habit-dots" style="flex:1">'+days.map(function(d,i){
-      var status=habitDayStatus(h,d);
-      var isT=d===todayKey;
-      var cls='dot';
-      if(status==='done')cls+=' done';
-      else if(status==='rest')cls+=' rest';
-      else if(status==='pre-start')cls+=' pre-start';
-      else if(isT)cls+=' today';
-      var inner=status==='done'?'&#10003;':status==='pre-start'?'':dayLetters[i];
-      return '<div class="'+cls+'" onclick="toggleHabit(\''+h.id+'\',\''+d+'\')" title="'+status+'">'+inner+'</div>';
-    }).join('')+'</div>'
-    +'<div class="streak-badge">'+(streak>0?'&#128293;'+streak:'')+'</div>'
-  +'</div>';
+  hgEl.innerHTML=habits.map(function(h){return renderHabitCard(h,todayKey)}).join('');
+}
+
+function setHabitFilter(key){
+  habitFilter=key;
+  renderHabits();
+}
+
+function renderHabitCard(h,todayKey){
+  var f=(h.freq||'daily').toLowerCase();
+  var streak=habitStreak(h);
+  var meta=HABIT_CAT_META[h.badge]||HABIT_CAT_META.per;
+  var icon=h.icon||meta.emoji;
+
+  // Compute 30-day strip
+  var stripDays=[];
+  for(var i=29;i>=0;i--){
+    var d=new Date();d.setDate(d.getDate()-i);
+    var k=localDateKey(d);
+    var status=habitDayStatus(h,k);
+    stripDays.push({key:k,date:d,status:status,isToday:k===todayKey});
+  }
+  // Count this-month adherence (only days the habit was eligible)
+  var eligible=stripDays.filter(function(d){return d.status==='done'||d.status==='todo'});
+  var done=eligible.filter(function(d){return d.status==='done'}).length;
+  var pct=eligible.length>0?Math.round((done/eligible.length)*100):0;
+
+  // Streak indicator
+  var streakStr='';
+  if(streak>=30)streakStr='<span class="hb-streak-icon hot">💎</span><span class="hb-streak-num">'+streak+'</span>';
+  else if(streak>=7)streakStr='<span class="hb-streak-icon hot">🔥</span><span class="hb-streak-num">'+streak+'</span>';
+  else if(streak>=3)streakStr='<span class="hb-streak-icon">⚡</span><span class="hb-streak-num">'+streak+'</span>';
+  else if(streak>0)streakStr='<span class="hb-streak-num quiet">'+streak+'</span>';
+
+  // Today's tap target — clearer than "click the dot for today"
+  var todayStatus=habitDayStatus(h,todayKey);
+  var todayBtn='';
+  if(todayStatus==='pre-start'){
+    todayBtn='<span class="hb-today-tag">Not tracked yet</span>';
+  }else if(todayStatus==='rest'){
+    todayBtn='<span class="hb-today-tag">Rest day</span>';
+  }else if(f==='monthly'||f==='bi-monthly'){
+    var period=habitPeriodStatus(h,f);
+    todayBtn='<button class="hb-today-btn'+(period.thisPeriod?' done':'')+'" onclick="toggleHabitToday(\''+h.id+'\')">'
+      +(period.thisPeriod?'✓ Done this '+(f==='monthly'?'month':'fortnight'):'Log this '+(f==='monthly'?'month':'fortnight'))
+      +'</button>';
+  }else{
+    var done_today=todayStatus==='done';
+    todayBtn='<button class="hb-today-btn'+(done_today?' done':'')+'" onclick="toggleHabitToday(\''+h.id+'\')">'
+      +(done_today?'✓ Done today':'Mark done')
+      +'</button>';
+  }
+
+  var html='<div class="habit-card" style="border-left:3px solid '+meta.color+'">';
+  html+='<div class="hb-head">';
+  html+='<div class="hb-icon" style="background:'+meta.color+'18;color:'+meta.color+'">'+icon+'</div>';
+  html+='<div class="hb-title-block">';
+  html+='<div class="hb-title">'+escapeHtml(h.name)+'</div>';
+  html+='<div class="hb-meta"><span class="hb-freq">'+h.freq+'</span><span class="hb-cat-dot" style="background:'+meta.color+'"></span><span class="hb-cat">'+meta.label+'</span></div>';
+  html+='</div>';
+  html+='<div class="hb-streak">'+streakStr+'</div>';
+  html+='<button class="hb-edit" onclick="openModal(\'editHabit\',\''+h.id+'\')" title="Edit">✎</button>';
+  html+='</div>';
+
+  // 30-day strip
+  if(f==='monthly'||f==='bi-monthly'){
+    // For monthly/bi-monthly show last 6 periods as wider chunks
+    var period=habitPeriodStatus(h,f);
+    html+='<div class="hb-periods">'+period.lastPeriods.map(function(p){
+      return '<div class="hb-period'+(p.done?' done':'')+'" title="'+p.label+(p.done?' — done':' — missed')+'"><span>'+p.label+'</span></div>';
+    }).join('')+'</div>';
+  }else{
+    html+='<div class="hb-strip">'+stripDays.map(function(d){
+      var cls='hb-strip-cell';
+      if(d.status==='done')cls+=' done';
+      else if(d.status==='rest')cls+=' rest';
+      else if(d.status==='pre-start')cls+=' pre';
+      else if(d.isToday)cls+=' today';
+      var title=d.date.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+' — '+(d.status==='done'?'done':d.status==='rest'?'not due':d.status==='pre-start'?'before tracking':'missed');
+      return '<div class="'+cls+'" title="'+title+'" onclick="toggleHabit(\''+h.id+'\',\''+d.key+'\')"></div>';
+    }).join('')+'</div>';
+  }
+
+  // Footer stats
+  html+='<div class="hb-foot">';
+  if(eligible.length>0){
+    html+='<div class="hb-foot-stat"><span class="hb-foot-num">'+pct+'%</span><span class="hb-foot-lbl">last 30d</span></div>';
+    html+='<div class="hb-foot-stat"><span class="hb-foot-num">'+done+'/'+eligible.length+'</span><span class="hb-foot-lbl">done</span></div>';
+  }
+  html+='<div class="hb-foot-action">'+todayBtn+'</div>';
+  html+='</div>';
+
+  html+='</div>';
+  return html;
 }
 
 // For monthly / bi-monthly habits — returns status of current + last periods
@@ -100,21 +165,6 @@ function habitPeriodStatus(h,freq){
   return {thisPeriod:thisPeriod,lastPeriods:lastPeriods};
 }
 
-function renderStreakRow(h){
-  var f=(h.freq||'daily').toLowerCase();
-  var s=habitStreak(h);
-  var wp=habitWeekPct(h,weekKey(new Date()));
-  var streakUnit=f==='daily'?'day':f==='monthly'?'month':f==='bi-monthly'?'fortnight':'week';
-  var streakPlural=s===1?streakUnit:streakUnit+'s';
-  return '<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)">'
-    +'<span style="flex:1;font-size:13px">'+h.name+'</span>'
-    +'<span class="badge badge-'+h.badge+'">'+h.freq+'</span>'
-    +'<span style="font-size:13px;color:'+(s>=7?'var(--accent)':s>=3?'var(--amber)':'var(--text2)')+'">'+(s>0?'&#128293; '+s+' '+streakPlural:'No streak')+'</span>'
-    +(f==='daily'||/^\d+x\/week$/.test(f)||f==='weekly'?'<div class="pbar-wrap" style="width:60px;margin:0"><div class="pbar" style="width:'+wp+'%;background:'+pbarColor(wp)+'"></div></div><span style="font-size:12px;color:var(--text2);min-width:36px;text-align:right">'+wp+'%</span>':'<div style="width:100px"></div>')
-    +'<button class="btn btn-sm btn-danger" onclick="deleteHabit(\''+h.id+'\')">&#215;</button>'
-  +'</div>';
-}
-
 function toggleHabitToday(hid){
   var today=localDateKey(new Date());
   toggleHabit(hid,today);
@@ -131,10 +181,19 @@ function autoTickHabit(namePattern,date){
 function toggleHabit(hid,day){
   var h=STATE.habits.find(function(x){return x.id===hid});
   if(!h)return;
+  // Don't allow ticking before startDate
+  if(h.startDate&&day<h.startDate)return;
   var wasDone=h.logs[day];
   h.logs[day]=!h.logs[day];
   saveState();
   renderHabits();
+  // Cross-page sync
+  if(/skincare/i.test(h.name)&&typeof renderSkincareToday==='function'){
+    renderSkincareToday();
+  }
+  if(typeof renderDashboard==='function'&&document.getElementById('page-dashboard')&&document.getElementById('page-dashboard').classList.contains('active')){
+    renderDashboard();
+  }
   if(!wasDone&&h.logs[day]){
     var s=habitStreak(h);
     if(s===7){fireConfetti();showCelebrationToast(h.name+' — 7 '+((h.freq||'daily')==='daily'?'day':'period')+' streak!','🔥')}
@@ -168,6 +227,8 @@ function saveHabit(){
     name:name,
     freq:(document.getElementById('m-hfreq')||{}).value||'daily',
     badge:(document.getElementById('m-hbadge')||{}).value||'per',
+    icon:(document.getElementById('m-hicon')||{}).value||'',
+    note:(document.getElementById('m-hnote')||{}).value||'',
     logs:{},
     startDate:localDateKey(new Date())
   });
@@ -180,5 +241,9 @@ function updateHabit(id){
   h.name=((document.getElementById('m-hname')||{}).value||'').trim()||h.name;
   h.freq=(document.getElementById('m-hfreq')||{}).value||h.freq;
   h.badge=(document.getElementById('m-hbadge')||{}).value||h.badge;
+  var ic=(document.getElementById('m-hicon')||{}).value;
+  if(ic!==undefined)h.icon=ic;
+  var note=(document.getElementById('m-hnote')||{}).value;
+  if(note!==undefined)h.note=note;
   saveState();closeModal();renderHabits();
 }
