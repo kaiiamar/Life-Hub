@@ -185,6 +185,7 @@ function renderSkincareToday(){
     html+='<button class="sk-active-btn sk-active-btn-secondary" onclick="toggleGuaShaToday()">+ Gua sha</button>';
   }
   html+='</div>';
+  html+='<div class="sk-active-hint">These logs build your 7-day history above and your glow streak — they don\'t replace your AM/PM ticks.</div>';
   html+='</div>';
 
   // Photo log
@@ -226,6 +227,9 @@ function toggleSkincareToday(period){
   if(!wasDone&&!s.startedOn)s.startedOn=todayKey;
   saveState();
   renderSkincareToday();
+  // Cross-page sync — habits and dashboard pages may be in DOM
+  if(typeof renderHabits==='function'&&document.getElementById('page-habits'))renderHabits();
+  if(typeof renderDashboard==='function'&&document.getElementById('page-dashboard'))renderDashboard();
   if(!wasDone){
     var streak=typeof habitStreak==='function'?habitStreak(habit):0;
     if(streak===7||streak===14||streak===21||streak===30){
