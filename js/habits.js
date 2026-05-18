@@ -115,15 +115,15 @@ function renderHabitCard(h,todayKey){
       return '<div class="hb-period'+(p.done?' done':'')+'" title="'+p.label+(p.done?' — done':' — missed')+'"><span>'+p.label+'</span></div>';
     }).join('')+'</div>';
   }else{
-    html+='<div class="hb-strip">'+stripDays.map(function(d){
+    html+='<div class="hb-strip-wrap"><div class="hb-strip">'+stripDays.map(function(d){
       var cls='hb-strip-cell';
       if(d.status==='done')cls+=' done';
       else if(d.status==='rest')cls+=' rest';
       else if(d.status==='pre-start')cls+=' pre';
       else if(d.isToday)cls+=' today';
-      var title=d.date.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+' — '+(d.status==='done'?'done':d.status==='rest'?'not due':d.status==='pre-start'?'before tracking':'missed');
+      var title=d.date.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+' — '+(d.status==='done'?'done (tap to remove)':d.status==='rest'?'not due':d.status==='pre-start'?'before tracking':'missed (tap to log)');
       return '<div class="'+cls+'" title="'+title+'" onclick="toggleHabit(\''+h.id+'\',\''+d.key+'\')"></div>';
-    }).join('')+'</div>';
+    }).join('')+'</div><div class="hb-strip-hint">Tap any day to log or unlog · ← 30 days</div></div>';
   }
 
   // Footer stats
