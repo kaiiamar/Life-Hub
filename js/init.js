@@ -16,8 +16,9 @@ var qEl=document.getElementById('sidebar-quote');if(qEl)qEl.textContent=quotes[M
 
 if(_firebaseReady)setSyncStatus('saving');
 loadFromCloud(function(){
-  var migrateKeys=['goals','habits','workouts','gymTemplates','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','projects','relationships','gratitude','wishlist','watchlist','debtPayments','reminders','water','dailyPriorities','trainingEvents'];
-  migrateKeys.forEach(function(k){if(!STATE[k])STATE[k]=JSON.parse(JSON.stringify(DEFAULT_STATE[k]))});
+  var migrateKeys=['goals','habits','workouts','gymTemplates','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','projects','relationships','gratitude','wishlist','watchlist','debtPayments','reminders','water','dailyPriorities','trainingEvents','tasks'];
+  migrateKeys.forEach(function(k){if(!STATE[k])STATE[k]=JSON.parse(JSON.stringify(DEFAULT_STATE[k]||(k==='tasks'?[]:{})))});
+  if(!STATE.tasks)STATE.tasks=[];
   if(!STATE.metrics.projectsDone)STATE.metrics.projectsDone=[];
   if(!STATE.reviews.monthly)STATE.reviews.monthly={};
   (STATE.debts||[]).forEach(function(d){if(!d.startingBalance){var dPaid=(STATE.debtPayments||[]).filter(function(p){return p.debtId===d.id}).reduce(function(s,p){return s+Number(p.amount)},0);d.startingBalance=Number(d.balance)+dPaid}});
@@ -34,6 +35,63 @@ loadFromCloud(function(){
     if(typeof autoSuggestAnchor==='function')h.anchor=autoSuggestAnchor(h.name);
     else h.anchor='anytime';
   });
+
+  // ---- TASKS MIGRATION (one-shot) -----------------------------------------
+  // Old data: STATE.dailyPriorities[date] = [{text,done}]
+  //           STATE.weeklyPlans[wkKey].priorities = [3 strings]
+  // New data: STATE.tasks = [{id,text,done,dueDate?,doneAt?,createdAt,weekPriority?}]
+  // Migrate once, mark with __tasksMigrated so we don't run twice.
+  if(!STATE.__tasksMigrated){
+    if(!STATE.tasks)STATE.tasks=[];
+    var existingTexts={};
+    STATE.tasks.forEach(function(t){if(t.text)existingTexts[t.text.toLowerCase()+'|'+(t.dueDate||'')]=true});
+    // Migrate daily priorities
+    var dp=STATE.dailyPriorities||{};
+    Object.keys(dp).forEach(function(d){
+      (dp[d]||[]).forEach(function(p){
+        if(!p||!p.text)return;
+        var key=p.text.toLowerCase()+'|'+d;
+        if(existingTexts[key])return;
+        STATE.tasks.push({
+          id:g(),
+          text:p.text,
+          done:!!p.done,
+          dueDate:d,
+          doneAt:p.done?d:null,
+          createdAt:d
+        });
+        existingTexts[key]=true;
+      });
+    });
+    // Migrate weekly priorities — set weekPriority + dueDate to end of that week
+    var wp=STATE.weeklyPlans||{};
+    Object.keys(wp).forEach(function(wkKey){
+      var plan=wp[wkKey];
+      if(!plan||!plan.priorities)return;
+      var parts=wkKey.split('-');
+      var wkStart=new Date(+parts[0],+parts[1]-1,+parts[2]);
+      var wkEnd=new Date(wkStart);wkEnd.setDate(wkEnd.getDate()+6);
+      var wkEndKey=localDateKey(wkEnd);
+      plan.priorities.forEach(function(text,i){
+        if(!text||!text.trim())return;
+        var done=!!(plan.prioritiesDone&&plan.prioritiesDone[i]);
+        var key=text.toLowerCase()+'|'+wkEndKey;
+        if(existingTexts[key])return;
+        STATE.tasks.push({
+          id:g(),
+          text:text,
+          done:done,
+          dueDate:wkEndKey,
+          doneAt:done?wkEndKey:null,
+          createdAt:wkKey,
+          weekPriority:wkKey
+        });
+        existingTexts[key]=true;
+      });
+    });
+    STATE.__tasksMigrated=true;
+    saveState();
+  }
   // Auto-correct "debt free" type goals: target should be 0, startProgress = initial debt total
   (STATE.goals||[]).forEach(function(go){
     var name=(go.name||'').toLowerCase();
