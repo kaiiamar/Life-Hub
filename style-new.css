@@ -3838,3 +3838,184 @@ body.night-mode .hb-period{background:rgba(240,235,227,0.06);color:var(--text3)}
 @media(hover:none){
   .hb-strip-hint{opacity:1}
 }
+
+
+/* ── DASHBOARD: WHAT'S NEXT (ADHD-friendly single focus) ── */
+.whats-next-card{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.wn-progress{
+  font-size:11px;font-weight:500;color:var(--text2);
+  margin-left:8px;letter-spacing:0;text-transform:none;
+}
+.wn-hero{
+  display:flex;align-items:center;gap:14px;
+  padding:14px 16px;
+  background:linear-gradient(135deg,rgba(255,255,255,0.6),rgba(255,255,255,0.35));
+  border:1.5px solid var(--border);
+  border-radius:14px;
+  box-shadow:0 2px 8px rgba(26,26,31,0.04);
+  transition:all 280ms var(--ease);
+}
+.wn-icon{
+  width:44px;height:44px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;flex-shrink:0;
+}
+.wn-info{flex:1;min-width:0}
+.wn-anchor{
+  font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;
+  color:var(--text2);
+  margin-bottom:3px;
+}
+.wn-name{
+  font-family:var(--serif);font-size:18px;font-weight:600;
+  color:var(--fg);letter-spacing:-0.01em;line-height:1.15;
+}
+.wn-note{
+  font-size:11px;color:var(--text3);font-style:italic;
+  margin-top:3px;
+}
+.wn-stats{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  margin-top:8px;font-size:11px;
+}
+.wn-consistency{font-weight:700;font-size:13px;display:flex;align-items:baseline;gap:4px}
+.wn-stat-label{font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;opacity:0.75}
+.wn-streak{
+  font-size:11px;font-weight:600;color:var(--accent-dark);
+  padding:2px 8px;border-radius:var(--radius-pill);
+  background:rgba(217,123,108,0.1);
+}
+.wn-streak.hot{
+  background:linear-gradient(135deg,rgba(217,123,108,0.18),rgba(234,208,170,0.18));
+}
+.wn-queue{
+  font-size:11px;color:var(--text3);font-style:italic;
+}
+.wn-tick-btn{
+  width:48px;height:48px;border-radius:50%;
+  border:none;color:#fff;
+  font-size:22px;font-weight:700;
+  cursor:pointer;flex-shrink:0;
+  box-shadow:0 4px 14px rgba(26,26,31,0.15);
+  transition:all 180ms var(--ease);
+}
+.wn-tick-btn:hover{
+  transform:scale(1.08);
+  box-shadow:0 6px 20px rgba(26,26,31,0.2);
+}
+.wn-tick-btn:active{transform:scale(0.92)}
+.wn-actions{
+  display:flex;align-items:center;gap:8px;
+  padding:0 4px;
+}
+
+/* Tick animation — celebrate the dopamine hit */
+@keyframes wn-tick-pulse{
+  0%{transform:scale(1)}
+  30%{transform:scale(1.05);box-shadow:0 0 0 8px rgba(107,158,122,0.25)}
+  60%{transform:scale(0.97)}
+  100%{transform:scale(0);opacity:0}
+}
+.wn-hero.wn-ticking{
+  animation:wn-tick-pulse 380ms ease-out forwards;
+  background:linear-gradient(135deg,rgba(107,158,122,0.2),rgba(156,195,162,0.18));
+  border-color:var(--mint);
+}
+@keyframes wn-skip-fade{
+  0%{transform:translateX(0);opacity:1}
+  100%{transform:translateX(-20px);opacity:0}
+}
+.wn-hero.wn-skipping{animation:wn-skip-fade 250ms ease-out forwards}
+
+/* All-caught-up state */
+.wn-celebrate{
+  text-align:center;padding:20px 16px;
+  background:linear-gradient(135deg,rgba(107,158,122,0.1),rgba(156,195,162,0.06));
+  border:1px solid rgba(107,158,122,0.2);
+  border-radius:14px;
+}
+.wn-celebrate-emoji{font-size:36px;margin-bottom:6px;line-height:1}
+.wn-celebrate-title{
+  font-family:var(--serif);font-size:18px;font-weight:600;
+  color:var(--fg);letter-spacing:-0.01em;
+}
+.wn-celebrate-sub{
+  font-size:12px;color:var(--text2);font-style:italic;
+  margin-top:4px;line-height:1.4;
+}
+.wn-empty{text-align:center;padding:18px 12px}
+.wn-empty-icon{font-size:32px;margin-bottom:6px}
+.wn-empty-msg{font-size:12px;color:var(--text2)}
+
+body.night-mode .wn-hero{
+  background:linear-gradient(135deg,rgba(240,235,227,0.08),rgba(240,235,227,0.04));
+}
+body.night-mode .wn-hero.wn-ticking{
+  background:linear-gradient(135deg,rgba(184,212,179,0.18),rgba(184,212,179,0.1));
+}
+body.night-mode .wn-celebrate{
+  background:linear-gradient(135deg,rgba(184,212,179,0.12),rgba(184,212,179,0.04));
+}
+
+/* ── BEDTIME CATCH-UP NUDGE ── */
+.bed-nudge{align-items:flex-start}
+.bed-nudge-items{
+  display:flex;flex-wrap:wrap;gap:6px;
+  margin-top:8px;
+}
+.bed-nudge-item{
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:var(--radius-pill);
+  padding:5px 12px;
+  font-family:var(--sans);font-size:11px;font-weight:600;
+  color:var(--fg);
+  cursor:pointer;
+  transition:all 160ms var(--ease);
+}
+.bed-nudge-item:hover{
+  background:var(--mint);color:#fff;
+  border-color:var(--mint);
+  transform:translateY(-1px);
+}
+.bed-nudge-actions{
+  display:flex;gap:6px;margin-top:10px;
+}
+body.night-mode .bed-nudge-item{background:rgba(240,235,227,0.06)}
+
+/* ── HABITS PAGE: Consistency hero on each card ── */
+.hb-consistency{
+  margin-top:6px;
+  padding:8px 10px;
+  background:rgba(26,26,31,0.025);
+  border-radius:8px;
+}
+.hb-consistency-head{
+  display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;
+  margin-bottom:6px;
+}
+.hb-consistency-pct{
+  font-family:var(--serif);font-size:22px;font-weight:600;
+  letter-spacing:-0.02em;line-height:1;font-variant-numeric:tabular-nums;
+}
+.hb-consistency-tone{
+  font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;
+}
+.hb-consistency-detail{
+  font-size:10px;color:var(--text3);
+  margin-left:auto;
+}
+.hb-consistency-bar{
+  height:4px;background:rgba(26,26,31,0.06);
+  border-radius:var(--radius-pill);overflow:hidden;
+}
+.hb-consistency-fill{
+  height:100%;border-radius:var(--radius-pill);
+  transition:width 600ms var(--ease);
+}
+.hb-anchor{
+  margin-left:6px;
+  font-size:10px;color:var(--text3);
+  letter-spacing:0;
+}
+body.night-mode .hb-consistency{background:rgba(240,235,227,0.04)}
