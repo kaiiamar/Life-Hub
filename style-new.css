@@ -686,7 +686,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-0.02em}
 .sub-page.active{display:block}
 
 /* ── GOAL ITEMS ── */
-.goal-item{border-bottom:none;padding:22px 24px}
+.goal-item{border-bottom:none;padding:22px 24px;padding-right:88px}
 .goal-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px}
 .goal-title{font-size:15px;font-weight:600;cursor:pointer}
 .goal-title:hover{color:var(--accent-dark)}

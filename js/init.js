@@ -137,7 +137,7 @@ function setupReminders(){
   }
   if(Notification.permission==='granted'){
     var el2=document.getElementById('dash-notification-prompt');
-    if(el2)el2.innerHTML='<div style="display:flex;justify-content:flex-end;margin-bottom:4px"><button class="btn btn-ghost btn-sm" onclick="openModal(\'notifSettings\')" style="font-size:11px">\uD83D\uDD14 Manage reminders</button></div>';
+    if(el2)el2.innerHTML='';
     subscribeToPush();
     setupInAppReminders()
   }
