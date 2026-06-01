@@ -158,7 +158,7 @@ else if(thisWeekWo>=3)cards.push(mkInsightCard('💪','Strong gym week!',thisWee
 var grid=document.getElementById('insights-grid');
 if(grid)grid.innerHTML=cards.length?cards.join(''):'<div class="card" style="text-align:center;padding:40px;grid-column:1/-1"><div style="font-size:36px;margin-bottom:12px">🌿</div><div style="font-size:14px;color:var(--text2)">Start logging to unlock insights!</div></div>';
 
-renderDebtCalc();renderCountdowns();renderInsightReviewTrends();renderMoodCorrelations()}
+renderDebtCalc();renderCountdowns();renderInsightReviewTrends();renderMoodCorrelations();renderInsightsNarrative()}
 
 function renderInsightReviewTrends(){
 var reviews=STATE.reviews&&STATE.reviews.monthly?STATE.reviews.monthly:{};
@@ -255,11 +255,8 @@ function renderMoodCorrelations(){
   var gymDates={},runDates={},taskDates={},gratitudeDates={};
   (STATE.workouts||[]).forEach(function(w){if(w.date&&(w.type||'').toLowerCase()!=='rest')gymDates[w.date]=true});
   (((STATE.metrics||{}).run)||[]).forEach(function(r){if(r.date)runDates[r.date]=true});
-  Object.keys(STATE.dailyPriorities||{}).forEach(function(d){
-    var list=STATE.dailyPriorities[d]||[];
-    var done=list.filter(function(t){return t.done}).length;
-    if(list.length>0&&done>=list.length*0.7)taskDates[d]=true;  // 70%+ tasks done
-  });
+  // Days where a task was completed (from the unified tasks list)
+  (STATE.tasks||[]).forEach(function(t){if(t.done&&t.doneAt)taskDates[t.doneAt]=true});
   (STATE.gratitude||[]).forEach(function(g){if(g.date)gratitudeDates[g.date]=true});
 
   // Overall mean
@@ -274,7 +271,7 @@ function renderMoodCorrelations(){
   var buckets=[
     {label:'gym days',emoji:'💪',data:bucketMean(gymDates),color:'var(--accent-dark)'},
     {label:'run days',emoji:'🏃',data:bucketMean(runDates),color:'var(--blue)'},
-    {label:'days with 70%+ tasks done',emoji:'✅',data:bucketMean(taskDates),color:'var(--mint)'},
+    {label:'days you completed a task',emoji:'✅',data:bucketMean(taskDates),color:'var(--mint)'},
     {label:'days you logged gratitude',emoji:'🙏',data:bucketMean(gratitudeDates),color:'var(--gold)'}
   ].filter(function(b){return b.data});
 
@@ -318,4 +315,102 @@ function renderMoodCorrelations(){
       +'</div>';
     }).join('')
     +'</div>';
+}
+
+
+// ── AI NARRATIVE — "this week's story" ──
+// Computes a compact week-vs-last-week stat summary client-side, then asks the
+// backend (Claude Haiku) for a 2-3 sentence narrative. Cached per-day in
+// localStorage so we don't spend tokens on every Insights visit.
+function renderInsightsNarrative(){
+  var card=document.getElementById('insights-narrative-card');
+  var el=document.getElementById('insights-narrative');
+  if(!card||!el)return;
+  if(typeof NOTIF_API==='undefined'||!NOTIF_API)return;
+
+  var todayKey=localDateKey(new Date());
+  var cacheKey='lh_narrative_'+todayKey;
+  // Serve cached narrative for today if present
+  try{
+    var cached=localStorage.getItem(cacheKey);
+    if(cached){card.style.display='';el.textContent=cached;return}
+  }catch(e){}
+
+  var stats=computeWeekStats();
+  // Need a baseline of data to bother
+  if(stats.habitsThisWeek==null&&stats.sessionsThisWeek==null&&stats.avgMoodThisWeek==null){
+    card.style.display='none';return;
+  }
+
+  card.style.display='';
+  el.innerHTML='<span class="insights-narrative-loading">Reading your week…</span>';
+
+  fetch(NOTIF_API+'/api/ai-narrative',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({stats:stats})
+  }).then(function(r){return r.json()}).then(function(data){
+    if(data&&data.narrative){
+      el.textContent=data.narrative;
+      try{localStorage.setItem(cacheKey,data.narrative)}catch(e){}
+    }else{
+      card.style.display='none';
+    }
+  }).catch(function(){card.style.display='none'});
+}
+
+function computeWeekStats(){
+  var todayKey=localDateKey(new Date());
+  var thisWk=weekDays(weekKey(new Date()));
+  var lastWkStartD=new Date(weekKey(new Date()));lastWkStartD.setDate(lastWkStartD.getDate()-7);
+  var lastWk=weekDays(localDateKey(lastWkStartD));
+
+  function habitPct(days){
+    var total=0,done=0;
+    (STATE.habits||[]).forEach(function(h){
+      var startKey=h.startDate||'';
+      days.forEach(function(d){
+        if(d>todayKey)return;
+        if(d<startKey)return;
+        var st=typeof habitDayStatus==='function'?habitDayStatus(h,d):'todo';
+        if(st==='done'||st==='todo'){total++;if(h.logs&&h.logs[d])done++}
+      });
+    });
+    return total>0?Math.round(done/total*100):null;
+  }
+  function sessions(days){
+    return (STATE.workouts||[]).filter(function(w){return days.indexOf(w.date)!==-1&&(w.type||'').toLowerCase()!=='rest'}).length
+      +(((STATE.metrics||{}).run)||[]).filter(function(r){return days.indexOf(r.date)!==-1}).length;
+  }
+  function avgMood(days){
+    var vals=days.filter(function(d){return d<=todayKey&&(STATE.mood||{})[d]&&(STATE.mood||{})[d].mood}).map(function(d){return Number(STATE.mood[d].mood)});
+    return vals.length?Math.round(vals.reduce(function(s,v){return s+v},0)/vals.length*10)/10:null;
+  }
+  function avgSleep(days){
+    var vals=days.filter(function(d){return (STATE.mood||{})[d]&&(STATE.mood||{})[d].sleep}).map(function(d){return Number(STATE.mood[d].sleep)});
+    return vals.length?Math.round(vals.reduce(function(s,v){return s+v},0)/vals.length*10)/10:null;
+  }
+
+  var tasksDone=(STATE.tasks||[]).filter(function(t){return t.done&&t.doneAt&&thisWk.indexOf(t.doneAt)!==-1}).length;
+
+  // Upcoming training event / nearest goal deadline
+  var upcoming=null;
+  var soonGoal=(STATE.goals||[]).filter(function(g){return !g.done&&g.deadline&&g.deadline>=todayKey}).sort(function(a,b){return a.deadline.localeCompare(b.deadline)})[0];
+  if(soonGoal){
+    var dl=Math.ceil((new Date(soonGoal.deadline)-new Date())/86400000);
+    if(dl<=30)upcoming=soonGoal.name+' in '+dl+' days';
+  }
+
+  return {
+    habitsThisWeek:habitPct(thisWk),
+    habitsLastWeek:habitPct(lastWk),
+    sessionsThisWeek:sessions(thisWk),
+    sessionsLastWeek:sessions(lastWk),
+    avgMoodThisWeek:avgMood(thisWk),
+    avgMoodLastWeek:avgMood(lastWk),
+    avgSleepThisWeek:avgSleep(thisWk),
+    avgSleepLastWeek:avgSleep(lastWk),
+    tasksDoneThisWeek:tasksDone,
+    upcomingEvent:upcoming
+  };
 }
