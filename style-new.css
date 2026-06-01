@@ -4019,3 +4019,132 @@ body.night-mode .bed-nudge-item{background:rgba(240,235,227,0.06)}
   letter-spacing:0;
 }
 body.night-mode .hb-consistency{background:rgba(240,235,227,0.04)}
+
+
+/* ── TASKS — unified flat list ── */
+.task-section{margin-bottom:14px}
+.task-section:last-of-type{margin-bottom:8px}
+.task-section-head{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:6px 2px 8px;
+  font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;
+  color:var(--text2);
+}
+.task-section-label{color:inherit}
+.task-section-count{
+  color:var(--text3);font-weight:500;letter-spacing:0;
+  font-size:11px;text-transform:none;
+}
+.task-priorities-section{
+  background:linear-gradient(135deg,rgba(217,123,108,0.06),rgba(234,208,170,0.04));
+  border:1px solid var(--accent-dim);
+  border-radius:var(--radius-sm);
+  padding:8px 10px;margin-bottom:14px;
+}
+.task-priorities-section .task-section-head{padding:2px 4px 6px}
+.task-priorities-section .task-section-label{color:var(--accent-dark)}
+
+.task-overdue-section .task-section-label{color:var(--red)}
+
+.task-row{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 4px;
+  border-radius:8px;
+  transition:background 140ms var(--ease);
+}
+.task-row:hover{background:var(--bg3)}
+.task-row.done .task-text{text-decoration:line-through;color:var(--text3)}
+.task-row.is-priority{padding:8px 4px}
+
+.task-check{
+  width:22px;height:22px;border-radius:50%;
+  border:2px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  cursor:pointer;
+  font-size:11px;font-weight:700;color:transparent;
+  transition:all 160ms var(--ease);
+}
+.task-check:hover{border-color:var(--accent)}
+.task-row.done .task-check{
+  background:var(--mint);border-color:var(--mint);color:#fff;
+}
+.task-priorities-section .task-check{border-color:var(--accent)}
+.task-priorities-section .task-check:hover{transform:scale(1.08)}
+
+.task-body{
+  flex:1;min-width:0;
+  display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;
+  cursor:pointer;
+}
+.task-text{
+  font-size:13px;color:var(--fg);font-weight:500;
+  word-break:break-word;
+}
+.task-priorities-section .task-text{font-weight:600}
+.task-due{
+  font-size:10px;font-weight:600;letter-spacing:0.02em;
+  padding:2px 7px;border-radius:var(--radius-pill);
+  background:var(--bg3);color:var(--text2);flex-shrink:0;
+}
+.task-due.today{background:var(--accent-dim);color:var(--accent-dark)}
+.task-due.overdue{background:rgba(229,57,53,0.12);color:var(--red)}
+
+.task-star{
+  background:transparent;border:none;
+  font-size:14px;cursor:pointer;
+  padding:4px 6px;line-height:1;
+  color:var(--text3);
+  transition:all 160ms var(--ease);
+  flex-shrink:0;
+}
+.task-star:hover{color:var(--gold);transform:scale(1.15)}
+.task-star.on{color:var(--gold)}
+
+.task-action{
+  background:transparent;border:none;
+  font-size:13px;cursor:pointer;
+  padding:4px 6px;line-height:1;
+  color:var(--text3);
+  transition:color 160ms var(--ease);
+  flex-shrink:0;
+}
+.task-action:hover{color:var(--fg)}
+.task-action.task-delete:hover{color:var(--red)}
+
+.task-empty{
+  text-align:center;padding:18px 12px;
+  font-size:13px;color:var(--text3);font-style:italic;
+}
+
+.task-add-row{
+  display:flex;gap:6px;
+  margin-top:10px;padding-top:10px;
+  border-top:1px solid var(--border);
+}
+.task-add-row input{
+  flex:1;padding:9px 12px;
+  background:var(--white);
+  border:1.5px solid var(--border2);
+  border-radius:var(--radius-sm);
+  color:var(--fg);
+  font-family:var(--sans);font-size:13px;
+  outline:none;
+  transition:border-color 160ms var(--ease);
+}
+.task-add-row input:focus{border-color:var(--accent)}
+.task-add-btn{
+  width:36px;height:36px;
+  background:var(--accent);color:#fff;
+  border:none;border-radius:var(--radius-sm);
+  font-size:18px;font-weight:600;cursor:pointer;
+  transition:all 160ms var(--ease);
+}
+.task-add-btn:hover{transform:scale(1.05)}
+
+.task-later summary{cursor:pointer;list-style:none}
+.task-later summary::-webkit-details-marker{display:none}
+.task-later summary::before{content:'▸';margin-right:6px;font-size:9px;color:var(--text3);transition:transform 200ms var(--ease)}
+.task-later[open] summary::before{transform:rotate(90deg);display:inline-block}
+
+body.night-mode .task-row:hover{background:rgba(240,235,227,0.04)}
+body.night-mode .task-add-row input{background:rgba(240,235,227,0.06)}

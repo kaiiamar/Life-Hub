@@ -217,52 +217,8 @@ function renderDashboard(){
 
   var ppEl=document.getElementById('dash-priorities-preview');
   if(ppEl){
-    if(!STATE.dailyPriorities)STATE.dailyPriorities={};
-    var todayPris=STATE.dailyPriorities[todayKey]||[];
-    var wkKey=weekKey(now);
-    if(!STATE.weeklyPlans)STATE.weeklyPlans={};
-    if(!STATE.weeklyPlans[wkKey])STATE.weeklyPlans[wkKey]={priorities:['','',''],prioritiesDone:{}};
-    var wPlan=STATE.weeklyPlans[wkKey];
-    if(!wPlan.priorities)wPlan.priorities=['','',''];
-    if(!wPlan.prioritiesDone)wPlan.prioritiesDone={};
-    var wSet=wPlan.priorities.filter(function(p){return p&&p.trim()}).length;
-    var wDone=wPlan.priorities.filter(function(p,i){return p&&p.trim()&&wPlan.prioritiesDone[i]}).length;
-
-    var html='';
-
-    // Weekly priorities anchor block (always at top)
-    html+='<div class="dash-w-anchors">';
-    html+='<div class="dash-w-anchors-head"><span class="dash-w-anchors-label">📌 This week</span>'
-      +(wSet>0?'<span class="dash-w-anchors-count">'+wDone+'/'+wSet+'</span>':'')
-      +'</div>';
-    html+=wPlan.priorities.map(function(val,i){
-      var done=!!wPlan.prioritiesDone[i];
-      var safe=(val||'').replace(/"/g,'&quot;');
-      return '<div class="dash-w-anchor-row'+(done?' done':'')+'">'
-        +'<div class="dash-w-anchor-tick" onclick="toggleDashWeeklyTop3('+i+')">'+(done?'✓':(i+1))+'</div>'
-        +'<input type="text" class="dash-w-anchor-input" value="'+safe+'" placeholder="Top priority '+(i+1)+'…" onblur="saveDashWeeklyTop3('+i+',this.value)" onkeydown="if(event.key===\'Enter\'){this.blur()}">'
-        +'</div>';
-    }).join('');
-    html+='</div>';
-
-    // Today's tasks
-    if(todayPris.length){
-      html+='<div class="dash-today-head"><span class="dash-today-label">✅ Today</span><span class="dash-today-count">'+todayPris.filter(function(p){return p.done}).length+'/'+todayPris.length+'</span></div>';
-      html+=todayPris.map(function(p,i){
-        var done=p.done;
-        return '<div class="daily-pri-row'+(done?' done':'')+'">'
-          +'<div class="daily-pri-check" onclick="toggleDailyPri(\''+todayKey+'\','+i+')">'+(done?'<span>\u2713</span>':'')+'</div>'
-          +'<span class="daily-pri-text">'+escapeHtml(p.text)+'</span>'
-          +'<button class="daily-pri-action" title="Move to tomorrow" onclick="moveDailyPriToTomorrow(\''+todayKey+'\','+i+')">→</button>'
-          +'<button class="daily-pri-action daily-pri-delete" title="Remove" onclick="deleteDailyPri(\''+todayKey+'\','+i+')">×</button>'
-          +'</div>';
-      }).join('');
-    }
-    html+='<div class="daily-pri-add-row">'
-      +'<input type="text" id="daily-pri-input" placeholder="'+(todayPris.length?'Add another task…':'What do you need to get done today?')+'" onkeydown="if(event.key===\'Enter\'){addDailyPri()}">'
-      +'<button class="daily-pri-add-btn" onclick="addDailyPri()">+</button>'
-      +'</div>';
-    ppEl.innerHTML=html;
+    if(!STATE.tasks)STATE.tasks=[];
+    ppEl.innerHTML=renderTasksCard();
   }
   var days7=weekDays(weekKey(now));var dl=['S','M','T','W','T','F','S'];
   // What's next card (replaces dash-habits-preview)
@@ -463,84 +419,68 @@ function renderTasksArchive(){
   var statsEl=document.getElementById('tasks-stats');
   var archEl=document.getElementById('tasks-archive');
   if(!archEl)return;
-  if(!STATE.dailyPriorities)STATE.dailyPriorities={};
-  var allKeys=Object.keys(STATE.dailyPriorities).filter(function(k){
-    return (STATE.dailyPriorities[k]||[]).length>0;
-  }).sort().reverse();
+  if(!STATE.tasks)STATE.tasks=[];
+  var all=STATE.tasks.slice();
 
-  if(allKeys.length===0){
+  if(!all.length){
     if(statsEl)statsEl.innerHTML='';
     archEl.innerHTML='<div class="empty"><div class="empty-icon">📝</div>No tasks yet. Add some from the dashboard to start building history.</div>';
     return;
   }
 
-  // Aggregate stats
-  var totalTasks=0,totalDone=0;
-  var last30=0,last30Done=0;
+  var totalTasks=all.length;
+  var totalDone=all.filter(function(t){return t.done}).length;
   var thirtyAgo=new Date();thirtyAgo.setDate(thirtyAgo.getDate()-30);
   var thirtyKey=localDateKey(thirtyAgo);
-  allKeys.forEach(function(k){
-    var list=STATE.dailyPriorities[k]||[];
-    list.forEach(function(t){
-      totalTasks++;
-      if(t.done)totalDone++;
-      if(k>=thirtyKey){
-        last30++;
-        if(t.done)last30Done++;
-      }
-    });
-  });
-  var overallPct=totalTasks>0?Math.round(totalDone/totalTasks*100):0;
-  var recentPct=last30>0?Math.round(last30Done/last30*100):0;
+  var last30Done=all.filter(function(t){return t.done&&t.doneAt&&t.doneAt>=thirtyKey}).length;
   var todayKey=localDateKey(new Date());
-  var todayList=STATE.dailyPriorities[todayKey]||[];
-  var todayDone=todayList.filter(function(t){return t.done}).length;
+  var doneToday=all.filter(function(t){return t.done&&t.doneAt===todayKey}).length;
+
+  var overallPct=totalTasks>0?Math.round(totalDone/totalTasks*100):0;
 
   if(statsEl){
     statsEl.innerHTML=
       '<div class="card-sm" style="text-align:center;border-top:3px solid var(--accent)"><div style="font-family:var(--serif);font-size:26px;font-weight:500;color:var(--accent-dark);line-height:1">'+totalDone+'</div><div style="font-size:11px;color:var(--text2);margin-top:4px">of '+totalTasks+' all-time</div></div>'
       +'<div class="card-sm" style="text-align:center;border-top:3px solid var(--mint)"><div style="font-family:var(--serif);font-size:26px;font-weight:500;color:#5A8A55;line-height:1">'+overallPct+'%</div><div style="font-size:11px;color:var(--text2);margin-top:4px">completion rate</div></div>'
-      +'<div class="card-sm" style="text-align:center;border-top:3px solid var(--purple)"><div style="font-family:var(--serif);font-size:26px;font-weight:500;color:#7A6A9E;line-height:1">'+recentPct+'%</div><div style="font-size:11px;color:var(--text2);margin-top:4px">last 30 days</div></div>'
-      +'<div class="card-sm" style="text-align:center;border-top:3px solid var(--gold)"><div style="font-family:var(--serif);font-size:26px;font-weight:500;color:#B8860B;line-height:1">'+todayDone+'/'+todayList.length+'</div><div style="font-size:11px;color:var(--text2);margin-top:4px">today</div></div>';
+      +'<div class="card-sm" style="text-align:center;border-top:3px solid var(--purple)"><div style="font-family:var(--serif);font-size:26px;font-weight:500;color:#7A6A9E;line-height:1">'+last30Done+'</div><div style="font-size:11px;color:var(--text2);margin-top:4px">done last 30d</div></div>'
+      +'<div class="card-sm" style="text-align:center;border-top:3px solid var(--gold)"><div style="font-family:var(--serif);font-size:26px;font-weight:500;color:#B8860B;line-height:1">'+doneToday+'</div><div style="font-size:11px;color:var(--text2);margin-top:4px">done today</div></div>';
   }
 
-  // Group by date and render
-  archEl.innerHTML=allKeys.map(function(k){
-    var list=STATE.dailyPriorities[k]||[];
-    var done=list.filter(function(t){return t.done}).length;
-    var total=list.length;
-    var pct=Math.round(done/total*100);
-    var d=new Date(k);
-    var isToday=k===todayKey;
-    var dateLabel=isToday?'Today':d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:d.getFullYear()!==new Date().getFullYear()?'numeric':undefined});
-    return '<div class="card" style="margin-bottom:14px">'
-      +'<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap">'
-        +'<div>'
-          +'<div style="font-family:var(--serif);font-size:18px;font-weight:500;letter-spacing:-0.01em">'+dateLabel+(isToday?' <span class="badge" style="background:var(--accent);color:var(--white);font-size:10px;margin-left:6px;vertical-align:middle">LIVE</span>':'')+'</div>'
-          +'<div style="font-size:12px;color:var(--text2);margin-top:2px">'+done+' of '+total+' complete · '+pct+'%</div>'
-        +'</div>'
-        +'<div style="min-width:160px;flex:1;max-width:260px">'
-          +'<div class="pbar-wrap" style="margin:0"><div class="pbar" style="width:'+pct+'%"></div></div>'
-        +'</div>'
-      +'</div>'
-      +'<div style="display:flex;flex-direction:column;gap:6px">'
-        +list.map(function(t,idx){
-          return '<div class="tasks-arch-item'+(t.done?' done':'')+'" onclick="toggleArchiveTask(\''+k+'\','+idx+')">'
-            +'<div class="tasks-arch-check">'+(t.done?'✓':'')+'</div>'
-            +'<span>'+escapeHtml(t.text)+'</span>'
-            +'</div>';
-        }).join('')
-      +'</div>'
-      +'</div>';
-  }).join('');
+  // Group: open (sorted by due then created), done (sorted by doneAt desc)
+  var open=all.filter(function(t){return !t.done}).sort(byDueDate);
+  var done=all.filter(function(t){return t.done}).sort(function(a,b){return (b.doneAt||'').localeCompare(a.doneAt||'')});
+
+  var html='';
+  html+='<div class="card" style="margin-bottom:14px"><div class="card-label">Open · '+open.length+'</div>';
+  if(!open.length){
+    html+='<div style="font-size:13px;color:var(--text3);padding:8px 0">All clear ✓</div>';
+  }else{
+    html+=open.map(function(t){return renderArchiveTaskRow(t)}).join('');
+  }
+  html+='</div>';
+
+  if(done.length){
+    html+='<details class="card" style="margin-bottom:14px"><summary class="card-label" style="cursor:pointer">Completed · '+done.length+'</summary>';
+    html+=done.slice(0,100).map(function(t){return renderArchiveTaskRow(t)}).join('');
+    if(done.length>100)html+='<div style="font-size:11px;color:var(--text3);padding-top:6px">(showing latest 100)</div>';
+    html+='</details>';
+  }
+
+  archEl.innerHTML=html;
 }
 
-function toggleArchiveTask(dateKey,idx){
-  var list=(STATE.dailyPriorities||{})[dateKey];
-  if(!list||!list[idx])return;
-  list[idx].done=!list[idx].done;
-  saveState();
-  renderTasksArchive();
+function renderArchiveTaskRow(t){
+  var due=t.dueDate?fmtDueRel(t.dueDate):'';
+  var dueClass=t.dueDate&&!t.done&&t.dueDate<localDateKey(new Date())?'overdue':'';
+  return '<div class="task-row'+(t.done?' done':'')+'" style="background:transparent">'
+    +'<div class="task-check" onclick="toggleTask(\''+t.id+'\');setTimeout(renderTasksArchive,30)">'+(t.done?'✓':'')+'</div>'
+    +'<div class="task-body">'
+      +'<span class="task-text">'+escapeHtml(t.text)+'</span>'
+      +(due?'<span class="task-due '+dueClass+'">'+due+'</span>':'')
+    +'</div>'
+    +'<button class="task-action" onclick="openTaskEditModal(\''+t.id+'\')" title="Edit">⋯</button>'
+    +'<button class="task-action task-delete" onclick="deleteTask(\''+t.id+'\');setTimeout(renderTasksArchive,30)" title="Remove">×</button>'
+    +'</div>';
 }
 
 
@@ -1024,5 +964,329 @@ function bedNudgeTickAll(){
 function dismissBedNudge(){
   var todayK=localDateKey(new Date());
   try{sessionStorage.setItem('lh_bed_nudge_dismissed:'+todayK,'1')}catch(e){}
+  renderDashboard();
+}
+
+
+// ── TASKS (unified flat list with due dates + week priorities) ──
+function renderTasksCard(){
+  if(!STATE.tasks)STATE.tasks=[];
+  var todayKey=localDateKey(new Date());
+  var wkKey=weekKey(new Date());
+  // Compute week end for "coming up" cutoff
+  var wkEnd=new Date();wkEnd.setDate(wkEnd.getDate()+6);
+  var wkEndKey=localDateKey(wkEnd);
+
+  var open=STATE.tasks.filter(function(t){return !t.done});
+
+  // Buckets
+  var thisWeekPriorities=open.filter(function(t){return t.weekPriority===wkKey});
+  // Exclude priorities from other buckets so we don't double-count
+  var nonPriority=open.filter(function(t){return t.weekPriority!==wkKey});
+  var overdue=nonPriority.filter(function(t){return t.dueDate&&t.dueDate<todayKey}).sort(byDueDate);
+  var today=nonPriority.filter(function(t){return !t.dueDate||t.dueDate===todayKey}).sort(byDueDate);
+  var upcoming=nonPriority.filter(function(t){return t.dueDate&&t.dueDate>todayKey&&t.dueDate<=wkEndKey}).sort(byDueDate);
+  var later=nonPriority.filter(function(t){return t.dueDate&&t.dueDate>wkEndKey}).sort(byDueDate);
+
+  var html='';
+
+  // Priorities block
+  if(thisWeekPriorities.length){
+    var pDone=thisWeekPriorities.filter(function(t){return t.done}).length;
+    html+='<div class="task-section task-priorities-section">';
+    html+='<div class="task-section-head"><span class="task-section-label">⭐ This week\'s priorities</span><span class="task-section-count">'+pDone+'/'+thisWeekPriorities.length+'</span></div>';
+    thisWeekPriorities.forEach(function(t){html+=renderTaskRow(t,true)});
+    html+='</div>';
+  }
+
+  if(overdue.length){
+    html+='<div class="task-section task-overdue-section">';
+    html+='<div class="task-section-head"><span class="task-section-label" style="color:var(--red)">⚠️ Overdue</span><span class="task-section-count">'+overdue.length+'</span></div>';
+    overdue.forEach(function(t){html+=renderTaskRow(t,false)});
+    html+='</div>';
+  }
+
+  if(today.length){
+    html+='<div class="task-section">';
+    html+='<div class="task-section-head"><span class="task-section-label">📌 Today</span></div>';
+    today.forEach(function(t){html+=renderTaskRow(t,false)});
+    html+='</div>';
+  }
+
+  if(upcoming.length){
+    html+='<div class="task-section">';
+    html+='<div class="task-section-head"><span class="task-section-label">📅 Coming up</span></div>';
+    upcoming.forEach(function(t){html+=renderTaskRow(t,false)});
+    html+='</div>';
+  }
+
+  if(later.length){
+    html+='<details class="task-section task-later"><summary class="task-section-head"><span class="task-section-label">📌 Later</span><span class="task-section-count">'+later.length+'</span></summary>';
+    later.forEach(function(t){html+=renderTaskRow(t,false)});
+    html+='</details>';
+  }
+
+  // Empty state if nothing open at all
+  if(!open.length){
+    html+='<div class="task-empty">Nothing on your list. Add the first thing below.</div>';
+  }
+
+  // Add row
+  html+='<div class="task-add-row">'
+    +'<input type="text" id="task-add-input" placeholder="Add a task… (try \'book flights by friday\')" onkeydown="if(event.key===\'Enter\')addTaskFromInput()">'
+    +'<button class="task-add-btn" onclick="addTaskFromInput()">+</button>'
+    +'</div>';
+
+  return html;
+}
+
+function byDueDate(a,b){
+  var ad=a.dueDate||'9999-12-31';
+  var bd=b.dueDate||'9999-12-31';
+  return ad.localeCompare(bd);
+}
+
+function renderTaskRow(t,isPriority){
+  var todayKey=localDateKey(new Date());
+  var wkKey=weekKey(new Date());
+  var dueLabel='';
+  var dueClass='';
+  if(t.dueDate){
+    if(t.dueDate<todayKey){dueLabel=fmtDueRel(t.dueDate);dueClass='overdue'}
+    else if(t.dueDate===todayKey){dueLabel='today';dueClass='today'}
+    else dueLabel=fmtDueRel(t.dueDate);
+  }
+  var isWeekP=t.weekPriority===wkKey;
+  var starIcon=isWeekP?'⭐':'☆';
+  return '<div class="task-row'+(t.done?' done':'')+(isPriority?' is-priority':'')+'">'
+    +'<div class="task-check" onclick="toggleTask(\''+t.id+'\')">'+(t.done?'✓':'')+'</div>'
+    +'<div class="task-body" onclick="editTaskInline(\''+t.id+'\')">'
+      +'<span class="task-text">'+escapeHtml(t.text)+'</span>'
+      +(dueLabel?'<span class="task-due '+dueClass+'">'+dueLabel+'</span>':'')
+    +'</div>'
+    +'<button class="task-star'+(isWeekP?' on':'')+'" onclick="toggleTaskWeekPriority(\''+t.id+'\')" title="'+(isWeekP?'Remove from this week\'s priorities':'Mark as priority for this week')+'">'+starIcon+'</button>'
+    +'<button class="task-action" onclick="openTaskEditModal(\''+t.id+'\')" title="Edit">⋯</button>'
+    +'<button class="task-action task-delete" onclick="deleteTask(\''+t.id+'\')" title="Remove">×</button>'
+    +'</div>';
+}
+
+function fmtDueRel(dateKey){
+  if(!dateKey)return '';
+  var todayKey=localDateKey(new Date());
+  var d=new Date(dateKey+'T12:00:00');
+  var t=new Date(todayKey+'T12:00:00');
+  var diff=Math.round((d-t)/86400000);
+  if(diff===0)return 'today';
+  if(diff===1)return 'tomorrow';
+  if(diff===-1)return 'yesterday';
+  if(diff>1&&diff<=6)return 'in '+diff+'d';
+  if(diff<-1&&diff>=-6)return Math.abs(diff)+'d ago';
+  return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+}
+
+// ── Add tasks (with natural-language date parsing) ──
+function addTaskFromInput(){
+  var inp=document.getElementById('task-add-input');
+  if(!inp)return;
+  var raw=inp.value.trim();
+  if(!raw)return;
+  var parsed=parseTaskInput(raw);
+  STATE.tasks.push({
+    id:g(),
+    text:parsed.text,
+    done:false,
+    dueDate:parsed.dueDate||null,
+    doneAt:null,
+    createdAt:localDateKey(new Date())
+  });
+  inp.value='';
+  saveState();
+  renderDashboard();
+}
+
+// Parse "do X by friday" → {text:'do X', dueDate:'2026-06-05'}
+function parseTaskInput(raw){
+  var byMatch=raw.match(/^(.+?)\s+by\s+(.+)$/i);
+  if(byMatch){
+    var d=parseNaturalDate(byMatch[2]);
+    if(d)return {text:byMatch[1].trim(),dueDate:d};
+  }
+  var onMatch=raw.match(/^(.+?)\s+on\s+(.+)$/i);
+  if(onMatch){
+    var d2=parseNaturalDate(onMatch[2]);
+    if(d2)return {text:onMatch[1].trim(),dueDate:d2};
+  }
+  return {text:raw,dueDate:null};
+}
+
+// Natural language date parser. Returns YYYY-MM-DD or null.
+function parseNaturalDate(input){
+  if(!input)return null;
+  var s=input.trim().toLowerCase();
+  var now=new Date();now.setHours(12,0,0,0);
+  var dayMs=86400000;
+
+  if(s==='today'||s==='tonight')return localDateKey(now);
+  if(s==='tomorrow')return localDateKey(new Date(now.getTime()+dayMs));
+  if(s==='yesterday')return localDateKey(new Date(now.getTime()-dayMs));
+
+  // Day of week: "monday", "next monday", "this monday"
+  var dayNames=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  var dayMatch=s.match(/^(?:next\s+|this\s+)?(\w+)$/);
+  if(dayMatch){
+    var idx=dayNames.indexOf(dayMatch[1]);
+    if(idx>-1){
+      var diff=idx-now.getDay();
+      if(s.startsWith('next ')){
+        if(diff<=0)diff+=7;
+        else diff+=7;
+      }else{
+        if(diff<=0)diff+=7;
+      }
+      var d=new Date(now.getTime()+diff*dayMs);
+      return localDateKey(d);
+    }
+  }
+
+  // "in 3 days", "in 2 weeks"
+  var inMatch=s.match(/^in\s+(\d+)\s+(day|days|week|weeks)$/);
+  if(inMatch){
+    var n=Number(inMatch[1]);
+    var unit=inMatch[2].startsWith('week')?7:1;
+    return localDateKey(new Date(now.getTime()+n*unit*dayMs));
+  }
+
+  // "5 dec", "december 5", "dec 5"
+  var monthNames=['january','february','march','april','may','june','july','august','september','october','november','december'];
+  var monthShorts=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  function findMonth(str){
+    var i=monthNames.indexOf(str);
+    if(i>-1)return i;
+    return monthShorts.indexOf(str.slice(0,3));
+  }
+  var dmMatch=s.match(/^(\d{1,2})(?:st|nd|rd|th)?\s+(\w+)$/);
+  if(dmMatch){
+    var month=findMonth(dmMatch[2]);
+    if(month>-1){
+      var year=now.getFullYear();
+      var dd=Number(dmMatch[1]);
+      var dt=new Date(year,month,dd,12,0,0);
+      if(dt<now)dt.setFullYear(year+1);
+      return localDateKey(dt);
+    }
+  }
+  var mdMatch=s.match(/^(\w+)\s+(\d{1,2})(?:st|nd|rd|th)?$/);
+  if(mdMatch){
+    var month2=findMonth(mdMatch[1]);
+    if(month2>-1){
+      var dd2=Number(mdMatch[2]);
+      var year2=now.getFullYear();
+      var dt2=new Date(year2,month2,dd2,12,0,0);
+      if(dt2<now)dt2.setFullYear(year2+1);
+      return localDateKey(dt2);
+    }
+  }
+
+  // "5/12" or "5/12/26" UK format
+  var slashMatch=s.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+  if(slashMatch){
+    var d3=Number(slashMatch[1]);
+    var m3=Number(slashMatch[2])-1;
+    var y3=slashMatch[3]?Number(slashMatch[3]):now.getFullYear();
+    if(y3<100)y3+=2000;
+    var dt3=new Date(y3,m3,d3,12,0,0);
+    if(dt3<now&&!slashMatch[3])dt3.setFullYear(y3+1);
+    return localDateKey(dt3);
+  }
+
+  // "this week", "next week" → end of that week
+  if(s==='this week'){
+    var endThis=new Date(now);endThis.setDate(endThis.getDate()+(6-endThis.getDay()));
+    return localDateKey(endThis);
+  }
+  if(s==='next week'){
+    var startNext=new Date(now);startNext.setDate(startNext.getDate()+(7-startNext.getDay()));
+    var endNext=new Date(startNext);endNext.setDate(endNext.getDate()+6);
+    return localDateKey(endNext);
+  }
+
+  // Plain ISO date
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+
+  return null;
+}
+
+function toggleTask(id){
+  var t=(STATE.tasks||[]).find(function(x){return x.id===id});
+  if(!t)return;
+  var wasDone=!!t.done;
+  t.done=!wasDone;
+  t.doneAt=t.done?localDateKey(new Date()):null;
+  saveState();
+  renderDashboard();
+  if(!wasDone&&t.done){
+    if(typeof showCelebrationToast==='function')showCelebrationToast('Done — '+t.text,'✓');
+    if(typeof checkAllDoneToday==='function')checkAllDoneToday();
+  }
+}
+
+function toggleTaskWeekPriority(id){
+  var t=(STATE.tasks||[]).find(function(x){return x.id===id});
+  if(!t)return;
+  var wkKey=weekKey(new Date());
+  if(t.weekPriority===wkKey)delete t.weekPriority;
+  else t.weekPriority=wkKey;
+  saveState();
+  renderDashboard();
+}
+
+function deleteTask(id){
+  if(typeof confirmDelete==='function'){
+    confirmDelete('Remove this task?',function(){
+      STATE.tasks=(STATE.tasks||[]).filter(function(t){return t.id!==id});
+      saveState();
+      renderDashboard();
+    });
+  }else{
+    STATE.tasks=(STATE.tasks||[]).filter(function(t){return t.id!==id});
+    saveState();
+    renderDashboard();
+  }
+}
+
+function editTaskInline(id){
+  // Quick-action: just open the modal
+  openTaskEditModal(id);
+}
+function openTaskEditModal(id){
+  if(typeof openModal==='function')openModal('editTask',id);
+}
+function saveTaskEdit(id){
+  var t=(STATE.tasks||[]).find(function(x){return x.id===id});
+  if(!t)return;
+  var text=(document.getElementById('m-task-text')||{}).value||'';
+  var due=(document.getElementById('m-task-due')||{}).value||'';
+  if(!text.trim())return;
+  t.text=text.trim();
+  t.dueDate=due||null;
+  saveState();
+  if(typeof closeModal==='function')closeModal();
+  renderDashboard();
+}
+
+
+function saveTaskEditFromModal(id){
+  var t=(STATE.tasks||[]).find(function(x){return x.id===id});
+  if(!t)return;
+  var text=((document.getElementById('m-task-text')||{}).value||'').trim();
+  var due=(document.getElementById('m-task-due')||{}).value||'';
+  var priChecked=!!(document.getElementById('m-task-pri')||{}).checked;
+  if(text)t.text=text;
+  t.dueDate=due||null;
+  var wkKey=weekKey(new Date());
+  if(priChecked)t.weekPriority=wkKey;
+  else if(t.weekPriority===wkKey)delete t.weekPriority;
+  saveState();
+  if(typeof closeModal==='function')closeModal();
   renderDashboard();
 }
