@@ -28,6 +28,12 @@ loadFromCloud(function(){
     if(logKeys.length){logKeys.sort();h.startDate=logKeys[0]}
     else h.startDate=localDateKey(new Date());
   });
+  // Backfill anchor on existing habits — auto-suggest from name
+  (STATE.habits||[]).forEach(function(h){
+    if(h.anchor)return;
+    if(typeof autoSuggestAnchor==='function')h.anchor=autoSuggestAnchor(h.name);
+    else h.anchor='anytime';
+  });
   // Auto-correct "debt free" type goals: target should be 0, startProgress = initial debt total
   (STATE.goals||[]).forEach(function(go){
     var name=(go.name||'').toLowerCase();

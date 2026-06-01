@@ -84,6 +84,26 @@ function renderDashboard(){
     var existing=(STATE.reviews&&STATE.reviews.monthly&&STATE.reviews.monthly[monthKey]);
 
     var nudges=[];
+    // Bedtime catch-up nudge — 9pm to midnight, list any untracked-but-due habits
+    var hr2=now.getHours();
+    if(hr2>=21){
+      var todayK_b=localDateKey(now);
+      var dueButNotDone=(STATE.habits||[]).filter(function(h){
+        if(!isHabitDueToday(h))return false;
+        if(h.logs&&h.logs[todayK_b])return false;
+        return true;
+      });
+      if(dueButNotDone.length){
+        var bedDismissedKey='lh_bed_nudge_dismissed:'+todayK_b;
+        var bedDismissed=false;try{bedDismissed=!!sessionStorage.getItem(bedDismissedKey)}catch(e){}
+        if(!bedDismissed){
+          var bedItems=dueButNotDone.slice(0,5).map(function(h){
+            return '<button class="bed-nudge-item" onclick="bedNudgeTick(\''+h.id+'\')">'+(h.icon||'✅')+' '+escapeHtml(h.name)+'</button>';
+          }).join('');
+          nudges.push('<div class="review-nudge bed-nudge"><div class="review-nudge-icon" style="background:rgba(155,135,190,0.15)">🌙</div><div class="review-nudge-body" style="flex:1"><div class="review-nudge-title">Before bed catch-up</div><div class="review-nudge-sub">'+dueButNotDone.length+' habit'+(dueButNotDone.length===1?'':'s')+' untracked today. One tap each.</div><div class="bed-nudge-items">'+bedItems+'</div><div class="bed-nudge-actions"><button class="btn btn-accent btn-sm" onclick="bedNudgeTickAll()">Tick all</button><button class="btn btn-ghost btn-sm" onclick="dismissBedNudge()">Dismiss</button></div></div></div>');
+        }
+      }
+    }
     // Evening gratitude nudge — after 6pm with nothing logged today
     var todayK_n=localDateKey(now);
     var hasGratitudeToday=(STATE.gratitude||[]).some(function(e){return e.date===todayK_n});
@@ -245,43 +265,8 @@ function renderDashboard(){
     ppEl.innerHTML=html;
   }
   var days7=weekDays(weekKey(now));var dl=['S','M','T','W','T','F','S'];
-  var hpEl=document.getElementById('dash-habits-preview');
-  if(hpEl){
-    // Sort: today's undone first, then today's done, then habits not due today
-    var habitsForDash=(STATE.habits||[]).slice().sort(function(a,b){
-      var aStatus=habitDayStatus(a,todayKey);
-      var bStatus=habitDayStatus(b,todayKey);
-      var rank={'todo':0,'done':1,'rest':2,'pre-start':3};
-      return (rank[aStatus]||0)-(rank[bStatus]||0);
-    });
-    if(!habitsForDash.length){
-      hpEl.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:14px 0">No habits yet. <a href="#" onclick="nav(\'habits\');return false" style="color:var(--accent-dark)">Add one →</a></div>';
-    }else{
-      hpEl.innerHTML=habitsForDash.map(function(h){
-        var status=habitDayStatus(h,todayKey);
-        var streak=habitStreak(h);
-        var meta=HABIT_CAT_META[h.badge]||HABIT_CAT_META.per||{color:'#6B9E7A',emoji:'✅'};
-        var icon=h.icon||meta.emoji;
-        var streakBadge='';
-        if(streak>=7)streakBadge='<span class="dh-row-streak">🔥'+streak+'</span>';
-        else if(streak>=3)streakBadge='<span class="dh-row-streak">⚡'+streak+'</span>';
-        else if(streak>0)streakBadge='<span class="dh-row-streak quiet">'+streak+'d</span>';
-        var checkCls='dh-row-check';
-        var checkInner='';
-        if(status==='done'){checkCls+=' done';checkInner='✓'}
-        else if(status==='rest'){checkCls+=' rest';checkInner='–'}
-        else if(status==='pre-start'){checkCls+=' pre';checkInner=''}
-        var clickable=status==='todo'||status==='done';
-        var click=clickable?'onclick="quickToggleHabit(\''+h.id+'\',\''+todayKey+'\')"':'';
-        return '<div class="dh-row'+(status==='done'?' done':'')+'" '+click+'>'
-          +'<div class="dh-row-icon" style="background:'+meta.color+'18;color:'+meta.color+'">'+icon+'</div>'
-          +'<div class="dh-row-name">'+escapeHtml(h.name)+'</div>'
-          +streakBadge
-          +'<div class="'+checkCls+'">'+checkInner+'</div>'
-          +'</div>';
-      }).join('')+'<button class="btn btn-ghost btn-sm" onclick="nav(\'habits\')" style="margin-top:10px;width:100%;justify-content:center">View all →</button>';
-    }
-  }
+  // What's next card (replaces dash-habits-preview)
+  renderDashWhatsNext();
   renderDashMoodCheckin();
   renderDashWater();
   var gEl2=document.getElementById('dash-gratitude-preview');
@@ -862,4 +847,182 @@ function deleteGoalSubStep(goalId,idx){
   goal.subGoals.splice(idx,1);
   saveState();
   renderGoals();
+}
+
+
+// ── DASHBOARD: WHAT'S NEXT (ADHD-friendly single-focus card) ──
+// Surfaces ONE habit at a time based on time-of-day anchor + due status.
+// Animates on tick, rolls to next. Compassionate "all caught up" state.
+var _whatsNextDismissed={}; // session-only dismiss for current habit id
+
+function renderDashWhatsNext(){
+  var el=document.getElementById('dash-whats-next');
+  var labelEl=document.getElementById('whats-next-label');
+  if(!el)return;
+  var habits=STATE.habits||[];
+  if(!habits.length){
+    if(labelEl)labelEl.textContent='✨ Habits';
+    el.innerHTML='<div class="wn-empty"><div class="wn-empty-icon">✨</div><div class="wn-empty-msg">Add your first habit to start.</div><button class="btn btn-accent btn-sm" onclick="openModal(\'addHabit\')" style="margin-top:10px">+ Add habit</button></div>';
+    return;
+  }
+
+  var slot=currentTimeSlot();
+  var slotLabel=slot==='night'?'Late night':slot==='morning'?'Morning':slot==='midday'?'Midday':'Evening';
+  var slotEmoji=slot==='night'?'🌙':slot==='morning'?'🌅':slot==='midday'?'☀️':'🌙';
+
+  // Due-now habits: due today AND not dismissed for this session
+  var due=habits.filter(function(h){return isHabitDueToday(h)&&!_whatsNextDismissed[h.id]});
+
+  // Pick the most relevant one based on anchor matching the slot
+  function anchorMatchScore(h){
+    var a=h.anchor||'anytime';
+    if(slot==='night'&&a==='evening')return 3;  // late = still evening priority
+    if(slot==='night'&&a==='anytime')return 1;
+    if(a===slot)return 3;
+    if(a==='anytime')return 1;
+    return 0;
+  }
+  due.sort(function(a,b){
+    var sa=anchorMatchScore(a),sb=anchorMatchScore(b);
+    if(sa!==sb)return sb-sa;
+    // Tiebreak: highest consistency last (so we don't always show the strongest one)
+    return habitConsistency(a).pct-habitConsistency(b).pct;
+  });
+
+  // Total dues remaining + done today
+  var todayKey=localDateKey(new Date());
+  var allDueToday=habits.filter(function(h){return isHabitDueToday(h)});
+  var dueCount=allDueToday.length;
+  var doneTodayCount=habits.filter(function(h){return h.logs&&h.logs[todayKey]}).length;
+
+  if(labelEl)labelEl.innerHTML='✨ What\'s next <span class="wn-progress">'+doneTodayCount+' done · '+dueCount+' to go</span>';
+
+  // All caught up state
+  if(!due.length){
+    if(dueCount===0&&doneTodayCount>0){
+      // Everything done!
+      el.innerHTML='<div class="wn-celebrate"><div class="wn-celebrate-emoji">🎉</div><div class="wn-celebrate-title">All caught up</div><div class="wn-celebrate-sub">You\'ve handled every habit due today. Rest well.</div><button class="btn btn-ghost btn-sm" onclick="nav(\'habits\')" style="margin-top:12px">See all habits →</button></div>';
+    }else if(dueCount===0){
+      el.innerHTML='<div class="wn-celebrate"><div class="wn-celebrate-emoji">🌿</div><div class="wn-celebrate-title">Nothing due right now</div><div class="wn-celebrate-sub">Easy day. Tap below to log something anyway.</div><button class="btn btn-ghost btn-sm" onclick="nav(\'habits\')" style="margin-top:12px">View habits →</button></div>';
+    }else{
+      // Dismissed all — offer to reset
+      el.innerHTML='<div class="wn-celebrate"><div class="wn-celebrate-emoji">⏭</div><div class="wn-celebrate-title">All skipped for now</div><div class="wn-celebrate-sub">'+dueCount+' habit'+(dueCount===1?'':'s')+' still due — come back later or open the full list.</div><button class="btn btn-ghost btn-sm" onclick="resetWhatsNextSkips()" style="margin-top:8px;margin-right:6px">Show again</button><button class="btn btn-accent btn-sm" onclick="nav(\'habits\')" style="margin-top:8px">View all →</button></div>';
+    }
+    return;
+  }
+
+  // The hero — single habit
+  var h=due[0];
+  var meta=HABIT_CAT_META[h.badge]||HABIT_CAT_META.per||{color:'#6B9E7A',emoji:'✅'};
+  var icon=h.icon||meta.emoji;
+  var anchor=HABIT_ANCHORS[h.anchor||'anytime']||HABIT_ANCHORS.anytime;
+  var consistency=habitConsistency(h);
+  var tone=consistencyTone(consistency.pct);
+  var streak=habitStreak(h);
+  var streakBadge='';
+  if(streak>=7)streakBadge='<span class="wn-streak hot">🔥 '+streak+'</span>';
+  else if(streak>=3)streakBadge='<span class="wn-streak">⚡ '+streak+'</span>';
+
+  var html='<div class="wn-hero" style="border-color:'+meta.color+'33">';
+  html+='<div class="wn-icon" style="background:'+meta.color+'22;color:'+meta.color+'">'+icon+'</div>';
+  html+='<div class="wn-info">';
+  html+='<div class="wn-anchor">'+anchor.emoji+' '+anchor.label+(slot!=='night'&&h.anchor===slot?' · now':'')+'</div>';
+  html+='<div class="wn-name">'+escapeHtml(h.name)+'</div>';
+  if(h.note)html+='<div class="wn-note">'+escapeHtml(h.note)+'</div>';
+  html+='<div class="wn-stats">';
+  html+='<span class="wn-consistency" style="color:'+tone.color+'">'+consistency.pct+'% <span class="wn-stat-label">'+tone.label+'</span></span>';
+  if(streakBadge)html+=streakBadge;
+  if(due.length>1)html+='<span class="wn-queue">+'+(due.length-1)+' more after this</span>';
+  html+='</div>';
+  html+='</div>';
+  html+='<button class="wn-tick-btn" onclick="tickWhatsNext(\''+h.id+'\')" style="background:'+meta.color+'" aria-label="Mark done">✓</button>';
+  html+='</div>';
+  html+='<div class="wn-actions">';
+  html+='<button class="btn btn-ghost btn-sm" onclick="skipWhatsNext(\''+h.id+'\')" title="Show me a different one">Skip for now</button>';
+  if(due.length>1)html+='<button class="btn btn-ghost btn-sm" onclick="nav(\'habits\')" style="margin-left:auto">See all '+due.length+' →</button>';
+  else html+='<button class="btn btn-ghost btn-sm" onclick="nav(\'habits\')" style="margin-left:auto">All habits →</button>';
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+function tickWhatsNext(hid){
+  var h=STATE.habits.find(function(x){return x.id===hid});
+  if(!h)return;
+  var todayKey=localDateKey(new Date());
+  if(!h.logs)h.logs={};
+  h.logs[todayKey]=true;
+  saveState();
+  // Animate the tick before re-rendering
+  var heroEl=document.querySelector('#dash-whats-next .wn-hero');
+  if(heroEl){
+    heroEl.classList.add('wn-ticking');
+    setTimeout(function(){
+      renderDashWhatsNext();
+      // Streak celebrations
+      var s=habitStreak(h);
+      if(s===7||s===14||s===21||s===30){
+        fireConfetti();
+        showCelebrationToast(h.name+' — '+s+' '+((h.freq||'daily')==='daily'?'day':'period')+' streak!','🔥');
+      }
+      if(typeof checkAllDoneToday==='function')checkAllDoneToday();
+      // Cross-render
+      if(/skincare/i.test(h.name)&&typeof renderSkincareToday==='function')renderSkincareToday();
+    },380);
+  }else{
+    renderDashWhatsNext();
+  }
+}
+
+function skipWhatsNext(hid){
+  _whatsNextDismissed[hid]=true;
+  var heroEl=document.querySelector('#dash-whats-next .wn-hero');
+  if(heroEl){
+    heroEl.classList.add('wn-skipping');
+    setTimeout(renderDashWhatsNext,250);
+  }else{
+    renderDashWhatsNext();
+  }
+}
+
+function resetWhatsNextSkips(){
+  _whatsNextDismissed={};
+  renderDashWhatsNext();
+}
+
+
+// ── Bedtime catch-up handlers ──
+function bedNudgeTick(hid){
+  var h=STATE.habits.find(function(x){return x.id===hid});
+  if(!h)return;
+  var todayKey=localDateKey(new Date());
+  if(!h.logs)h.logs={};
+  h.logs[todayKey]=true;
+  saveState();
+  // Quick toast
+  if(typeof showCelebrationToast==='function')showCelebrationToast(h.name+' done','✓');
+  renderDashboard();
+  // Cross-render
+  if(/skincare/i.test(h.name)&&typeof renderSkincareToday==='function')renderSkincareToday();
+}
+function bedNudgeTickAll(){
+  var todayKey=localDateKey(new Date());
+  var ticked=[];
+  (STATE.habits||[]).forEach(function(h){
+    if(!isHabitDueToday(h))return;
+    if(!h.logs)h.logs={};
+    if(h.logs[todayKey])return;
+    h.logs[todayKey]=true;
+    ticked.push(h.name);
+  });
+  saveState();
+  if(ticked.length&&typeof showCelebrationToast==='function'){
+    if(typeof fireConfetti==='function')fireConfetti({count:80});
+    showCelebrationToast(ticked.length+' habits caught up','🌙');
+  }
+  renderDashboard();
+}
+function dismissBedNudge(){
+  var todayK=localDateKey(new Date());
+  try{sessionStorage.setItem('lh_bed_nudge_dismissed:'+todayK,'1')}catch(e){}
+  renderDashboard();
 }
