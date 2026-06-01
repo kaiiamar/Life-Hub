@@ -516,6 +516,7 @@
           <p class="review-hero-prompt" id="review-hero-prompt">—</p>
           <div class="review-hero-controls">
             <select id="monthly-month-select" onchange="renderMonthlyReview()" class="review-select"></select>
+            <button class="btn" onclick="draftReviewWithAI()" id="review-ai-btn">✨ Draft with AI</button>
             <button class="btn btn-accent" onclick="saveMonthlyReview()">Save review ✓</button>
           </div>
         </div>
@@ -684,6 +685,12 @@
           <div class="card-label">🌡️ Mood trend — last 14 days</div>
           <div class="chart-wrap"><canvas id="insightMoodChart"></canvas></div>
         </div>
+      </div>
+
+      <!-- AI narrative — this week's story -->
+      <div class="card" id="insights-narrative-card" style="margin-bottom:20px;display:none">
+        <div class="card-label">📖 This week's story</div>
+        <div id="insights-narrative" class="insights-narrative"></div>
       </div>
 
       <!-- Mood correlations -->

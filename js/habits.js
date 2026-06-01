@@ -183,13 +183,16 @@ function renderHabitCard(h,todayKey){
   var consistency=habitConsistency(h);
   var tone=consistencyTone(consistency.pct);
 
-  // Compute 30-day strip
-  var stripDays=[];
-  for(var i=29;i>=0;i--){
-    var d=new Date();d.setDate(d.getDate()-i);
-    var k=localDateKey(d);
-    var status=habitDayStatus(h,k);
-    stripDays.push({key:k,date:d,status:status,isToday:k===todayKey});
+  // 7-day week row (Mon–Sun of the current week)
+  var weekDates=[];
+  var todayD=new Date();todayD.setHours(12,0,0,0);
+  var ws=new Date(todayD);ws.setDate(ws.getDate()-ws.getDay()); // Sunday start
+  var dayLetters=['S','M','T','W','T','F','S'];
+  for(var wi=0;wi<7;wi++){
+    var wd=new Date(ws);wd.setDate(wd.getDate()+wi);
+    var wk=localDateKey(wd);
+    var future=wk>todayKey;
+    weekDates.push({key:wk,letter:dayLetters[wi],status:habitDayStatus(h,wk),isToday:wk===todayKey,future:future});
   }
 
   // Streak indicator (frequency-aware label)
@@ -200,13 +203,13 @@ function renderHabitCard(h,todayKey){
   else if(streak>=3)streakStr='<span class="hb-streak-icon">⚡</span><span class="hb-streak-num">'+streak+streakUnit+'</span>';
   else if(streak>0)streakStr='<span class="hb-streak-num quiet">'+streak+streakUnit+'</span>';
 
-  // Today's tap target — clearer than "click the dot for today"
+  // Today's tap target
   var todayStatus=habitDayStatus(h,todayKey);
   var todayBtn='';
   if(todayStatus==='pre-start'){
     todayBtn='<span class="hb-today-tag">Not tracked yet</span>';
   }else if(todayStatus==='rest'){
-    todayBtn='<span class="hb-today-tag">Rest day</span>';
+    todayBtn='<span class="hb-today-tag">✓ On track this week</span>';
   }else if(f==='monthly'||f==='bi-monthly'){
     var period=habitPeriodStatus(h,f);
     todayBtn='<button class="hb-today-btn'+(period.thisPeriod?' done':'')+'" onclick="toggleHabitToday(\''+h.id+'\')">'
@@ -224,34 +227,38 @@ function renderHabitCard(h,todayKey){
   html+='<div class="hb-icon" style="background:'+meta.color+'18;color:'+meta.color+'">'+icon+'</div>';
   html+='<div class="hb-title-block">';
   html+='<div class="hb-title">'+escapeHtml(h.name)+'</div>';
-  html+='<div class="hb-meta"><span class="hb-freq">'+h.freq+'</span><span class="hb-cat-dot" style="background:'+meta.color+'"></span><span class="hb-cat">'+meta.label+'</span><span class="hb-anchor">'+anchor.emoji+' '+anchor.label+'</span></div>';
+  html+='<div class="hb-meta"><span class="hb-freq">'+h.freq+'</span><span class="hb-cat-dot" style="background:'+meta.color+'"></span><span class="hb-anchor">'+anchor.emoji+' '+anchor.label+'</span></div>';
   html+='</div>';
   if(streakStr)html+='<div class="hb-streak" title="'+streak+' '+streakUnit+' streak">'+streakStr+'</div>';
   html+='<button class="hb-edit" onclick="openModal(\'editHabit\',\''+h.id+'\')" title="Edit">✎</button>';
   html+='</div>';
 
-  // Consistency hero — replaces streak as the headline
-  html+='<div class="hb-consistency"><div class="hb-consistency-head"><span class="hb-consistency-pct" style="color:'+tone.color+'">'+consistency.pct+'%</span><span class="hb-consistency-tone" style="color:'+tone.color+'">'+tone.label+'</span><span class="hb-consistency-detail">'+consistency.done+'/'+consistency.total+' '+consistency.unit+(consistency.total===1?'':'s')+' · last '+consistency.window+'</span></div><div class="hb-consistency-bar"><div class="hb-consistency-fill" style="width:'+consistency.pct+'%;background:'+tone.color+'"></div></div></div>';
+  // Consistency hero — the headline number
+  html+='<div class="hb-consistency"><div class="hb-consistency-head"><span class="hb-consistency-pct" style="color:'+tone.color+'">'+consistency.pct+'%</span><span class="hb-consistency-tone" style="color:'+tone.color+'">'+tone.label+'</span><span class="hb-consistency-detail">'+consistency.done+'/'+consistency.total+' '+consistency.unit+(consistency.total===1?'':'s')+'</span></div><div class="hb-consistency-bar"><div class="hb-consistency-fill" style="width:'+consistency.pct+'%;background:'+tone.color+'"></div></div></div>';
 
-  // 30-day strip
+  // Week row OR period chunks
   if(f==='monthly'||f==='bi-monthly'){
-    var period=habitPeriodStatus(h,f);
-    html+='<div class="hb-periods">'+period.lastPeriods.map(function(p){
+    var period2=habitPeriodStatus(h,f);
+    html+='<div class="hb-periods">'+period2.lastPeriods.map(function(p){
       return '<div class="hb-period'+(p.done?' done':'')+'" title="'+p.label+(p.done?' — done':' — missed')+'"><span>'+p.label+'</span></div>';
     }).join('')+'</div>';
   }else{
-    html+='<div class="hb-strip-wrap"><div class="hb-strip">'+stripDays.map(function(d){
-      var cls='hb-strip-cell';
-      if(d.status==='done')cls+=' done';
+    html+='<div class="hb-week">'+weekDates.map(function(d){
+      var cls='hb-week-day';
+      if(d.future)cls+=' future';
+      else if(d.status==='done')cls+=' done';
       else if(d.status==='rest')cls+=' rest';
       else if(d.status==='pre-start')cls+=' pre';
       else if(d.isToday)cls+=' today';
-      var title=d.date.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+' — '+(d.status==='done'?'done (tap to remove)':d.status==='rest'?'not due':d.status==='pre-start'?'before tracking':'missed (tap to log)');
-      return '<div class="'+cls+'" title="'+title+'" onclick="toggleHabit(\''+h.id+'\',\''+d.key+'\')"></div>';
-    }).join('')+'</div><div class="hb-strip-hint">Tap any day to log or unlog · ← 30 days</div></div>';
+      var inner=d.status==='done'?'✓':d.letter;
+      var clickable=!d.future&&d.status!=='pre-start';
+      var click=clickable?'onclick="toggleHabit(\''+h.id+'\',\''+d.key+'\')"':'';
+      var title=d.date?'':'';
+      return '<div class="'+cls+'" '+click+'><span class="hb-week-letter">'+d.letter+'</span><span class="hb-week-mark">'+inner+'</span></div>';
+    }).join('')+'</div>';
   }
 
-  // Footer just shows the action button
+  // Footer action
   html+='<div class="hb-foot"><div class="hb-foot-action" style="margin-left:auto">'+todayBtn+'</div></div>';
 
   html+='</div>';

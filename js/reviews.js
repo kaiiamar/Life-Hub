@@ -376,3 +376,125 @@ function renderPastMonthlyReviews(){
       +'</div>';
     }).join('')+'</div>';
 }
+
+
+// ── AI REVIEW DRAFT (Claude Sonnet via backend) ──
+function draftReviewWithAI(){
+  if(typeof NOTIF_API==='undefined'||!NOTIF_API){alert('AI backend not configured');return}
+  var key=(document.getElementById('monthly-month-select')||{}).value;
+  if(!key)return;
+  var btn=document.getElementById('review-ai-btn');
+  var orig=btn?btn.textContent:'';
+  if(btn){btn.textContent='✨ Drafting…';btn.disabled=true}
+
+  var summary=computeMonthSummary(key);
+  fetch(NOTIF_API+'/api/ai-review-draft',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({summary:summary})
+  }).then(function(r){return r.json()}).then(function(data){
+    if(btn){btn.textContent=orig;btn.disabled=false}
+    if(!data||!data.draft){
+      if(typeof showCelebrationToast==='function')showCelebrationToast('Could not draft — try again','⚠️');
+      return;
+    }
+    var d=data.draft;
+    // Fill the textareas only if empty (don't overwrite the user's own writing)
+    fillIfEmpty('monthly-wins',d.wins);
+    fillIfEmpty('monthly-lessons',d.lessons);
+    fillIfEmpty('monthly-focus',d.focus);
+    fillIfEmpty('monthly-ssc',d.ssc);
+    if(typeof showCelebrationToast==='function')showCelebrationToast('Draft ready — edit freely','✨');
+  }).catch(function(){
+    if(btn){btn.textContent=orig;btn.disabled=false}
+    if(typeof showCelebrationToast==='function')showCelebrationToast('AI draft failed','⚠️');
+  });
+}
+
+function fillIfEmpty(id,text){
+  var el=document.getElementById(id);
+  if(!el||!text)return;
+  if(el.value&&el.value.trim()){
+    // Append as a suggestion below existing text
+    el.value=el.value.trim()+'\n\n— AI suggestion —\n'+text;
+  }else{
+    el.value=text;
+  }
+}
+
+function computeMonthSummary(monthKey){
+  // monthKey is 'YYYY-MM'
+  var parts=monthKey.split('-');
+  var year=Number(parts[0]),month=Number(parts[1])-1;
+  var monthStart=new Date(year,month,1);
+  var monthEnd=new Date(year,month+1,0);
+  var startKey=localDateKey(monthStart);
+  var endKey=localDateKey(monthEnd);
+  function inMonth(d){return d>=startKey&&d<=endKey}
+
+  // Habits — best and worst by completion within month
+  var habitStats=(STATE.habits||[]).map(function(h){
+    var elig=0,done=0;
+    Object.keys(h.logs||{}).forEach(function(){});
+    // Count daily-eligible days in month
+    var cur=new Date(monthStart);
+    while(cur<=monthEnd){
+      var k=localDateKey(cur);
+      if((h.freq||'daily').toLowerCase()==='daily'&&(!h.startDate||k>=h.startDate)){
+        elig++;
+        if(h.logs&&h.logs[k])done++;
+      }
+      cur.setDate(cur.getDate()+1);
+    }
+    return {name:h.name,pct:elig>0?Math.round(done/elig*100):null};
+  }).filter(function(x){return x.pct!=null});
+  habitStats.sort(function(a,b){return b.pct-a.pct});
+  var strongest=habitStats[0];
+  var weakest=habitStats[habitStats.length-1];
+
+  // Mood + sleep
+  var moodVals=[],sleepVals=[];
+  Object.keys(STATE.mood||{}).forEach(function(d){
+    if(!inMonth(d))return;
+    var m=STATE.mood[d];
+    if(m.mood)moodVals.push(Number(m.mood));
+    if(m.sleep)sleepVals.push(Number(m.sleep));
+  });
+  var avgMood=moodVals.length?Math.round(moodVals.reduce(function(s,v){return s+v},0)/moodVals.length*10)/10:null;
+  var avgSleep=sleepVals.length?Math.round(sleepVals.reduce(function(s,v){return s+v},0)/sleepVals.length*10)/10:null;
+
+  // Workouts
+  var wo=(STATE.workouts||[]).filter(function(w){return inMonth(w.date)&&(w.type||'').toLowerCase()!=='rest'}).length;
+  var runs=(((STATE.metrics||{}).run)||[]).filter(function(r){return inMonth(r.date)});
+  var runKm=Math.round(runs.reduce(function(s,r){return s+Number(r.distance||0)},0)*10)/10;
+
+  // Tasks
+  var tasksDone=(STATE.tasks||[]).filter(function(t){return t.done&&t.doneAt&&inMonth(t.doneAt)}).length;
+
+  // Goals progress
+  var goals=(STATE.goals||[]);
+  var goalsDone=goals.filter(function(g){return g.done}).length;
+  var goalsProgress=goalsDone+'/'+goals.length+' complete';
+
+  // Gratitude themes — just list short snippets
+  var grats=(STATE.gratitude||[]).filter(function(e){return inMonth(e.date)});
+  var gratSnippets=grats.slice(0,8).map(function(e){return e.gratitude||e.wins}).filter(Boolean).join('; ').slice(0,300);
+
+  var monthLabel=monthStart.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  var habitSummary=habitStats.map(function(h){return h.name+' '+h.pct+'%'}).join(', ').slice(0,200);
+
+  return {
+    monthLabel:monthLabel,
+    habitSummary:habitSummary,
+    avgMood:avgMood,
+    moodDays:moodVals.length,
+    avgSleep:avgSleep,
+    workouts:wo,
+    runKm:runKm,
+    tasksDone:tasksDone,
+    goalsProgress:goalsProgress,
+    gratitudeThemes:gratSnippets,
+    strongestHabit:strongest?strongest.name+' ('+strongest.pct+'%)':null,
+    weakestHabit:weakest?weakest.name+' ('+weakest.pct+'%)':null
+  };
+}

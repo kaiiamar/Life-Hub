@@ -4148,3 +4148,70 @@ body.night-mode .hb-consistency{background:rgba(240,235,227,0.04)}
 
 body.night-mode .task-row:hover{background:rgba(240,235,227,0.04)}
 body.night-mode .task-add-row input{background:rgba(240,235,227,0.06)}
+
+
+/* ── HABITS — 7-day week row (replaces 30-day strip) ── */
+.hb-week{
+  display:grid;grid-template-columns:repeat(7,1fr);gap:6px;
+  margin-top:4px;
+}
+.hb-week-day{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:6px 0 5px;
+  border-radius:10px;
+  background:var(--bg3);
+  border:1px solid var(--border);
+  cursor:pointer;
+  transition:all 160ms var(--ease);
+}
+.hb-week-day:hover{transform:translateY(-1px);border-color:var(--border2)}
+.hb-week-letter{
+  font-size:9px;font-weight:700;letter-spacing:0.04em;
+  color:var(--text3);text-transform:uppercase;
+}
+.hb-week-mark{
+  font-size:13px;font-weight:700;line-height:1;
+  color:var(--text3);
+  height:16px;display:flex;align-items:center;
+}
+.hb-week-day.done{
+  background:linear-gradient(135deg,var(--accent),var(--accent-dark));
+  border-color:transparent;
+}
+.hb-week-day.done .hb-week-letter{color:rgba(255,255,255,0.7)}
+.hb-week-day.done .hb-week-mark{color:#fff}
+.hb-week-day.today{
+  border-color:var(--accent);border-width:2px;
+}
+.hb-week-day.today.done{border-color:transparent}
+.hb-week-day.rest{opacity:0.55;cursor:default}
+.hb-week-day.rest:hover{transform:none}
+.hb-week-day.pre,.hb-week-day.future{
+  opacity:0.35;cursor:default;background:transparent;
+  border-style:dashed;
+}
+.hb-week-day.pre:hover,.hb-week-day.future:hover{transform:none}
+.hb-week-day.future .hb-week-mark{color:transparent}
+
+body.night-mode .hb-week-day{background:rgba(240,235,227,0.05)}
+body.night-mode .hb-week-day.done{background:linear-gradient(135deg,#E8A87C,#D97B6C)}
+
+/* ── Insights AI narrative ── */
+#insights-narrative-card{
+  background:linear-gradient(135deg,rgba(155,135,190,0.06),rgba(217,123,108,0.05));
+  border:1.5px solid rgba(155,135,190,0.18);
+}
+.insights-narrative{
+  font-family:var(--serif);
+  font-size:17px;
+  line-height:1.6;
+  color:var(--text);
+  letter-spacing:-0.01em;
+  margin-top:4px;
+}
+.insights-narrative-loading{
+  font-family:var(--sans);
+  font-size:13px;
+  color:var(--text3);
+  font-style:italic;
+}
