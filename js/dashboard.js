@@ -336,7 +336,7 @@ h+='<div class="goal-substep-add-row">'
   +'<button class="goal-substep-add-btn" onclick="addGoalSubStep(\''+go.id+'\')">+</button>'
   +'</div>';
 h+='</div>';
-h+='</div></div>';return h}).join('')}
+h+='</div></div></div>';return h}).join('')}
 function filterGoals(cat,btn){goalFilter=cat;document.querySelectorAll('#goal-filters .filter-btn').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');renderGoals()}
 function toggleGoalDone(id){var goal=STATE.goals.find(function(x){return x.id===id});if(!goal)return;var wasDone=goal.done;goal.done=!goal.done;if(goal.done)goal.progress=goal.target;saveState();renderGoals();if(!wasDone&&goal.done){fireConfetti({count:150,duration:3000});showCelebrationToast('Goal complete: '+goal.name,'🎯')}}
 function saveGoal(){var name=((document.getElementById('m-gname')||{}).value||'').trim();if(!name)return;var cat=(document.getElementById('m-gcat')||{}).value||'Personal';var badges={Finance:'fin',Fitness:'fit',Career:'car',Personal:'per'};var target=Number((document.getElementById('m-gtarget')||{}).value)||100;var unit=(document.getElementById('m-gunit')||{}).value||'%';var direction=(document.getElementById('m-gdir')||{}).value||'up';STATE.goals.push({id:g(),name:name,cat:cat,badge:badges[cat]||'per',desc:(document.getElementById('m-gdesc')||{}).value||'',target:target,unit:unit,direction:direction,deadline:(document.getElementById('m-gdeadline')||{}).value||'2026-12-31',progress:direction==='up'?0:target*2,done:false,subGoals:[]});saveState();closeModal();renderGoals()}
