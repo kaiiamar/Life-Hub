@@ -72,21 +72,6 @@ function todaysTrainingSession(dateKey){
   return plan.template[idx];
 }
 
-// Default weekly plan (legacy — kept so old references don't break)
-var DEFAULT_PLAN=[
-  {day:'Mon',type:'Upper',title:'Upper body',sub:'Strength B'},
-  {day:'Tue',type:'Run',title:'Speed run',sub:'NRC'},
-  {day:'Wed',type:'Rest',title:'Recovery',sub:'Rest'},
-  {day:'Thu',type:'Lower',title:'Lower body',sub:'Strength A'},
-  {day:'Fri',type:'Run',title:'Speed run',sub:'NRC'},
-  {day:'Sat',type:'Rest',title:'Recovery',sub:'Optional walk'},
-  {day:'Sun',type:'Run',title:'Long run',sub:'NRC'}
-];
-
-function getWeeklyPlanData(){
-  return STATE.weeklyPlan||DEFAULT_PLAN.map(function(d){return {day:d.day,type:d.type,title:d.title,sub:d.sub}});
-}
-
 function renderWorkout(){
   renderTrainingOverview();
   renderMyPlanSchedule();

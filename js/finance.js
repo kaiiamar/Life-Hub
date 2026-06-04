@@ -430,7 +430,7 @@ el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,mi
     var needed=Math.ceil(remaining/monthsToDeadline);
     paceInfo='<div class="fin-sg-pace fin-sg-nopace">Set a monthly contribution ('+fmtMoney(needed)+'/mo to hit deadline)</div>';
   }
-  return '<div class="card" style="text-align:center;padding:24px 20px"><div style="display:flex;justify-content:flex-end;gap:4px;margin-bottom:8px"><button class="btn btn-sm btn-ghost" onclick="openModal(\'editSavingsGoal\',\''+sg.id+'\')">&#9998;</button><button class="btn btn-sm btn-danger" onclick="deleteSavingsGoal(\''+sg.id+'\')">&#215;</button></div><div class="thermo"><div class="thermo-tube"><div class="thermo-fill" style="height:'+p+'%;background:linear-gradient(to top,'+col+','+col+'cc)"></div></div><div class="thermo-bulb" style="background:'+col+';border-color:'+col+'"><span style="color:#fff">'+(sg.icon||'&#127919;')+'</span></div><div class="thermo-marks"><span class="thermo-mark">'+fmtMoney(sg.target)+'</span><span class="thermo-mark">'+fmtMoney(Math.round(sg.target*0.75))+'</span><span class="thermo-mark">'+fmtMoney(Math.round(sg.target*0.5))+'</span><span class="thermo-mark">'+fmtMoney(Math.round(sg.target*0.25))+'</span><span class="thermo-mark">&#163;0</span></div></div><div class="thermo-pct" style="color:'+col+'">'+p+'%</div><div style="font-family:var(--serif);font-size:16px;font-weight:600;margin-top:8px">'+sg.name+'</div><div style="font-size:13px;color:var(--accent);font-weight:600;margin-top:4px">'+fmtMoney(sg.current||0)+' <span style="font-weight:400;color:var(--text3)">of '+fmtMoney(sg.target)+'</span></div>'+(sg.note?'<div style="font-size:11px;color:var(--text2);margin-top:4px">'+sg.note+'</div>':'')+(sg.deadline?'<div style="font-size:11px;color:var(--text3);margin-top:3px">&#128467; By '+fmtDate(sg.deadline)+'</div>':'')+paceInfo+'<div style="margin-top:6px"><span style="padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;background:'+(PC[sg.priority]||'#f0f0f0')+';color:'+(PT[sg.priority]||'#666')+'">'+sg.priority+'</span></div><div style="font-size:11px;color:var(--text3);margin-top:6px">'+fmtMoney(remaining)+' to go</div></div>';
+  return '<div class="card" style="text-align:center;padding:24px 20px"><div style="display:flex;justify-content:flex-end;gap:4px;margin-bottom:8px"><button class="btn btn-sm btn-ghost" onclick="openModal(\'logDeposit\',\''+sg.id+'\')" title="Log a deposit">+ &#163;</button><button class="btn btn-sm btn-ghost" onclick="openModal(\'editSavingsGoal\',\''+sg.id+'\')">&#9998;</button><button class="btn btn-sm btn-danger" onclick="deleteSavingsGoal(\''+sg.id+'\')">&#215;</button></div><div class="thermo"><div class="thermo-tube"><div class="thermo-fill" style="height:'+p+'%;background:linear-gradient(to top,'+col+','+col+'cc)"></div></div><div class="thermo-bulb" style="background:'+col+';border-color:'+col+'"><span style="color:#fff">'+(sg.icon||'&#127919;')+'</span></div><div class="thermo-marks"><span class="thermo-mark">'+fmtMoney(sg.target)+'</span><span class="thermo-mark">'+fmtMoney(Math.round(sg.target*0.75))+'</span><span class="thermo-mark">'+fmtMoney(Math.round(sg.target*0.5))+'</span><span class="thermo-mark">'+fmtMoney(Math.round(sg.target*0.25))+'</span><span class="thermo-mark">&#163;0</span></div></div><div class="thermo-pct" style="color:'+col+'">'+p+'%</div><div style="font-family:var(--serif);font-size:16px;font-weight:600;margin-top:8px">'+sg.name+'</div><div style="font-size:13px;color:var(--accent);font-weight:600;margin-top:4px">'+fmtMoney(sg.current||0)+' <span style="font-weight:400;color:var(--text3)">of '+fmtMoney(sg.target)+'</span></div>'+(sg.note?'<div style="font-size:11px;color:var(--text2);margin-top:4px">'+sg.note+'</div>':'')+(sg.deadline?'<div style="font-size:11px;color:var(--text3);margin-top:3px">&#128467; By '+fmtDate(sg.deadline)+'</div>':'')+paceInfo+'<div style="margin-top:6px"><span style="padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;background:'+(PC[sg.priority]||'#f0f0f0')+';color:'+(PT[sg.priority]||'#666')+'">'+sg.priority+'</span></div><div style="font-size:11px;color:var(--text3);margin-top:6px">'+fmtMoney(remaining)+' to go</div></div>';
 }).join('')+'</div>'}
 function deleteAccount(id){confirmDelete('Delete this account?',function(){STATE.accounts=(STATE.accounts||[]).filter(function(a){return a.id!==id});saveState();renderAccounts()})}
 function deleteDebt(id){confirmDelete('Delete this debt?',function(){STATE.debts=(STATE.debts||[]).filter(function(d){return d.id!==id});saveState();renderDebts();refreshRoadmapLiveCards()})}
@@ -448,3 +448,35 @@ function updateDebt(id){var d=(STATE.debts||[]).find(function(x){return x.id===i
 function saveSavingsGoal(){var name=((document.getElementById('m-sgname')||{}).value||'').trim();if(!name)return;var colors=['#a0522d','#c9973a','#34d399','#f59e0b','#818cf8','#fb923c'];if(!STATE.savingsGoals)STATE.savingsGoals=[];STATE.savingsGoals.push({id:g(),name:name,target:Number((document.getElementById('m-sgtarget')||{}).value)||0,current:Number((document.getElementById('m-sgcurrent')||{}).value)||0,monthlyContribution:Number((document.getElementById('m-sgmonthly')||{}).value)||0,priority:(document.getElementById('m-sgpriority')||{}).value||'Medium',icon:(document.getElementById('m-sgicon')||{}).value||'&#127919;',deadline:(document.getElementById('m-sgdeadline')||{}).value||'',note:(document.getElementById('m-sgnote')||{}).value||'',color:colors[STATE.savingsGoals.length%colors.length]});saveState();closeModal();renderSavingsGoals();renderFinanceMathHero&&renderFinanceMathHero();renderFinanceAllocations&&renderFinanceAllocations();refreshRoadmapLiveCards()}
 function updateSavingsGoal(id){var sg=(STATE.savingsGoals||[]).find(function(x){return x.id===id});if(!sg)return;sg.name=(document.getElementById('m-sgname')||{}).value||sg.name;sg.target=Number((document.getElementById('m-sgtarget')||{}).value)||sg.target;sg.current=Number((document.getElementById('m-sgcurrent')||{}).value)||0;sg.monthlyContribution=Number((document.getElementById('m-sgmonthly')||{}).value)||0;sg.priority=(document.getElementById('m-sgpriority')||{}).value||sg.priority;sg.icon=(document.getElementById('m-sgicon')||{}).value||sg.icon;sg.deadline=(document.getElementById('m-sgdeadline')||{}).value||'';sg.note=(document.getElementById('m-sgnote')||{}).value||'';saveState();closeModal();renderSavingsGoals();renderFinanceMathHero&&renderFinanceMathHero();renderFinanceAllocations&&renderFinanceAllocations();refreshRoadmapLiveCards()}
 
+
+// ── Savings deposit logging (#2) — increments sg.current, logs to history ──
+function saveSavingsDeposit(){
+  var id=(document.getElementById('m-dep-id')||{}).value;
+  var amount=Number((document.getElementById('m-dep-amount')||{}).value)||0;
+  var date=(document.getElementById('m-dep-date')||{}).value||localDateKey(new Date());
+  if(!id||!amount)return;
+  var sg=(STATE.savingsGoals||[]).find(function(x){return x.id===id});
+  if(!sg)return;
+  var wasShort=Number(sg.current||0)<Number(sg.target||0);
+  sg.current=Number(sg.current||0)+amount;
+  if(!STATE.savingsDeposits)STATE.savingsDeposits=[];
+  STATE.savingsDeposits.push({id:g(),goalId:id,amount:amount,date:date});
+  // Mirror into moneySaved metric so it shows in review auto-stats
+  if(!STATE.metrics)STATE.metrics={};
+  if(!STATE.metrics.moneySaved)STATE.metrics.moneySaved=[];
+  STATE.metrics.moneySaved.push({id:g(),amount:amount,date:date,note:sg.name});
+  saveState();
+  closeModal();
+  renderSavingsGoals();
+  renderProgressSummaries&&renderProgressSummaries();
+  renderNetWorthHero&&renderNetWorthHero();
+  renderFinanceMathHero&&renderFinanceMathHero();
+  renderFinanceAllocations&&renderFinanceAllocations();
+  var nowHit=Number(sg.current)>=Number(sg.target)&&Number(sg.target)>0;
+  if(wasShort&&nowHit){
+    fireConfetti&&fireConfetti({count:160,duration:3200});
+    showCelebrationToast&&showCelebrationToast(sg.name+' fully funded! 🎉','🏆');
+  }else{
+    showCelebrationToast&&showCelebrationToast('+'+fmtMoney(amount)+' to '+sg.name,'💰');
+  }
+}

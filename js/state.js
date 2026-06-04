@@ -47,10 +47,7 @@ var DEFAULT_STATE = {
     {id:g(),name:'Skincare AM',freq:'daily',badge:'per',logs:{}},
     {id:g(),name:'Skincare PM',freq:'daily',badge:'per',logs:{}},
   ],
-  workouts:[],gymTemplates:[
-    {id:'tue-upper',name:'Tuesday — Full Upper Body',muscleGroups:['Chest','Back','Shoulders','Biceps','Triceps'],exercises:[{name:'Barbell Bench Press',sets:4,targetReps:'8-10',unit:'kg'},{name:'Seated Cable Row',sets:4,targetReps:'10-12',unit:'kg'},{name:'Incline Dumbbell Press',sets:3,targetReps:'10-12',unit:'kg'},{name:'Lat Pulldown',sets:3,targetReps:'10-12',unit:'kg'},{name:'Dumbbell Overhead Press',sets:3,targetReps:'10-12',unit:'kg'},{name:'Cable Tricep Pushdown',sets:3,targetReps:'12',unit:'kg'},{name:'Dumbbell Curl',sets:3,targetReps:'12',unit:'kg'}]},
-    {id:'thu-lower',name:'Thursday — Lower Body',muscleGroups:['Quads','Hamstrings','Glutes','Core'],exercises:[{name:'Barbell Back Squat',sets:4,targetReps:'6-8',unit:'kg'},{name:'Romanian Deadlift',sets:4,targetReps:'8-10',unit:'kg'},{name:'Smith Machine Hip Thrust',sets:4,targetReps:'10-12',unit:'kg'},{name:'Leg Press',sets:3,targetReps:'12-15',unit:'kg'},{name:'Walking Dumbbell Lunge',sets:3,targetReps:'20 steps',unit:'kg'},{name:'Lying Leg Curl',sets:3,targetReps:'12',unit:'kg'},{name:'Plank',sets:3,targetReps:'40 sec',unit:'bw'}]},
-  ],
+  workouts:[],
   prs:{},
   income:[{id:'inc1',name:'Amazon - Salary',amount:2400,icon:'\ud83d\udcbc',note:'After tax'}],
   expenses:[
@@ -91,10 +88,6 @@ var DEFAULT_STATE = {
   journal:{},mood:{},dailyHighlights:{},
   skincare:{startedOn:null,products:{am:[],pm:[]},actives:[],nightSchedule:{},guaShaLog:{},activeLog:{},photos:[]},
   tasks:[],
-  projects:[
-    {id:'prj1',name:'Thailand Trip Planning',status:'active',cat:'Personal',desc:'Anniversary trip \u2014 29 November 2026',deadline:'2026-11-01',tasks:[{id:'t4',text:'Set budget',done:false},{id:'t5',text:'Book flights',done:false},{id:'t6',text:'Book accommodation',done:false},{id:'t7',text:'Sort travel insurance',done:false}],color:'#6b9e7a'},
-    {id:'prj2',name:'GitHub Portfolio',status:'active',cat:'Career',desc:'Build 2-3 public data projects before Oct 2026',deadline:'2026-10-01',tasks:[{id:'t8',text:'Create GitHub account',done:false},{id:'t9',text:'Publish first EDA project',done:false},{id:'t10',text:'Publish second project',done:false}],color:'#d4845a'},
-  ],
   relationships:[
     {id:'rel1',name:'Dad',cat:'Family',freq:14,lastContact:'2026-03-01',note:'Visit bi-monthly',color:'#c9973a',icon:'\ud83d\udc68'},
     {id:'rel2',name:'Mum',cat:'Family',freq:7,lastContact:'2026-03-10',note:'Weekly call',color:'#d4845a',icon:'\ud83d\udc69'},

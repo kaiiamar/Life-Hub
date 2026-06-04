@@ -16,7 +16,7 @@ var qEl=document.getElementById('sidebar-quote');if(qEl)qEl.textContent=quotes[M
 
 if(_firebaseReady)setSyncStatus('saving');
 loadFromCloud(function(){
-  var migrateKeys=['goals','habits','workouts','gymTemplates','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','projects','relationships','gratitude','wishlist','watchlist','debtPayments','reminders','water','dailyPriorities','trainingEvents','trainingPlan','tasks'];
+  var migrateKeys=['goals','habits','workouts','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','relationships','gratitude','wishlist','watchlist','debtPayments','reminders','water','dailyPriorities','trainingEvents','trainingPlan','tasks'];
   migrateKeys.forEach(function(k){if(!STATE[k])STATE[k]=JSON.parse(JSON.stringify(DEFAULT_STATE[k]||(k==='tasks'?[]:{})))});
   if(!STATE.tasks)STATE.tasks=[];
   if(!STATE.metrics.projectsDone)STATE.metrics.projectsDone=[];
@@ -134,7 +134,9 @@ loadFromCloud(function(){
       if(s.source!=='manual')go.startProgress=s.progress||go.progress||go.target*2;
     }
   });
-  if(STATE.gymTemplates&&STATE.gymTemplates.length){var oldNames=['Push Day','Pull Day','Leg Day'];var hasOld=STATE.gymTemplates.some(function(t){return oldNames.indexOf(t.name)!==-1});if(hasOld){STATE.gymTemplates=JSON.parse(JSON.stringify(DEFAULT_STATE.gymTemplates));saveState()}}
+  // Clean up dormant data left over from removed features
+  if(STATE.gymTemplates)delete STATE.gymTemplates;
+  if(STATE.projects)delete STATE.projects;
   if(!STATE.reviews.quarterly)STATE.reviews.quarterly={};
   if(!STATE.roadmapChecklist)STATE.roadmapChecklist={};
   if(!STATE.roadmapDueDates)STATE.roadmapDueDates={};
