@@ -4,6 +4,20 @@ var activeWeek=weekKey(new Date());
 var goalFilter='all';
 var metricCharts={};
 
+// Global keyboard support for div-based buttons (role="button").
+// Lets keyboard users activate clickable divs with Enter/Space, so we keep
+// the lightweight markup but stay WCAG 2.1.1 compliant.
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Enter'&&e.key!==' '&&e.key!=='Spacebar')return;
+  var t=e.target;
+  if(!t||t.getAttribute('role')!=='button')return;
+  // Don't hijack real form controls / links / native buttons
+  var tag=(t.tagName||'').toLowerCase();
+  if(tag==='button'||tag==='a'||tag==='input'||tag==='textarea'||tag==='select')return;
+  e.preventDefault();
+  t.click();
+});
+
 function localDateKey(d){var y=d.getFullYear();var m=('0'+(d.getMonth()+1)).slice(-2);var day=('0'+d.getDate()).slice(-2);return y+'-'+m+'-'+day}
 function weekKey(d){var s=new Date(d);s.setHours(0,0,0,0);s.setDate(s.getDate()-s.getDay());return localDateKey(s)}
 function weekDays(wk){var parts=wk.split('-');var s=new Date(+parts[0],+parts[1]-1,+parts[2]);return Array.from({length:7},function(_,i){var d=new Date(s);d.setDate(d.getDate()+i);return localDateKey(d)})}function fmtDate(d){return new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}

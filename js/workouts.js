@@ -400,7 +400,7 @@ function renderMyPlanSchedule(){
       html+='<div class="train-plan-warmup"><strong>Warm-up:</strong> '+def.warmup+'</div>';
       html+=def.exercises.map(function(ex,xi){
         var done=!!checks2[xi];
-        return '<div class="train-ex'+(done?' done':'')+'" onclick="toggleTrainEx(\''+d.session+'\','+xi+')">'
+        return '<div class="train-ex'+(done?' done':'')+'" onclick="toggleTrainEx(\''+d.session+'\','+xi+')" role="button" tabindex="0" aria-label="Toggle '+ex.name.replace(/"/g,'')+'">'
           +'<div class="train-ex-tick">'+(done?'✓':'')+'</div>'
           +'<div class="train-ex-body">'
             +'<div class="train-ex-name">'+ex.name+'<span class="train-ex-scheme">'+ex.scheme+'</span></div>'
