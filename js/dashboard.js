@@ -28,6 +28,45 @@ function focusBar(icon,label,val,pct,grad){
     +'<span class="focus-bar-val">'+val+'</span>'
     +'</div>';
 }
+
+// ── "Showed up" streak (#5) ──
+// Forgiving momentum metric: a day counts if you logged ANYTHING — ticked a
+// habit, logged mood, water, a task, a workout or a run. Counts consecutive
+// days ending today (or yesterday if today's still empty, so it never punishes
+// an in-progress morning).
+function dayHadActivity(dateKey){
+  if((STATE.habits||[]).some(function(h){return h.logs&&h.logs[dateKey]}))return true;
+  if((STATE.mood||{})[dateKey]&&((STATE.mood||{})[dateKey].mood||(STATE.mood||{})[dateKey].sleep))return true;
+  if(Number((STATE.water||{})[dateKey]||0)>0)return true;
+  if((STATE.tasks||[]).some(function(t){return t.done&&t.doneAt===dateKey}))return true;
+  if((STATE.workouts||[]).some(function(w){return w.date===dateKey&&(w.type||'').toLowerCase()!=='rest'}))return true;
+  if((((STATE.metrics||{}).run)||[]).some(function(r){return r.date===dateKey}))return true;
+  if((STATE.gratitude||[]).some(function(e){return e.date===dateKey}))return true;
+  return false;
+}
+function showUpStreak(){
+  var streak=0;
+  var d=new Date();
+  // If today has no activity yet, start counting from yesterday (grace).
+  if(!dayHadActivity(localDateKey(d)))d.setDate(d.getDate()-1);
+  for(var i=0;i<400;i++){
+    if(dayHadActivity(localDateKey(d))){streak++;d.setDate(d.getDate()-1)}
+    else break;
+  }
+  return streak;
+}
+function renderDashStreak(){
+  var el=document.getElementById('dash-streak');
+  if(!el)return;
+  var s=showUpStreak();
+  if(s<2){el.style.display='none';return}
+  var todayDone=dayHadActivity(localDateKey(new Date()));
+  el.style.display='';
+  el.innerHTML='<span class="hero-streak-flame">🔥</span><span class="hero-streak-num">'+s+'</span>'
+    +'<span class="hero-streak-label">day'+(s===1?'':'s')+' showing up'+(todayDone?'':' · keep it alive today')+'</span>';
+}
+
+
 function setStat(key,val,pct){
   var v=document.getElementById('stat-'+key);if(v)v.textContent=val;
   var b=document.getElementById('stat-'+key+'-bar');if(b){setTimeout(function(){b.style.width=pct+'%'},120)}
@@ -78,6 +117,7 @@ function renderDashboard(){
     else document.body.classList.remove('night-mode');
   }
   var gEl=document.getElementById('dash-greeting');if(gEl)gEl.innerHTML=ctx.greeting+', <em>Kai</em>.';
+  renderDashStreak();
   // Apply time-based class to hero
   var hero=document.getElementById('hero');
   if(hero){
@@ -252,7 +292,7 @@ function renderDashboard(){
   var recentRuns=((STATE.metrics||{}).run||[]).slice(-3).reverse();
   var combined=recent.map(function(w){return {type:'gym',date:w.date,name:w.name,sub:(w.muscleGroups||[]).join(', '),icon:((w.muscleGroups||[]).indexOf('Hyrox')!==-1)?'\u26a1':'\ud83c\udfcb\ufe0f'}}).concat(recentRuns.map(function(r){return {type:'run',date:r.date,name:r.distance+'km'+(r.time?' \u00b7 '+r.time:''),sub:r.note||'Run',icon:'\ud83c\udfc3'}})).sort(function(a,b){return b.date.localeCompare(a.date)}).slice(0,5);
   var wpEl=document.getElementById('dash-workouts-preview');
-  if(wpEl)wpEl.innerHTML=combined.length?combined.map(function(w){return '<div class="u-tile"><div class="u-tile-icon'+(w.type==='run'?' is-run':'')+'">'+w.icon+'</div><div class="u-tile-body"><div class="u-tile-title">'+w.name+'</div><div class="u-tile-sub">'+w.sub+' · '+fmtDate(w.date)+'</div></div></div>'}).join('')+'<button class="btn btn-ghost btn-sm u-mt-8" onclick="nav(\'workout\')" style="width:100%;justify-content:center">View all →</button>':'<div class="empty" style="padding:12px 0"><div style="font-size:28px;margin-bottom:6px">🏋️</div>No sessions yet</div><button class="btn btn-accent btn-sm" onclick="openModal(\'startSession\')" style="width:100%;justify-content:center">+ Start session</button>';
+  if(wpEl)wpEl.innerHTML=combined.length?combined.map(function(w){return '<div class="u-tile"><div class="u-tile-icon'+(w.type==='run'?' is-run':'')+'">'+w.icon+'</div><div class="u-tile-body"><div class="u-tile-title">'+w.name+'</div><div class="u-tile-sub">'+w.sub+' · '+fmtDate(w.date)+'</div></div></div>'}).join('')+'<button class="btn btn-ghost btn-sm u-mt-8" onclick="nav(\'workout\')" style="width:100%;justify-content:center">View all →</button>':'<div class="empty" style="padding:12px 0"><div style="font-size:28px;margin-bottom:6px">🏋️</div>No sessions yet</div><button class="btn btn-accent btn-sm" onclick="openModal(\'quickLog\')" style="width:100%;justify-content:center">+ Log session</button>';
   renderDashboardRelationships();
   renderDashMoodWeek();
   var tExp=(STATE.expenses||[]).reduce(function(s,e){return s+Number(e.amount)},0);var tInc=(STATE.income||[]).reduce(function(s,i){return s+Number(i.amount)},0);var tDebt=(STATE.debts||[]).reduce(function(s,d){return s+Number(d.balance)},0);var tSav=(STATE.accounts||[]).reduce(function(s,a){return s+Number(a.balance)},0);var left=tInc-tExp;

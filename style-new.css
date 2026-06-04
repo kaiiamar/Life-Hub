@@ -4362,3 +4362,17 @@ textarea:focus-visible,
 
 /* Inline SVG icon alignment (#5) */
 .ico{display:inline-block;vertical-align:-0.15em;flex-shrink:0}
+
+/* ── Hero "showed up" streak chip (#5) ── */
+.hero-streak{
+  display:inline-flex;align-items:center;gap:8px;
+  margin-top:10px;padding:6px 14px;
+  background:rgba(255,255,255,0.55);
+  border:1.5px solid rgba(217,123,108,0.25);
+  border-radius:var(--radius-pill);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+.hero-streak-flame{font-size:16px;line-height:1}
+.hero-streak-num{font-family:var(--serif);font-size:18px;font-weight:600;color:var(--accent-dark);line-height:1}
+.hero-streak-label{font-size:12px;color:var(--text2);font-weight:500}
+body.night-mode .hero-streak{background:rgba(240,235,227,0.1);border-color:rgba(217,123,108,0.35)}

@@ -12,7 +12,7 @@
 <title>Kai's Life Hub 🤎</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Caveat:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style-new.css?v=4">
+<link rel="stylesheet" href="style-new.css?v=5">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -51,8 +51,7 @@
             <div class="topnav-drop-section">
               <div class="topnav-drop-label">Life</div>
               <button class="topnav-drop-item" onclick="nav('relationships')">🤎 Relationships</button>
-              <button class="topnav-drop-item" onclick="nav('watchlist')">🎬 Watch list</button>
-              <button class="topnav-drop-item" onclick="nav('wishlist')">🛍️ Wishlist</button>
+              <button class="topnav-drop-item" onclick="nav('lists')">🎬 Lists</button>
             </div>
             <div class="topnav-drop-section">
               <div class="topnav-drop-label">Data</div>
@@ -91,8 +90,7 @@
       <button class="nav-item" onclick="nav('insights')">💡 Insights</button>
       <button class="nav-item" onclick="nav('relationships')">🤎 Relationships</button>
       <button class="nav-item" onclick="nav('skincare')">✨ Skincare</button>
-      <button class="nav-item" onclick="nav('watchlist')">🎬 Watch List</button>
-      <button class="nav-item" onclick="nav('wishlist')">🛍️ Wishlist</button>
+      <button class="nav-item" onclick="nav('lists')">🎬 Lists</button>
     </div>
   </nav>
 
@@ -109,6 +107,7 @@
           <div class="hero-eyebrow"><span class="pulse-dot"></span>Today's mission</div>
           <h1 id="dash-greeting">Good morning, <em>Kai</em>.</h1>
           <p class="hero-sub" id="dash-date-sub"></p>
+          <div class="hero-streak" id="dash-streak" style="display:none"></div>
           <div class="hero-quote" id="dash-quote"></div>
         </div>
       </div>
@@ -610,31 +609,39 @@
       <div class="card"><div class="card-label">All entries</div><div id="gratitude-all"></div></div>
     </div>
 
-    <!-- ══ WATCHLIST ══ -->
-    <div class="page" id="page-watchlist">
-      <div class="page-header"><div class="header-row"><div style="display:flex;align-items:center;gap:12px"><img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExY2pmcWw0OGh4a29rdWpmbWltczJvcThtYmppMXdwNGM0ZXZ1aWUwciZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/A8OSeenhtpey43CcMG/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0"><div><h1>Watch List</h1><p>Movies, series and YouTube creators</p></div></div><button class="btn btn-accent" onclick="openModal('addWatchItem')">+ Add</button></div></div>
-      <div class="filter-row" id="watch-filters">
-        <button class="filter-btn active" onclick="filterWatch('all',this)">All</button>
-        <button class="filter-btn" onclick="filterWatch('want',this)">Want to watch</button>
-        <button class="filter-btn" onclick="filterWatch('watching',this)">Watching</button>
-        <button class="filter-btn" onclick="filterWatch('done',this)">Done</button>
-        <button class="filter-btn" onclick="filterWatch('Movie',this)">Movies</button>
-        <button class="filter-btn" onclick="filterWatch('Series',this)">Series</button>
-      </div>
-      <div id="watchlist-container"></div>
-    </div>
+    <!-- ══ LISTS (Watch + Wish) ══ -->
+    <div class="page" id="page-lists">
+      <div class="page-header"><div class="header-row"><div style="display:flex;align-items:center;gap:12px"><img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExY2pmcWw0OGh4a29rdWpmbWltczJvcThtYmppMXdwNGM0ZXZ1aWUwciZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/A8OSeenhtpey43CcMG/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0"><div><h1>Lists</h1><p>What to watch and what to wait on</p></div></div><button class="btn btn-accent" id="lists-add-btn" onclick="openModal('addWatchItem')">+ Add</button></div></div>
 
-    <!-- ══ WISHLIST ══ -->
-    <div class="page" id="page-wishlist">
-      <div class="page-header"><div class="header-row"><div style="display:flex;align-items:center;gap:12px"><img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNGd3ajJrdWltazRjcnByYXFzbDRibTdpNGk3N2hxMmNnMGc5d3A3ciZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/At48Y4dT3oDXx64KQj/giphy.gif" alt="" style="width:100px;height:100px;object-fit:cover;border-radius:20px;flex-shrink:0"><div><h1>Wishlist / 30-Day Waitlist</h1><p>Impulse spending prevention.</p></div></div><button class="btn btn-accent" onclick="openModal('addWishItem')">+ Add Item</button></div></div>
-      <div class="filter-row" id="wish-filters">
-        <button class="filter-btn active" onclick="filterWish('all',this)">All</button>
-        <button class="filter-btn" onclick="filterWish('waiting',this)">Waiting</button>
-        <button class="filter-btn" onclick="filterWish('approved',this)">Approved</button>
-        <button class="filter-btn" onclick="filterWish('purchased',this)">Purchased</button>
+      <div class="page-tabs">
+        <button class="page-tab active" onclick="subNav('lists','watch')">🎬 Watch list</button>
+        <button class="page-tab" onclick="subNav('lists','wish')">🛍️ Wishlist</button>
       </div>
-      <div id="wish-stats" style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap"></div>
-      <div id="wishlist-container"></div>
+
+      <!-- Watch list -->
+      <div class="sub-page active" id="lists-watch">
+        <div class="filter-row" id="watch-filters">
+          <button class="filter-btn active" onclick="filterWatch('all',this)">All</button>
+          <button class="filter-btn" onclick="filterWatch('want',this)">Want to watch</button>
+          <button class="filter-btn" onclick="filterWatch('watching',this)">Watching</button>
+          <button class="filter-btn" onclick="filterWatch('done',this)">Done</button>
+          <button class="filter-btn" onclick="filterWatch('Movie',this)">Movies</button>
+          <button class="filter-btn" onclick="filterWatch('Series',this)">Series</button>
+        </div>
+        <div id="watchlist-container"></div>
+      </div>
+
+      <!-- Wishlist -->
+      <div class="sub-page" id="lists-wish">
+        <div class="filter-row" id="wish-filters">
+          <button class="filter-btn active" onclick="filterWish('all',this)">All</button>
+          <button class="filter-btn" onclick="filterWish('waiting',this)">Waiting</button>
+          <button class="filter-btn" onclick="filterWish('approved',this)">Approved</button>
+          <button class="filter-btn" onclick="filterWish('purchased',this)">Purchased</button>
+        </div>
+        <div id="wish-stats" style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap"></div>
+        <div id="wishlist-container"></div>
+      </div>
     </div>
 
     <!-- ══ INSIGHTS ══ -->
@@ -826,20 +833,20 @@
 
 
 
-<script src="js/state.js?v=4"></script>
-<script src="js/roadmap-data.js?v=4"></script>
-<script src="js/roadmap.js?v=4"></script>
-<script src="js/navigation.js?v=4"></script>
-<script src="js/dashboard.js?v=4"></script>
-<script src="js/habits.js?v=4"></script>
-<script src="js/workouts.js?v=4"></script>
-<script src="js/finance.js?v=4"></script>
-<script src="js/reviews.js?v=4"></script>
-<script src="js/relationships.js?v=4"></script>
-<script src="js/gratitude.js?v=4"></script>
-<script src="js/insights.js?v=4"></script>
-<script src="js/skincare.js?v=4"></script>
-<script src="js/modals.js?v=4"></script>
-<script src="js/init.js?v=4"></script>
+<script src="js/state.js?v=5"></script>
+<script src="js/roadmap-data.js?v=5"></script>
+<script src="js/roadmap.js?v=5"></script>
+<script src="js/navigation.js?v=5"></script>
+<script src="js/dashboard.js?v=5"></script>
+<script src="js/habits.js?v=5"></script>
+<script src="js/workouts.js?v=5"></script>
+<script src="js/finance.js?v=5"></script>
+<script src="js/reviews.js?v=5"></script>
+<script src="js/relationships.js?v=5"></script>
+<script src="js/gratitude.js?v=5"></script>
+<script src="js/insights.js?v=5"></script>
+<script src="js/skincare.js?v=5"></script>
+<script src="js/modals.js?v=5"></script>
+<script src="js/init.js?v=5"></script>
 </body>
 </html>
