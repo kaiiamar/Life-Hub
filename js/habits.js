@@ -252,7 +252,7 @@ function renderHabitCard(h,todayKey){
       else if(d.isToday)cls+=' today';
       var inner=d.status==='done'?'✓':d.letter;
       var clickable=!d.future&&d.status!=='pre-start';
-      var click=clickable?'onclick="toggleHabit(\''+h.id+'\',\''+d.key+'\')"':'';
+      var click=clickable?'onclick="toggleHabit(\''+h.id+'\',\''+d.key+'\')" role="button" tabindex="0" aria-label="Toggle '+escapeHtml(h.name)+' on '+d.key+'"':'';
       var title=d.date?'':'';
       return '<div class="'+cls+'" '+click+'><span class="hb-week-letter">'+d.letter+'</span><span class="hb-week-mark">'+inner+'</span></div>';
     }).join('')+'</div>';

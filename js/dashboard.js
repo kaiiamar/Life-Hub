@@ -1,5 +1,25 @@
 // DASHBOARD
 // ============================================================
+
+// ── Inline SVG icon set (#5) ──
+// Lightweight, currentColor-themed icons for system chrome. Use icon('run')
+// etc. Emoji stay for user-chosen things (habit icons). Stroke-based, 1.6.
+var ICONS={
+  run:'<path d="M13 4a2 2 0 1 0 0-.001M5 21l3-5 3 2 1-4M8 16l-2-3 4-3 3 2 3-1"/>',
+  dumbbell:'<path d="M6.5 6.5l11 11M3 9v6M21 9v6M6 7v10M18 7v10"/>',
+  rest:'<path d="M3 12h6l2-3 2 6 2-3h6"/>',
+  flame:'<path d="M12 3c1 3 4 4 4 8a4 4 0 0 1-8 0c0-2 1-3 1-3 0 2 1 3 2 3 1 0 2-1 2-3 0-3-1-4-1-5z"/>',
+  check:'<path d="M20 6L9 17l-5-5"/>',
+  chevron:'<path d="M9 6l6 6-6 6"/>'
+};
+function icon(name,size){
+  var p=ICONS[name];if(!p)return '';
+  var s=size||18;
+  return '<svg class="ico" width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" '
+    +'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" '
+    +'aria-hidden="true" focusable="false">'+p+'</svg>';
+}
+
 function focusBar(icon,label,val,pct,grad){
   return '<div class="focus-bar">'
     +'<span class="focus-bar-icon">'+icon+'</span>'
@@ -232,7 +252,7 @@ function renderDashboard(){
   var recentRuns=((STATE.metrics||{}).run||[]).slice(-3).reverse();
   var combined=recent.map(function(w){return {type:'gym',date:w.date,name:w.name,sub:(w.muscleGroups||[]).join(', '),icon:((w.muscleGroups||[]).indexOf('Hyrox')!==-1)?'\u26a1':'\ud83c\udfcb\ufe0f'}}).concat(recentRuns.map(function(r){return {type:'run',date:r.date,name:r.distance+'km'+(r.time?' \u00b7 '+r.time:''),sub:r.note||'Run',icon:'\ud83c\udfc3'}})).sort(function(a,b){return b.date.localeCompare(a.date)}).slice(0,5);
   var wpEl=document.getElementById('dash-workouts-preview');
-  if(wpEl)wpEl.innerHTML=combined.length?combined.map(function(w){var bgCol=w.type==='run'?'var(--secondary-dim)':'var(--primary-dim)';var iconCol=w.type==='run'?'var(--secondary)':'var(--primary)';return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--outline-variant)"><div style="width:36px;height:36px;border-radius:12px;background:'+bgCol+';display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:16px">'+w.icon+'</span></div><div style="flex:1"><div style="font-size:13px;font-weight:600">'+w.name+'</div><div style="font-size:10px;color:var(--neutral);text-transform:uppercase;font-weight:500;margin-top:2px">'+w.sub+' \u00b7 '+fmtDate(w.date)+'</div></div></div>'}).join('')+'<button class="btn btn-ghost btn-sm" onclick="nav(\'workout\')" style="margin-top:8px;width:100%;justify-content:center">View all \u2192</button>':'<div class="empty" style="padding:12px 0"><div style="font-size:28px;margin-bottom:6px">\ud83c\udfcb\ufe0f</div>No sessions yet</div><button class="btn btn-accent btn-sm" onclick="openModal(\'startSession\')" style="width:100%;justify-content:center">+ Start session</button>';
+  if(wpEl)wpEl.innerHTML=combined.length?combined.map(function(w){return '<div class="u-tile"><div class="u-tile-icon'+(w.type==='run'?' is-run':'')+'">'+w.icon+'</div><div class="u-tile-body"><div class="u-tile-title">'+w.name+'</div><div class="u-tile-sub">'+w.sub+' · '+fmtDate(w.date)+'</div></div></div>'}).join('')+'<button class="btn btn-ghost btn-sm u-mt-8" onclick="nav(\'workout\')" style="width:100%;justify-content:center">View all →</button>':'<div class="empty" style="padding:12px 0"><div style="font-size:28px;margin-bottom:6px">🏋️</div>No sessions yet</div><button class="btn btn-accent btn-sm" onclick="openModal(\'startSession\')" style="width:100%;justify-content:center">+ Start session</button>';
   renderDashboardRelationships();
   renderDashMoodWeek();
   var tExp=(STATE.expenses||[]).reduce(function(s,e){return s+Number(e.amount)},0);var tInc=(STATE.income||[]).reduce(function(s,i){return s+Number(i.amount)},0);var tDebt=(STATE.debts||[]).reduce(function(s,d){return s+Number(d.balance)},0);var tSav=(STATE.accounts||[]).reduce(function(s,a){return s+Number(a.balance)},0);var left=tInc-tExp;
@@ -302,7 +322,7 @@ var h='<div class="card goal-item" style="position:relative;margin-bottom:12px;b
 h+='<div class="goal-actions"><button class="btn btn-sm btn-ghost" onclick="openModal(\'editGoal\',\''+go.id+'\')" title="Edit">✎</button><button class="btn btn-sm btn-danger" onclick="deleteGoal(\''+go.id+'\')" title="Delete">×</button></div>';
 h+='<div style="display:flex;align-items:flex-start;gap:14px">';
 /* Tickbox */
-h+='<div onclick="toggleGoalDone(\''+go.id+'\')" style="width:28px;height:28px;border-radius:50%;border:2px solid '+(isDone?'var(--mint)':col)+';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;transition:all .15s;background:'+(isDone?'var(--mint)':'transparent')+'">'+(isDone?'<span style="color:#fff;font-size:14px;font-weight:700">✓</span>':'')+'</div>';
+h+='<div onclick="toggleGoalDone(\''+go.id+'\')" role="button" tabindex="0" aria-label="Toggle goal complete" style="width:28px;height:28px;border-radius:50%;border:2px solid '+(isDone?'var(--mint)':col)+';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;transition:all .15s;background:'+(isDone?'var(--mint)':'transparent')+'">'+(isDone?'<span style="color:#fff;font-size:14px;font-weight:700">✓</span>':'')+'</div>';
 /* Content */
 h+='<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px"><span class="badge badge-'+go.badge+'">'+go.cat+'</span>';
 if(isDone)h+='<span class="badge badge-done">Done</span>';
@@ -316,7 +336,7 @@ if(go.deadline){h+='<div style="font-size:11px;margin-top:6px;color:'+(overdue?'
 var srcInfo=getGoalSource(go);
 var livePct=goalPct(go);
 var progressDisplay=srcInfo.source!=='manual'?srcInfo.progress:go.progress;
-h+='<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-size:11px;color:var(--text2);font-weight:500">'+progressDisplay+(go.unit||'')+' / '+go.target+(go.unit||'')+'</span><span style="font-size:11px;font-weight:600;color:'+pbarColor(livePct)+'">'+livePct+'%</span></div><div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+livePct+'%;background:'+pbarColor(livePct)+';border-radius:3px;transition:width .4s"></div></div>';
+h+='<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-size:11px;color:var(--text2);font-weight:500">'+progressDisplay+(go.unit||'')+' / '+go.target+(go.unit||'')+'</span><span style="font-size:11px;font-weight:600;color:'+pbarColor(livePct)+'">'+livePct+'%</span></div><div class="u-bar" role="progressbar" aria-valuenow="'+livePct+'" aria-valuemin="0" aria-valuemax="100" aria-label="'+escapeHtml(go.name)+' progress"><div class="u-bar-fill" style="width:'+livePct+'%;background:'+pbarColor(livePct)+'"></div></div>';
 if(srcInfo.label)h+='<div style="font-size:10px;color:var(--mint);margin-top:4px;font-weight:500">'+srcInfo.label+'</div>';
 h+='</div>';
 /* Sub-steps (item 10) */
@@ -326,9 +346,9 @@ h+='<div class="goal-substeps"><div class="goal-substeps-head"><span>Steps</span
 if(subs.length){
   h+=subs.map(function(s,si){
     return '<div class="goal-substep'+(s.done?' done':'')+'">'
-      +'<div class="goal-substep-tick" onclick="toggleGoalSubStep(\''+go.id+'\','+si+')">'+(s.done?'✓':'')+'</div>'
+      +'<div class="goal-substep-tick" onclick="toggleGoalSubStep(\''+go.id+'\','+si+')" role="button" tabindex="0" aria-label="Toggle step: '+escapeHtml(s.text)+'">'+(s.done?'✓':'')+'</div>'
       +'<span class="goal-substep-text">'+escapeHtml(s.text)+'</span>'
-      +'<button class="goal-substep-del" onclick="deleteGoalSubStep(\''+go.id+'\','+si+')" title="Remove">×</button>'
+      +'<button class="goal-substep-del" onclick="deleteGoalSubStep(\''+go.id+'\','+si+')" title="Remove" aria-label="Remove step">×</button>'
       +'</div>';
   }).join('');
 }
@@ -825,7 +845,7 @@ function renderDashTrainingToday(){
       +'<div style="flex:1;min-width:0">'
         +'<div class="dash-train-title">'+t.label+'</div>'
         +'<div class="dash-train-sub">'+def.exercises.length+' exercises · '+def.duration+(t.run?' · then recovery run':'')+'</div>'
-        +'<div class="dash-train-bar"><div class="dash-train-bar-fill" style="width:'+pct+'%"></div></div>'
+        +'<div class="dash-train-bar" role="progressbar" aria-valuenow="'+pct+'" aria-valuemin="0" aria-valuemax="100" aria-label="'+t.label+' progress: '+doneCount+' of '+def.exercises.length+' done"><div class="dash-train-bar-fill" style="width:'+pct+'%"></div></div>'
       +'</div>'
       +'<button class="btn btn-accent btn-sm" onclick="nav(\'workout\');setTimeout(function(){subNav(\'workout\',\'myplan\');toggleTrainDay(\''+t.session+'\')},60)">'+(doneCount>0?doneCount+'/'+def.exercises.length:'Start')+'</button>'
       +'</div>';
