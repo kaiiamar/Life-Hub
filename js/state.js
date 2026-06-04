@@ -40,8 +40,6 @@ var DEFAULT_STATE = {
   ],
   habits:[
     {id:g(),name:'Min 8k steps',freq:'daily',badge:'fit',logs:{}},
-    {id:g(),name:'Run once a week',freq:'weekly',badge:'fit',logs:{}},
-    {id:g(),name:'Gym session',freq:'3x/week',badge:'fit',logs:{}},
     {id:g(),name:'Visit Dad',freq:'bi-monthly',badge:'per',logs:{}},
     {id:g(),name:'Hike',freq:'monthly',badge:'per',logs:{}},
     {id:g(),name:'Eat better (no junk)',freq:'daily',badge:'per',logs:{}},
@@ -88,7 +86,8 @@ var DEFAULT_STATE = {
   metrics:{weight:[],bodyFat:[],steps:[],runs:[],moneySaved:[],projectsDone:[]},
   weeklyPlans:{},reviews:{monthly:{},quarterly:{}},
   dailyPriorities:{},
-  trainingEvents:[],
+  trainingEvents:[{id:g(),name:'Half Marathon',date:'2026-09-20',note:'21.1km race day'}],
+  trainingPlan:null,
   journal:{},mood:{},dailyHighlights:{},
   skincare:{startedOn:null,products:{am:[],pm:[]},actives:[],nightSchedule:{},guaShaLog:{},activeLog:{},photos:[]},
   tasks:[],
