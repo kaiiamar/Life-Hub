@@ -225,6 +225,7 @@ function renderDashboard(){
   renderDashWhatsNext();
   renderDashMoodCheckin();
   renderDashWater();
+  renderDashTrainingToday();
   var gEl2=document.getElementById('dash-gratitude-preview');
   if(gEl2){var todayEntries=(STATE.gratitude||[]).filter(function(e){return e.date===todayKey});if(todayEntries.length){gEl2.innerHTML=todayEntries.map(function(e){return (e.wins?'<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)"><span style="color:var(--accent)">\ud83c\udfc6</span><span style="font-size:12px">'+e.wins+'</span></div>':'')+(e.gratitude?'<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)"><span style="color:var(--gold)">\ud83d\ude4f</span><span style="font-size:12px">'+e.gratitude+'</span></div>':'')}).join('')+'<button class="btn btn-ghost btn-sm" onclick="nav(\'gratitude\')" style="margin-top:6px;width:100%;justify-content:center">View all \u2192</button>'}else{gEl2.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:12px 0">Nothing logged today</div><button class="btn btn-accent btn-sm" onclick="openModal(\'addGratitude\')" style="width:100%;justify-content:center">+ Log gratitude</button>'}}
   var recent=(STATE.workouts||[]).slice(-3).reverse();
@@ -795,6 +796,53 @@ function deleteGoalSubStep(goalId,idx){
 // Surfaces ONE habit at a time based on time-of-day anchor + due status.
 // Animates on tick, rolls to next. Compassionate "all caught up" state.
 var _whatsNextDismissed={}; // session-only dismiss for current habit id
+
+// ── Today's training (dashboard) ──
+function renderDashTrainingToday(){
+  var card=document.getElementById('dash-training-card');
+  var el=document.getElementById('dash-training-today');
+  if(!card||!el)return;
+  if(typeof todaysTrainingSession!=='function'){card.style.display='none';return}
+  var t=todaysTrainingSession();
+  if(!t){card.style.display='none';return}
+  card.style.display='';
+  var def=(typeof workoutDef==='function')?workoutDef(t.session):null;
+  var todayKey=localDateKey(new Date());
+
+  if(t.session==='rest'){
+    el.innerHTML='<div class="dash-train-rest"><span style="font-size:22px">🌿</span><div><div class="dash-train-title">Rest day</div><div class="dash-train-sub">'+t.sub+'. Recovery is training too.</div></div></div>';
+    return;
+  }
+  if(def){
+    // Strength day — show progress + jump to plan
+    var wk=weekKey(new Date());
+    var plan=getTrainingPlan();
+    var checks=(plan.checks[wk]&&plan.checks[wk][t.session])||{};
+    var doneCount=def.exercises.filter(function(ex,xi){return checks[xi]}).length;
+    var pct=Math.round(doneCount/def.exercises.length*100);
+    el.innerHTML='<div class="dash-train-main">'
+      +'<div class="dash-train-icon">'+def.emoji+'</div>'
+      +'<div style="flex:1;min-width:0">'
+        +'<div class="dash-train-title">'+t.label+'</div>'
+        +'<div class="dash-train-sub">'+def.exercises.length+' exercises · '+def.duration+(t.run?' · then recovery run':'')+'</div>'
+        +'<div class="dash-train-bar"><div class="dash-train-bar-fill" style="width:'+pct+'%"></div></div>'
+      +'</div>'
+      +'<button class="btn btn-accent btn-sm" onclick="nav(\'workout\');setTimeout(function(){subNav(\'workout\',\'myplan\');toggleTrainDay(\''+t.session+'\')},60)">'+(doneCount>0?doneCount+'/'+def.exercises.length:'Start')+'</button>'
+      +'</div>';
+    return;
+  }
+  // Run day
+  var logged=(((STATE.metrics||{}).run)||[]).some(function(r){return r.date===todayKey});
+  el.innerHTML='<div class="dash-train-main">'
+    +'<div class="dash-train-icon">🏃</div>'
+    +'<div style="flex:1;min-width:0">'
+      +'<div class="dash-train-title">'+t.label+'</div>'
+      +'<div class="dash-train-sub">'+t.sub+' (Nike Run Club)</div>'
+    +'</div>'
+    +(logged?'<span class="dash-train-done">✓ Logged</span>':'<button class="btn btn-accent btn-sm" onclick="openModal(\'logRun\')">+ Log run</button>')
+    +'</div>';
+}
+
 
 function renderDashWhatsNext(){
   var el=document.getElementById('dash-whats-next');

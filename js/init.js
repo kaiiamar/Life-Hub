@@ -16,7 +16,7 @@ var qEl=document.getElementById('sidebar-quote');if(qEl)qEl.textContent=quotes[M
 
 if(_firebaseReady)setSyncStatus('saving');
 loadFromCloud(function(){
-  var migrateKeys=['goals','habits','workouts','gymTemplates','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','projects','relationships','gratitude','wishlist','watchlist','debtPayments','reminders','water','dailyPriorities','trainingEvents','tasks'];
+  var migrateKeys=['goals','habits','workouts','gymTemplates','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','projects','relationships','gratitude','wishlist','watchlist','debtPayments','reminders','water','dailyPriorities','trainingEvents','trainingPlan','tasks'];
   migrateKeys.forEach(function(k){if(!STATE[k])STATE[k]=JSON.parse(JSON.stringify(DEFAULT_STATE[k]||(k==='tasks'?[]:{})))});
   if(!STATE.tasks)STATE.tasks=[];
   if(!STATE.metrics.projectsDone)STATE.metrics.projectsDone=[];
@@ -35,6 +35,28 @@ loadFromCloud(function(){
     if(typeof autoSuggestAnchor==='function')h.anchor=autoSuggestAnchor(h.name);
     else h.anchor='anytime';
   });
+
+  // ---- TRAINING PLAN MIGRATION (one-shot) ---------------------------------
+  // Move gym/running out of the habit tracker into the dedicated training plan.
+  // Remove the old 'Gym session' and 'Run once a week' habits, seed the half
+  // marathon plan + race event. Guarded so it only runs once.
+  if(!STATE.__trainingMigrated){
+    STATE.habits=(STATE.habits||[]).filter(function(h){
+      var n=(h.name||'').toLowerCase();
+      return !(n.indexOf('gym session')!==-1||n==='run once a week'||n.indexOf('run once')!==-1);
+    });
+    if(!STATE.trainingPlan&&typeof TRAINING_TEMPLATE!=='undefined'){
+      STATE.trainingPlan={template:JSON.parse(JSON.stringify(TRAINING_TEMPLATE)),checks:{}};
+    }
+    // Seed race event if not already present
+    if(!STATE.trainingEvents)STATE.trainingEvents=[];
+    var hasRace=STATE.trainingEvents.some(function(e){return e.date==='2026-09-20'||/half\s*marathon/i.test(e.name||'')});
+    if(!hasRace){
+      STATE.trainingEvents.push({id:g(),name:'Half Marathon',date:'2026-09-20',note:'21.1km race day'});
+    }
+    STATE.__trainingMigrated=true;
+    saveState();
+  }
 
   // ---- TASKS MIGRATION (one-shot) -----------------------------------------
   // Old data: STATE.dailyPriorities[date] = [{text,done}]

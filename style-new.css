@@ -4215,3 +4215,41 @@ body.night-mode .hb-week-day.done{background:linear-gradient(135deg,#E8A87C,#D97
   color:var(--text3);
   font-style:italic;
 }
+
+/* ── Half marathon training plan ── */
+.train-plan-list{display:flex;flex-direction:column;gap:10px}
+.train-plan-day{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+.train-plan-day.is-today{box-shadow:0 0 0 2px var(--accent-dim)}
+.train-plan-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px}
+.train-plan-head-main{min-width:0}
+.train-plan-dayname{font-size:10px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--text3)}
+.train-plan-label{font-size:15px;font-weight:600;color:var(--fg);margin-top:2px}
+.train-plan-sub{font-size:12px;color:var(--text2);margin-top:2px}
+.train-plan-head-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.train-plan-progress{font-size:12px;font-weight:600;color:var(--mint);background:var(--mint-dim);padding:2px 9px;border-radius:var(--radius-pill)}
+.train-plan-chevron{font-size:14px;color:var(--text3);transition:transform 180ms var(--ease);display:inline-block}
+.train-plan-body{display:none;padding:0 16px 14px;border-top:1px solid var(--border)}
+.train-plan-body.open{display:block}
+.train-plan-warmup{font-size:12px;color:var(--text2);background:var(--bg3);border-radius:var(--radius-sm);padding:9px 12px;margin:12px 0}
+.train-ex{display:flex;gap:11px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.train-ex:last-of-type{border-bottom:none}
+.train-ex-tick{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;transition:all 160ms var(--ease);margin-top:1px}
+.train-ex.done .train-ex-tick{background:var(--mint);border-color:var(--mint)}
+.train-ex-body{flex:1;min-width:0}
+.train-ex-name{font-size:13.5px;font-weight:600;color:var(--fg);display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.train-ex.done .train-ex-name{text-decoration:line-through;color:var(--text3)}
+.train-ex-scheme{font-size:12px;font-weight:600;color:var(--accent);flex-shrink:0}
+.train-ex-note{font-size:11px;color:var(--text3);margin-top:2px;line-height:1.4}
+.train-plan-foot{font-size:11px;color:var(--text2);font-style:italic;margin-top:12px;padding-top:10px;border-top:1px dashed var(--border)}
+.train-plan-hint{font-size:11px;color:var(--text3);text-align:center;margin-top:12px}
+
+/* ── Dashboard: today's training ── */
+.dash-training-card{background:linear-gradient(135deg,rgba(143,185,138,0.07),rgba(124,165,194,0.06));border:1.5px solid rgba(143,185,138,0.2)}
+.dash-train-main{display:flex;align-items:center;gap:14px;margin-top:4px}
+.dash-train-icon{width:42px;height:42px;border-radius:12px;background:var(--panel);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:var(--shadow-xs)}
+.dash-train-title{font-size:15px;font-weight:600;color:var(--fg)}
+.dash-train-sub{font-size:12px;color:var(--text2);margin-top:2px}
+.dash-train-bar{height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;margin-top:8px}
+.dash-train-bar-fill{height:100%;background:var(--mint);border-radius:3px;transition:width .4s}
+.dash-train-rest{display:flex;align-items:center;gap:14px;margin-top:4px}
+.dash-train-done{font-size:13px;font-weight:600;color:var(--mint);flex-shrink:0}
