@@ -211,10 +211,17 @@ function renderDashboard(){
   var focusBarsEl=document.getElementById('focus-bars');
   var focusLabelEl=document.getElementById('focus-score-label');
   if(focusStatEl&&focusSubEl&&focusBarsEl){
-    if(!STATE.dailyPriorities)STATE.dailyPriorities={};
-    var todayPris=STATE.dailyPriorities[todayKey]||[];
-    var priDone=todayPris.filter(function(p){return p.done}).length;
-    var priTotal=todayPris.length;
+    // Today's actionable tasks from the unified tasks list (priorities,
+    // overdue, due-today) — matches what the tasks card shows.
+    var wkStartF=weekKey(now);
+    var openTasks=(STATE.tasks||[]).filter(function(t){return !t.done});
+    var todayTasks=(STATE.tasks||[]).filter(function(t){
+      if(t.weekPriority===wkStartF)return true;
+      if(t.dueDate&&t.dueDate<=todayKey)return true;
+      return false;
+    });
+    var priDone=todayTasks.filter(function(t){return t.done}).length;
+    var priTotal=todayTasks.length;
     var totalDone=habitsToday+priDone;
     var totalAll=habitsTotal+priTotal;
     var overallPct=totalAll>0?Math.round((totalDone/totalAll)*100):0;
@@ -245,21 +252,18 @@ function renderDashboard(){
     }
     focusSubEl.innerHTML=msg;
 
+    // The detailed habit/task breakdown lives in the cards directly below, so
+    // the focus card stays a clean summary: a single progress bar + CTA only
+    // when there's genuinely nothing to act on.
     var barsHtml='';
-    if(habitsTotal>0){
-      barsHtml+=focusBar('✅','Habits',habitsToday+'/'+habitsTotal,habPct,'var(--grad-green)');
+    if(totalAll>0){
+      barsHtml='<div class="focus-progress" role="progressbar" aria-valuenow="'+overallPct+'" aria-valuemin="0" aria-valuemax="100" aria-label="Today overall: '+overallPct+'%"><div class="focus-progress-fill" data-w="'+overallPct+'"></div></div>';
     }else{
-      barsHtml+='<div class="focus-bar focus-bar-empty"><span class="focus-bar-icon">✅</span><span class="focus-bar-label">No habits due today</span><button class="focus-bar-cta" onclick="nav(\'habits\')">Set one →</button></div>';
-    }
-    if(priTotal>0){
-      var dailyPriPct=Math.round((priDone/priTotal)*100);
-      barsHtml+=focusBar('📝','Tasks',priDone+'/'+priTotal,dailyPriPct,'var(--grad-accent)');
-    }else{
-      barsHtml+='<div class="focus-bar focus-bar-empty"><span class="focus-bar-icon">📝</span><span class="focus-bar-label">No tasks added yet</span><button class="focus-bar-cta" onclick="document.getElementById(\'daily-pri-input\')&&document.getElementById(\'daily-pri-input\').focus()">Add one →</button></div>';
+      barsHtml='<div class="focus-bar focus-bar-empty"><span class="focus-bar-icon">✨</span><span class="focus-bar-label">Add a habit or task to begin</span><button class="focus-bar-cta" onclick="nav(\'habits\')">Set one →</button></div>';
     }
     focusBarsEl.innerHTML=barsHtml;
     setTimeout(function(){
-      focusBarsEl.querySelectorAll('.focus-bar-fill').forEach(function(el){
+      focusBarsEl.querySelectorAll('.focus-bar-fill,.focus-progress-fill').forEach(function(el){
         var w=el.getAttribute('data-w');el.style.width=w+'%';
       });
     },80);
@@ -270,7 +274,7 @@ function renderDashboard(){
   var priDoneToday=todayPrisForStats.filter(function(p){return p.done}).length;
   var priTotalToday=todayPrisForStats.length;
   var priPctToday=priTotalToday>0?Math.round(priDoneToday/priTotalToday*100):0;
-  // Monthly focus carry-over (item 12) — show last month's review focus on day 1-7 of new month
+  // Monthly focus — surfaced in the hero header (this month, or last month's if unset)
   renderDashMonthlyFocus();
   // Mini mood orb (item 4)
   renderDashMoodMini();
@@ -286,8 +290,6 @@ function renderDashboard(){
   renderDashMoodCheckin();
   renderDashWater();
   renderDashTrainingToday();
-  var gEl2=document.getElementById('dash-gratitude-preview');
-  if(gEl2){var todayEntries=(STATE.gratitude||[]).filter(function(e){return e.date===todayKey});if(todayEntries.length){gEl2.innerHTML=todayEntries.map(function(e){return (e.wins?'<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)"><span style="color:var(--accent)">\ud83c\udfc6</span><span style="font-size:12px">'+e.wins+'</span></div>':'')+(e.gratitude?'<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)"><span style="color:var(--gold)">\ud83d\ude4f</span><span style="font-size:12px">'+e.gratitude+'</span></div>':'')}).join('')+'<button class="btn btn-ghost btn-sm" onclick="nav(\'gratitude\')" style="margin-top:6px;width:100%;justify-content:center">View all \u2192</button>'}else{gEl2.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:12px 0">Nothing logged today</div><button class="btn btn-accent btn-sm" onclick="openModal(\'addGratitude\')" style="width:100%;justify-content:center">+ Log gratitude</button>'}}
   var recent=(STATE.workouts||[]).slice(-3).reverse();
   var recentRuns=((STATE.metrics||{}).run||[]).slice(-3).reverse();
   var combined=recent.map(function(w){return {type:'gym',date:w.date,name:w.name,sub:(w.muscleGroups||[]).join(', '),icon:((w.muscleGroups||[]).indexOf('Hyrox')!==-1)?'\u26a1':'\ud83c\udfcb\ufe0f'}}).concat(recentRuns.map(function(r){return {type:'run',date:r.date,name:r.distance+'km'+(r.time?' \u00b7 '+r.time:''),sub:r.note||'Run',icon:'\ud83c\udfc3'}})).sort(function(a,b){return b.date.localeCompare(a.date)}).slice(0,5);
@@ -723,26 +725,25 @@ function dismissGratitudeNudge(){
 }
 
 
-// ── DASHBOARD: MONTHLY FOCUS CARRY-OVER (item 12) ──
-// Surface last month's review focus for the first 7 days of the current month.
+// ── DASHBOARD: MONTHLY FOCUS (hero banner) ──
+// Surfaces this month's review focus in the hero header (falls back to last
+// month's focus if the current month's review isn't written yet).
 function renderDashMonthlyFocus(){
   var card=document.getElementById('dash-monthly-focus-card');
   var el=document.getElementById('dash-monthly-focus');
   if(!card||!el)return;
   var now=new Date();
-  var dayOfMonth=now.getDate();
-  if(dayOfMonth>7){card.style.display='none';return}
+  // Prefer this month's focus; fall back to last month's if not set yet.
+  var thisKey=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   var prevMonth=new Date(now.getFullYear(),now.getMonth()-1,1);
   var prevKey=prevMonth.getFullYear()+'-'+String(prevMonth.getMonth()+1).padStart(2,'0');
-  var review=STATE.reviews&&STATE.reviews.monthly&&STATE.reviews.monthly[prevKey];
+  var monthly=(STATE.reviews&&STATE.reviews.monthly)||{};
+  var review=monthly[thisKey]&&monthly[thisKey].focus?monthly[thisKey]:(monthly[prevKey]&&monthly[prevKey].focus?monthly[prevKey]:null);
   if(!review||!review.focus){card.style.display='none';return}
   card.style.display='';
   var focusText=review.focus.split('\n')[0].trim();
-  if(focusText.length>80)focusText=focusText.slice(0,80)+'…';
+  if(focusText.length>90)focusText=focusText.slice(0,90)+'…';
   el.textContent=focusText;
-  // Make whole card clickable to reviews
-  card.style.cursor='pointer';
-  card.onclick=function(){nav('review')};
 }
 
 // ── DASHBOARD: MINI MOOD ORB (item 4) ──
