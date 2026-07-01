@@ -4406,3 +4406,222 @@ body.night-mode .hero-focus-banner{background:rgba(155,135,190,0.18);border-colo
   transition:width .6s var(--ease);
 }
 body.night-mode .focus-progress{background:rgba(255,255,255,0.1)}
+
+/* ══════════════════════════════════════════════════════════
+   PLANNER PAGE — today & this-week tabs
+   Reuses core tokens (--card radii, --shadow-*, --accent*, --text*)
+   and the shared .card / .btn / .page-tab utility classes.
+   ══════════════════════════════════════════════════════════ */
+
+/* Tab panes (mirror .sub-page show/hide) */
+.planner-tab{display:none}
+.planner-tab.active{display:block}
+
+/* Card shell — a lighter-padded variant of .card, stacked vertically */
+.planner-card{margin-bottom:14px}
+.planner-card:last-child{margin-bottom:0}
+.planner-card-head{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;margin-bottom:12px;
+}
+.planner-card-title{
+  font-family:var(--serif);font-size:16px;font-weight:500;
+  letter-spacing:-0.01em;color:var(--fg);
+}
+.planner-card-count{
+  font-size:12px;font-weight:600;color:var(--accent-dark);
+  background:var(--accent-dim);padding:2px 9px;
+  border-radius:var(--radius-pill);flex-shrink:0;
+}
+.planner-card-hint{font-size:11px;color:var(--text3);font-weight:500;flex-shrink:0}
+.planner-empty-line{font-size:13px;color:var(--text3);padding:4px 0}
+
+/* ── Today at a glance: commitment rows (time + tick) ── */
+.planner-commitments{display:flex;flex-direction:column;gap:8px}
+.commit-row{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 12px;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius-xs);
+  transition:background 160ms var(--ease),opacity 160ms var(--ease);
+}
+.commit-row.done{opacity:0.6}
+.commit-check{
+  width:24px;height:24px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--border);border-radius:50%;
+  background:var(--bg2);cursor:pointer;
+  font-size:13px;font-weight:700;color:var(--white);
+  transition:all 160ms var(--ease);
+}
+.commit-check:hover{border-color:var(--accent)}
+.commit-row.done .commit-check{background:var(--accent);border-color:var(--accent)}
+.commit-body{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;min-width:0;flex:1}
+.commit-text{font-size:14px;font-weight:500;color:var(--fg)}
+.commit-row.done .commit-text{text-decoration:line-through;color:var(--text3)}
+.commit-time{
+  font-size:11px;font-weight:600;color:var(--text2);
+  background:var(--muted);padding:2px 8px;
+  border-radius:var(--radius-pill);white-space:nowrap;
+}
+
+/* Today's training line */
+.planner-train-line{
+  display:flex;align-items:center;gap:10px;
+  margin-top:12px;padding:10px 12px;
+  background:var(--accent-dim);border-radius:var(--radius-xs);
+}
+.planner-train-icon{font-size:16px;line-height:1;flex-shrink:0}
+.planner-train-text{font-size:13px;font-weight:500;color:var(--accent-dark)}
+
+/* ── Daily Focus card ── */
+.planner-focus-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.focus-row{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 12px;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius-xs);
+  transition:opacity 160ms var(--ease);
+}
+.focus-row.done{opacity:0.6}
+.focus-check{
+  width:24px;height:24px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--border);border-radius:50%;
+  background:var(--bg2);cursor:pointer;
+  font-size:13px;font-weight:700;color:var(--white);
+  transition:all 160ms var(--ease);
+}
+.focus-check:hover{border-color:var(--accent)}
+.focus-row.done .focus-check{background:var(--accent);border-color:var(--accent)}
+.focus-text{flex:1;min-width:0;font-size:14px;font-weight:500;color:var(--fg)}
+.focus-row.done .focus-text{text-decoration:line-through;color:var(--text3)}
+.focus-remove{
+  flex-shrink:0;width:26px;height:26px;
+  display:flex;align-items:center;justify-content:center;
+  border:none;background:transparent;color:var(--text3);
+  font-size:18px;line-height:1;cursor:pointer;border-radius:8px;
+  transition:all 160ms var(--ease);
+}
+.focus-remove:hover{background:var(--accent-dim);color:var(--accent-dark)}
+.planner-focus-done{
+  font-size:13px;font-weight:500;color:var(--accent-dark);
+  background:var(--accent-dim);padding:8px 12px;
+  border-radius:var(--radius-xs);margin-bottom:10px;
+}
+.planner-focus-add,.planner-focus-pick{margin-top:2px}
+
+/* Gentle inline note (e.g. 4th-focus rejection) */
+.planner-focus-note{
+  font-size:12px;color:var(--text2);
+  background:var(--muted);padding:8px 12px;
+  border-radius:var(--radius-xs);margin-bottom:10px;
+}
+
+/* ── Daily-focus chooser ── */
+.planner-focus-chooser{
+  margin-top:6px;padding:12px;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+}
+.planner-chooser-head{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;
+}
+.planner-chooser-close{
+  flex-shrink:0;width:24px;height:24px;
+  display:flex;align-items:center;justify-content:center;
+  border:none;background:transparent;color:var(--text3);
+  font-size:18px;line-height:1;cursor:pointer;border-radius:8px;
+  transition:all 160ms var(--ease);
+}
+.planner-chooser-close:hover{background:var(--accent-dim);color:var(--accent-dark)}
+.planner-chooser-group-label{
+  font-size:10px;font-weight:600;color:var(--text3);
+  text-transform:uppercase;letter-spacing:0.06em;
+  margin:8px 0 6px;
+}
+.planner-chooser-row{
+  display:flex;align-items:center;gap:10px;width:100%;
+  padding:9px 11px;margin-bottom:6px;text-align:left;
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--radius-xs);cursor:pointer;
+  transition:all 160ms var(--ease);
+}
+.planner-chooser-row:last-child{margin-bottom:0}
+.planner-chooser-row:hover{border-color:var(--accent);background:var(--accent-dim)}
+.planner-chooser-plus{
+  flex-shrink:0;font-size:16px;font-weight:700;
+  color:var(--accent-dark);line-height:1;
+}
+.planner-chooser-text{font-size:13px;color:var(--fg);min-width:0}
+
+/* ── Quick capture & inline add rows ── */
+.planner-capture-row,.planner-week-add-row,.planner-intention-row{
+  display:flex;gap:8px;align-items:center;
+}
+.planner-week-add-row{margin-top:12px}
+.planner-capture-input,.planner-intention-input{
+  flex:1;min-width:0;padding:9px 12px;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius-xs);color:var(--fg);
+  font-family:var(--sans);font-size:13px;outline:none;
+  transition:border-color 160ms var(--ease);
+}
+.planner-capture-input:focus,.planner-intention-input:focus{border-color:var(--accent)}
+.planner-capture-input::placeholder,.planner-intention-input::placeholder{color:var(--text3)}
+.planner-capture-btn{
+  flex-shrink:0;width:36px;height:36px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--accent);color:var(--white);border:none;
+  border-radius:var(--radius-xs);cursor:pointer;
+  font-size:20px;font-weight:600;line-height:1;
+  transition:all 160ms var(--ease);
+}
+.planner-capture-btn:hover{transform:scale(1.05);box-shadow:var(--shadow-glow)}
+
+/* ── This-week: intention ── */
+.planner-intention-btn{
+  flex-shrink:0;padding:9px 16px;
+  background:var(--accent);color:var(--white);border:none;
+  border-radius:var(--radius-xs);cursor:pointer;
+  font-family:var(--sans);font-size:13px;font-weight:600;
+  transition:all 160ms var(--ease);
+}
+.planner-intention-btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-glow)}
+.planner-intention-current{font-size:11px;color:var(--text3);margin-top:8px}
+
+/* ── This-week: task list ── */
+.planner-week-list,.planner-fixed-list{display:flex;flex-direction:column;gap:8px}
+.week-row,.fixed-row{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 12px;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius-xs);
+  transition:opacity 160ms var(--ease);
+}
+.week-row.done{opacity:0.6}
+.week-check{
+  width:24px;height:24px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--border);border-radius:50%;
+  background:var(--bg2);cursor:pointer;
+  font-size:13px;font-weight:700;color:var(--white);
+  transition:all 160ms var(--ease);
+}
+.week-check:hover{border-color:var(--accent)}
+.week-row.done .week-check{background:var(--accent);border-color:var(--accent)}
+.week-text{flex:1;min-width:0;font-size:14px;font-weight:500;color:var(--fg)}
+.week-row.done .week-text{text-decoration:line-through;color:var(--text3)}
+.week-focus-flag{
+  flex-shrink:0;font-size:11px;font-weight:600;color:var(--accent-dark);
+  background:var(--accent-dim);padding:3px 10px;
+  border-radius:var(--radius-pill);white-space:nowrap;
+}
+.week-make-focus{flex-shrink:0;white-space:nowrap}
+.fixed-body{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;min-width:0;flex:1}
+
+/* Night-mode: soften row wells & checks that read too bright */
+body.night-mode .commit-check,
+body.night-mode .focus-check,
+body.night-mode .week-check{background:rgba(255,255,255,0.06)}

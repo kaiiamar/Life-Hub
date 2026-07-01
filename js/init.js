@@ -16,7 +16,7 @@ var qEl=document.getElementById('sidebar-quote');if(qEl)qEl.textContent=quotes[M
 
 if(_firebaseReady)setSyncStatus('saving');
 loadFromCloud(function(){
-  var migrateKeys=['goals','habits','workouts','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','relationships','gratitude','wishlist','watchlist','debtPayments','reminders','water','dailyPriorities','trainingEvents','trainingPlan','tasks'];
+  var migrateKeys=['goals','habits','workouts','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','relationships','gratitude','wishlist','watchlist','debtPayments','reminders','water','dailyPriorities','trainingEvents','trainingPlan','tasks','commitments','weeklyIntention'];
   migrateKeys.forEach(function(k){if(!STATE[k])STATE[k]=JSON.parse(JSON.stringify(DEFAULT_STATE[k]||(k==='tasks'?[]:{})))});
   if(!STATE.tasks)STATE.tasks=[];
   if(!STATE.metrics.projectsDone)STATE.metrics.projectsDone=[];
@@ -114,6 +114,27 @@ loadFromCloud(function(){
     STATE.__tasksMigrated=true;
     saveState();
   }
+
+  // ---- PLANNER MIGRATION (one-shot) ---------------------------------------
+  // New planner fields: STATE.commitments (time-blocked blocks) and
+  // STATE.weeklyIntention ({weekKey,text}). Also carry forward any unfinished
+  // weekly task whose weekPriority points at a *past* week to the current week
+  // key, so stale weekly tasks are never treated as overdue. Guarded so it
+  // only runs once.
+  if(!STATE.__plannerMigrated){
+    if(!STATE.commitments)STATE.commitments=[];
+    // migrateKeys may have coerced an absent weeklyIntention to {}; normalise
+    // anything without a real intention back to null (per data model).
+    if(!STATE.weeklyIntention||!STATE.weeklyIntention.text)STATE.weeklyIntention=null;
+    var _curWk=(typeof weekKey==='function')?weekKey(new Date()):null;
+    if(_curWk){
+      (STATE.tasks||[]).forEach(function(t){
+        if(t.weekPriority&&t.weekPriority<_curWk&&!t.done)t.weekPriority=_curWk;
+      });
+    }
+    STATE.__plannerMigrated=true;
+    saveState();
+  }
   // Auto-correct "debt free" type goals: target should be 0, startProgress = initial debt total
   (STATE.goals||[]).forEach(function(go){
     var name=(go.name||'').toLowerCase();
@@ -141,7 +162,7 @@ loadFromCloud(function(){
   if(!STATE.roadmapChecklist)STATE.roadmapChecklist={};
   if(!STATE.roadmapDueDates)STATE.roadmapDueDates={};
   setSyncStatus('saved');setTimeout(function(){setSyncStatus('idle')},2000);
-  try{renderDashboard()}catch(e){console.error('Render error:',e)}
+  try{renderPlanner()}catch(e){console.error('Render error:',e)}
 });
 startClock();
 

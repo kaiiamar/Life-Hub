@@ -101,7 +101,9 @@ var DEFAULT_STATE = {
   debtPayments:[],
   plannedPayments:[],
   reminders:[],
-  water:{}
+  water:{},
+  commitments:[],
+  weeklyIntention:null
 };
 
 var STATE = loadState() || JSON.parse(JSON.stringify(DEFAULT_STATE));

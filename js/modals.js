@@ -42,6 +42,7 @@ function openModal(type){var args=Array.prototype.slice.call(arguments,1);var mc
   addSkincarePhoto:function(){var today=localDateKey(new Date());return '<h2>&#128248; Progress note</h2><div class="modal-sub">A dated note — full photo uploads coming later.</div><div class="field"><label>Date</label><input id="m-skp-date" type="date" value="'+today+'"></div><div class="field"><label>What do you see?</label><textarea id="m-skp-note" placeholder="e.g. Cheeks lighter, one breakout healing, glow returning"></textarea></div><div class="modal-btns"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-accent" onclick="saveSkincarePhoto()">Save &#10003;</button></div>'},
   waterSettings:function(){var s=STATE.waterSettings||{};var t=s.target||8;var ml=s.glassMl||250;return '<h2>💧 Hydration target</h2><div class="modal-sub">How much water are you aiming for each day?</div><div class="field-row"><div class="field"><label>Daily target (glasses)</label><input id="m-water-target" type="number" min="1" max="20" value="'+t+'"></div><div class="field"><label>Glass size (ml)</label><input id="m-water-ml" type="number" min="50" max="2000" step="50" value="'+ml+'"></div></div><div class="modal-sub" style="font-size:11px;font-style:italic">Default is 8 × 250ml = 2 litres. NHS guidance is 6–8 glasses a day.</div><div class="modal-btns"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-accent" onclick="saveWaterSettings()">Save</button></div>'},
   editTask:function(id){var t=(STATE.tasks||[]).find(function(x){return x.id===id});if(!t)return '';var wkKey=typeof weekKey==='function'?weekKey(new Date()):'';var isPri=t.weekPriority===wkKey;return '<h2>Edit task</h2><div class="field"><label>Task</label><input id="m-task-text" value="'+(t.text||'').replace(/"/g,'&quot;')+'"></div><div class="field"><label>Due date <span style="font-size:11px;font-weight:400;color:var(--text3)">(optional)</span></label><input id="m-task-due" type="date" value="'+(t.dueDate||'')+'"></div><div class="field"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="m-task-pri" '+(isPri?'checked':'')+' style="width:16px;height:16px;cursor:pointer"><span>⭐ Priority for this week</span></label></div><div class="modal-btns"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-danger" onclick="deleteTask(\''+id+'\');closeModal()">Delete</button><button class="btn btn-accent" onclick="saveTaskEditFromModal(\''+id+'\')">Save ✓</button></div>'},
+  commitment:function(prefill){prefill=prefill||{};var today=localDateKey(new Date());var textVal=(prefill.text||'').replace(/"/g,'&quot;');var dateVal=prefill.date||today;var startVal=prefill.start||'';var endVal=prefill.end||'';return '<h2>🗓️ Add commitment</h2><div class="modal-sub">Block time for something fixed — a class, appointment or session.</div><div class="field"><label>What is it?</label><input id="m-commit-text" placeholder="e.g. GCSE maths course" value="'+textVal+'"></div><div class="field"><label>Date</label><input id="m-commit-date" type="date" value="'+dateVal+'"></div><div class="field-row"><div class="field"><label>Start</label><input id="m-commit-start" type="time" value="'+startVal+'"></div><div class="field"><label>End</label><input id="m-commit-end" type="time" value="'+endVal+'"></div></div><div class="modal-btns"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-accent" onclick="saveCommitmentFromModal()">Add ✓</button></div>'},
   logDeposit:function(id){var sg=(STATE.savingsGoals||[]).find(function(x){return x.id===id});if(!sg)return '';var remaining=Math.max(0,Number(sg.target||0)-Number(sg.current||0));return '<h2>'+(sg.icon||'💰')+' Log deposit</h2><div class="modal-sub">Add money to <strong>'+escapeHtml(sg.name)+'</strong> — currently '+fmtMoney(sg.current||0)+' of '+fmtMoney(sg.target)+' ('+fmtMoney(remaining)+' to go).</div><input type="hidden" id="m-dep-id" value="'+id+'"><div class="field-row"><div class="field"><label>Amount (£)</label><input id="m-dep-amount" type="number" step="0.01" placeholder="100" autofocus></div><div class="field"><label>Date</label><input id="m-dep-date" type="date" value="'+localDateKey(new Date())+'"></div></div>'+(sg.monthlyContribution?'<div class="modal-sub" style="font-size:11px">Tip: your monthly plan is '+fmtMoney(sg.monthlyContribution)+'.</div>':'')+'<div class="modal-btns"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-accent" onclick="saveSavingsDeposit()">Log deposit ✓</button></div>'}
 };var fn=modals[type];if(!fn)return;mc.innerHTML=fn.apply(null,args);document.getElementById('modal').style.display='flex'}
 
@@ -76,4 +77,60 @@ function executePendingDelete(){if(_pendingDelete){_pendingDelete();_pendingDele
 function closeModal(){document.getElementById('modal').style.display='none'}
 function modalBgClick(e){if(e.target===document.getElementById('modal'))closeModal()}
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal()});
+
+// ── PLANNER: scheduled commitment capture ──────────────────
+// Save the commitment modal's fields via addCommitment() (js/planner.js),
+// then re-render the planner so today's glance updates immediately (R11.1).
+function saveCommitmentFromModal(){
+  var text=((document.getElementById('m-commit-text')||{}).value||'').trim();
+  if(!text)return;
+  var date=(document.getElementById('m-commit-date')||{}).value||localDateKey(new Date());
+  var start=(document.getElementById('m-commit-start')||{}).value||'';
+  var end=(document.getElementById('m-commit-end')||{}).value||'';
+  if(typeof addCommitment==='function')addCommitment({text:text,date:date,start:start,end:end});
+  closeModal();
+  if(typeof renderPlanner==='function')renderPlanner();
+}
+
+// Route time-blocked quick-capture text (e.g. "maths 2-4pm") into the
+// commitment modal, prefilled from a best-effort parse (R12.1, R12.2).
+// plannerQuickCapture() in js/planner.js calls this when input parses as
+// time-blocked; otherwise it adds a plain task.
+function plannerCaptureCommitment(raw){
+  openModal('commitment',parseCommitmentText(raw));
+}
+
+// Normalise an hour/minute/meridiem triple into 24h "HH:MM".
+function commitmentTo24h(h,m,mer){
+  h=Number(h);m=m?Number(m):0;
+  if(mer){mer=mer.toLowerCase();if(mer==='pm'&&h<12)h+=12;if(mer==='am'&&h===12)h=0}
+  if(h>23)h=23;if(m>59)m=59;
+  return ('0'+h).slice(-2)+':'+('0'+m).slice(-2);
+}
+
+// Best-effort parse of free-text like "maths 2-4pm" or "call 14:00" into
+// {text,date,start,end}. Falls back to the raw text if no time is found.
+function parseCommitmentText(raw){
+  var text=String(raw||'').trim();
+  var start='',end='';
+  // Time range: 2-4pm, 2:30-4pm, 7-8am, 14:00-16:00
+  var range=text.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*[-\u2013]\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+  if(range){
+    var m1=range[3]||range[6];   // borrow meridiem across the range when only one is given
+    var m2=range[6]||range[3];
+    start=commitmentTo24h(range[1],range[2],m1);
+    end=commitmentTo24h(range[4],range[5],m2);
+    text=text.replace(range[0],'').trim();
+  }else{
+    // Single time: 14:00, 2pm, 9:30am
+    var single=text.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+    if(single&&(single[2]||single[3])){
+      start=commitmentTo24h(single[1],single[2],single[3]);
+      text=text.replace(single[0],'').trim();
+    }
+  }
+  // Strip leftover connective words left dangling after removing the time
+  text=text.replace(/\s*\b(at|from|on)\b\s*$/i,'').replace(/\s{2,}/g,' ').trim();
+  return {text:text||String(raw||'').trim(),date:localDateKey(new Date()),start:start,end:end};
+}
 

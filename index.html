@@ -12,7 +12,7 @@
 <title>Kai's Life Hub 🤎</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Caveat:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style-new.css?v=6">
+<link rel="stylesheet" href="style-new.css?v=7">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -29,7 +29,8 @@
       </div>
       <div class="topnav-links">
         <div class="topnav-pill-indicator" id="topnav-pill"></div>
-        <button class="topnav-link active" data-page="dashboard" onclick="nav('dashboard')">Dashboard</button>
+        <button class="topnav-link active" data-page="planner" onclick="nav('planner')">Planner</button>
+        <button class="topnav-link" data-page="dashboard" onclick="nav('dashboard')">Dashboard</button>
         <button class="topnav-link" data-page="habits" onclick="nav('habits')">Habits</button>
         <button class="topnav-link" data-page="workout" onclick="nav('workout')">Gym</button>
         <button class="topnav-link" data-page="skincare" onclick="nav('skincare')">Skincare</button>
@@ -80,7 +81,8 @@
       <span id="sidebar-date"></span>
     </div>
     <div class="nav-section">
-      <button class="nav-item active" onclick="nav('dashboard')">🏠 Dashboard</button>
+      <button class="nav-item active" onclick="nav('planner')">🗓️ Planner</button>
+      <button class="nav-item" onclick="nav('dashboard')">🏠 Dashboard</button>
       <button class="nav-item" onclick="nav('goals')">🎯 Goals</button>
       <button class="nav-item" onclick="nav('habits')">✅ Habits</button>
       <button class="nav-item" onclick="nav('workout')">🏋️ Workouts</button>
@@ -96,8 +98,32 @@
 
   <div class="main">
 
+    <!-- ══ PLANNER ══ -->
+    <div class="page active" id="page-planner">
+      <div class="page-header">
+        <div class="header-row">
+          <div>
+            <h1>Planner</h1>
+            <p>Today's focus and this week's plan, all in one place.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Planner tabs -->
+      <div class="page-tabs" style="margin-bottom:16px">
+        <button class="page-tab active" onclick="switchPlannerTab('today',this)">Today</button>
+        <button class="page-tab" onclick="switchPlannerTab('week',this)">This week</button>
+      </div>
+
+      <!-- TODAY TAB -->
+      <div class="planner-tab active" id="planner-today"></div>
+
+      <!-- THIS WEEK TAB -->
+      <div class="planner-tab" id="planner-week"></div>
+    </div>
+
     <!-- ══ DASHBOARD ══ -->
-    <div class="page active" id="page-dashboard">
+    <div class="page" id="page-dashboard">
       <!-- HERO -->
       <div class="hero" id="hero">
         <div class="blob blob-1"></div>
@@ -833,20 +859,21 @@
 
 
 
-<script src="js/state.js?v=6"></script>
-<script src="js/roadmap-data.js?v=6"></script>
-<script src="js/roadmap.js?v=6"></script>
-<script src="js/navigation.js?v=6"></script>
-<script src="js/dashboard.js?v=6"></script>
-<script src="js/habits.js?v=6"></script>
-<script src="js/workouts.js?v=6"></script>
-<script src="js/finance.js?v=6"></script>
-<script src="js/reviews.js?v=6"></script>
-<script src="js/relationships.js?v=6"></script>
-<script src="js/gratitude.js?v=6"></script>
-<script src="js/insights.js?v=6"></script>
-<script src="js/skincare.js?v=6"></script>
-<script src="js/modals.js?v=6"></script>
-<script src="js/init.js?v=6"></script>
+<script src="js/state.js?v=7"></script>
+<script src="js/roadmap-data.js?v=7"></script>
+<script src="js/roadmap.js?v=7"></script>
+<script src="js/navigation.js?v=7"></script>
+<script src="js/dashboard.js?v=7"></script>
+<script src="js/habits.js?v=7"></script>
+<script src="js/workouts.js?v=7"></script>
+<script src="js/finance.js?v=7"></script>
+<script src="js/reviews.js?v=7"></script>
+<script src="js/relationships.js?v=7"></script>
+<script src="js/gratitude.js?v=7"></script>
+<script src="js/insights.js?v=7"></script>
+<script src="js/skincare.js?v=7"></script>
+<script src="js/modals.js?v=7"></script>
+<script src="js/planner.js?v=7"></script>
+<script src="js/init.js?v=7"></script>
 </body>
 </html>
