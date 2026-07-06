@@ -4,13 +4,48 @@
 // Depend on localDateKey()/weekKey() (js/navigation.js) and g() (js/state.js).
 // ============================================================
 
-// Today's scheduled commitments, sorted chronologically by start time (R11.2)
+// Today's scheduled commitments, sorted chronologically by start time (R11.2).
+// Includes weekly-recurring commitments (recur==='weekly') on matching weekdays.
+// Returns lightweight view objects with a per-day `done` state so a recurring
+// commitment can be ticked independently on each occurrence.
 function getTodayCommitments(dateKey){
   var key=dateKey||localDateKey(new Date());
-  return (STATE.commitments||[])
-    .filter(function(c){return c&&c.date===key})
+  var keyDow=new Date(key+'T12:00:00').getDay();
+  var out=[];
+  (STATE.commitments||[]).forEach(function(c){
+    if(!c)return;
+    var matches=false;
+    if(c.date===key)matches=true;
+    else if(c.recur==='weekly'&&c.date&&key>=c.date&&new Date(c.date+'T12:00:00').getDay()===keyDow)matches=true;
+    if(!matches)return;
+    var done=(c.recur==='weekly')?!!(c.doneDates&&c.doneDates[key]):!!c.done;
+    out.push({id:c.id,text:c.text,start:c.start||'',end:c.end||'',recur:c.recur||null,done:done});
+  });
+  return out.sort(function(a,b){return String(a.start||'').localeCompare(String(b.start||''))});
+}
+
+// Today's dated tasks that carry a time-of-day (or are simply due today),
+// excluding anything already surfaced as a Daily Focus task so it isn't
+// shown twice. Sorted by time; untimed tasks sink to the bottom.
+function getTodayTimedTasks(dateKey){
+  var key=dateKey||localDateKey(new Date());
+  return (STATE.tasks||[])
+    .filter(function(t){return t&&t.dueDate===key&&t.focusDate!==key})
     .slice()
-    .sort(function(a,b){return String(a.start||'').localeCompare(String(b.start||''))});
+    .sort(function(a,b){
+      return String(a.dueTime||'99:99').localeCompare(String(b.dueTime||'99:99'));
+    });
+}
+
+// Loose "inbox" tasks — captured but not yet scheduled: open, no due date, not
+// this week's flexible task, and not today's focus. Surfacing these means a
+// quick-added task is always visible somewhere (never silently swallowed).
+function getInboxTasks(){
+  var wkKey=(typeof weekKey==='function')?weekKey(new Date()):'';
+  var today=localDateKey(new Date());
+  return (STATE.tasks||[]).filter(function(t){
+    return t&&!t.done&&!t.dueDate&&t.weekPriority!==wkKey&&t.focusDate!==today;
+  });
 }
 
 // Tasks selected as today's Daily_Focus_Tasks (R10)
@@ -55,7 +90,8 @@ function setWeeklyIntention(text){
   return STATE.weeklyIntention;
 }
 
-// Create a time-blocked Scheduled_Commitment (R11.1)
+// Create a time-blocked Scheduled_Commitment (R11.1). Pass recur:'weekly' for a
+// standing weekly commitment (e.g. a course) so it never needs re-entering.
 function addCommitment(data){
   data=data||{};
   var text=(data.text||'').trim();
@@ -67,7 +103,9 @@ function addCommitment(data){
     date:data.date||localDateKey(new Date()),
     start:data.start||'',
     end:data.end||'',
+    recur:data.recur==='weekly'?'weekly':null,
     done:false,
+    doneDates:{},
     createdAt:new Date().toISOString()
   };
   STATE.commitments.push(c);
@@ -75,11 +113,18 @@ function addCommitment(data){
   return c;
 }
 
-// Toggle a commitment's completion — never treated as failure if left off (R11.4)
-function toggleCommitment(id){
+// Toggle a commitment's completion — never treated as failure if left off
+// (R11.4). Weekly-recurring commitments track completion per occurrence date.
+function toggleCommitment(id,dateKey){
+  var key=dateKey||localDateKey(new Date());
   var c=(STATE.commitments||[]).find(function(x){return x.id===id});
   if(!c)return false;
-  c.done=!c.done;
+  if(c.recur==='weekly'){
+    if(!c.doneDates)c.doneDates={};
+    c.doneDates[key]=!c.doneDates[key];
+  }else{
+    c.done=!c.done;
+  }
   saveState();
   return true;
 }
@@ -119,36 +164,184 @@ function renderPlannerToday(){
   var el=document.getElementById('planner-today');
   if(!el)return;
   var todayKey=localDateKey(new Date());
-  el.innerHTML=plannerGlanceCard(todayKey)+plannerFocusCard(todayKey)+plannerCaptureCard();
+  el.innerHTML=plannerWelcomeCard()+plannerGlanceCard(todayKey)+plannerFocusCard(todayKey)+plannerInboxCard()+plannerCaptureCard()+plannerWaterCard()+plannerHabitCard();
 }
 
-// "Today at a glance" — commitments in time order + today's training line (R11.2, R12.4)
+// Compact time-based welcome row — reuses getTimeContext() from dashboard.js
+// and hardcodes the single user's name "Kai". Deliberately a slim single row,
+// not the Dashboard hero block (R1.2, R1.3, R1.4, R1.5).
+function plannerWelcomeCard(){
+  var tc=getTimeContext(); // {slot, greeting, class}
+  var dateStr=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  return ''
+    +'<div class="planner-welcome '+tc.class+'">'
+      +'<span class="planner-welcome-greet">'+tc.greeting+', Kai</span>'
+      +'<span class="planner-welcome-date">'+dateStr+'</span>'
+    +'</div>';
+}
+
+// Compact water widget — a single filling cup that reflects today's hydration
+// against the daily target. Reads the same STATE.water / STATE.waterSettings the
+// Dashboard uses; the add control writes ONLY through the global logWaterGlass()
+// (never mutating STATE.water directly). Root carries id="planner-water-card" so
+// renderPlannerWater() can re-render just this widget in place (R2.2–R2.5, R2.7).
+function plannerWaterCard(){
+  var today=localDateKey(new Date());
+  var glasses=(STATE.water&&STATE.water[today])||0;
+  var target=Number((STATE.waterSettings&&STATE.waterSettings.target)||8);
+  var ml=Number((STATE.waterSettings&&STATE.waterSettings.glassMl)||250);
+  var pct=Math.min(100,Math.round((glasses/Math.max(1,target))*100));
+  var full=glasses>=target;
+  return ''
+    +'<div class="card planner-card planner-water" id="planner-water-card">'
+      +'<div class="planner-card-head"><span class="planner-card-title">Water</span>'
+        +'<span class="planner-card-hint">'+(glasses*ml/1000).toFixed(2)+'L</span></div>'
+      +'<div class="planner-water-body">'
+        +'<div class="pw-cup'+(full?' full':'')+'" id="planner-water-cup" aria-hidden="true">'
+          +'<div class="pw-cup-fill" style="height:'+pct+'%"></div>'
+        +'</div>'
+        +'<div class="planner-water-info">'
+          +'<div class="pw-figure"><b>'+glasses+'</b> / '+target+' glasses · '+pct+'%</div>'
+          +'<button class="btn btn-sm btn-accent" onclick="logWaterGlass('+(glasses+1)+')">+ glass</button>'
+        +'</div>'
+      +'</div>'
+    +'</div>';
+}
+
+// Re-render ONLY the water widget in place. Mirrors renderDashWater(): looks up
+// the planner host and the water card, no-ops if either is absent (the planner
+// may not be the active render), then swaps the card's outerHTML so logWaterGlass
+// can sync the cup without redrawing the whole page (R2.6).
+function renderPlannerWater(){
+  var el=document.getElementById('planner-today');
+  if(!el)return;
+  var host=document.getElementById('planner-water-card');
+  if(!host)return;
+  host.outerHTML=plannerWaterCard();
+}
+
+// Compact habit tracker — lists only today's DUE habits (habitDayStatus 'done'
+// or 'todo'; 'rest'/'missed'/'pre-start' are excluded). Reads STATE.habits, the
+// same source the Dashboard uses. Each row's tick reflects logs[today] and calls
+// plannerToggleHabit(id) to write. Root carries id="planner-habits-card" so that
+// toggle can re-render just this widget in place (R3.2, R3.3, R3.4, R3.7).
+function plannerHabitCard(){
+  var today=localDateKey(new Date());
+  var habits=(STATE.habits||[]).filter(function(h){
+    var s=habitDayStatus(h,today);
+    return s==='done'||s==='todo';
+  });
+  var rows;
+  if(!habits.length){
+    rows='<div class="planner-empty-line">No habits due today — enjoy the breather.</div>';
+  } else {
+    rows=habits.map(function(h){
+      var done=!!(h.logs&&h.logs[today]);
+      return '<div class="pw-habit-row'+(done?' done':'')+'">'
+        +'<div class="pw-habit-check" role="button" tabindex="0"'
+          +' aria-label="Toggle '+escapeHtml(h.name)+'"'
+          +' onclick="plannerToggleHabit(\''+h.id+'\')">'+(done?'✓':'')+'</div>'
+        +'<span class="pw-habit-name">'+(h.icon?escapeHtml(h.icon)+' ':'')+escapeHtml(h.name)+'</span>'
+      +'</div>';
+    }).join('');
+  }
+  var doneCount=habits.filter(function(h){return h.logs&&h.logs[today]}).length;
+  return ''
+    +'<div class="card planner-card planner-habits" id="planner-habits-card">'
+      +'<div class="planner-card-head"><span class="planner-card-title">Habits</span>'
+        +'<span class="planner-card-count">'+doneCount+'/'+habits.length+'</span></div>'
+      +rows
+    +'</div>';
+}
+
+// Toggle today's completion for one habit, persist, re-render just the planner
+// habit widget in place, then sync the Dashboard habit views (guarded so this
+// file doesn't hard-depend on dashboard.js load order). Reuses STATE.habits —
+// the same source the Dashboard uses — so no parallel state (R3.5, R3.6, R4.3, R4.4).
+function plannerToggleHabit(hid){
+  var h=(STATE.habits||[]).find(function(x){return x.id===hid});
+  if(!h)return;
+  if(!h.logs)h.logs={};
+  var today=localDateKey(new Date());
+  h.logs[today]=!h.logs[today];
+  saveState();
+  // Re-render just the planner habit widget in place
+  var host=document.getElementById('planner-habits-card');
+  if(host)host.outerHTML=plannerHabitCard();
+  // Keep Dashboard habit views in sync (guarded)
+  if(typeof renderDashboard==='function')renderDashboard();
+}
+
+// "Today at a glance" — a single time-ordered timeline mixing scheduled
+// commitments and any tasks due today (with an optional time), plus today's
+// training line (R11.2, R12.4). A "now" marker separates past from upcoming.
 function plannerGlanceCard(todayKey){
   var commitments=getTodayCommitments(todayKey);
+  var timedTasks=getTodayTimedTasks(todayKey);
+
+  // Build a unified timeline. Commitments sort by start; tasks by dueTime.
+  var items=[];
+  commitments.forEach(function(c){
+    items.push({kind:'commit',id:c.id,text:c.text,time:c.start||'',end:c.end||'',recur:c.recur,done:c.done});
+  });
+  timedTasks.forEach(function(t){
+    items.push({kind:'task',id:t.id,text:t.text,time:t.dueTime||'',end:'',done:!!t.done});
+  });
+  items.sort(function(a,b){return String(a.time||'99:99').localeCompare(String(b.time||'99:99'))});
+
   var html='<div class="card planner-card">';
   html+='<div class="planner-card-head"><span class="planner-card-title">Today at a glance</span></div>';
 
-  if(commitments.length){
+  if(items.length){
+    var nowHM=(function(){var d=new Date();return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)})();
+    var nowShown=false;
     html+='<div class="planner-commitments">';
-    commitments.forEach(function(c){
-      var time=(c.start||'')+((c.start&&c.end)?'–'+c.end:'');
-      html+='<div class="commit-row'+(c.done?' done':'')+'">'
-        +'<div class="commit-check" onclick="plannerToggleCommitment(\''+c.id+'\')" role="button" tabindex="0" aria-label="Toggle '+escapeHtml(c.text)+'">'+(c.done?'✓':'')+'</div>'
+    items.forEach(function(it){
+      // Drop a subtle "now" divider before the first still-upcoming timed item.
+      if(!nowShown&&it.time&&it.time>=nowHM){
+        html+='<div class="planner-now-line"><span>now · '+escapeHtml(nowHM)+'</span></div>';
+        nowShown=true;
+      }
+      var time=(it.time||'')+((it.time&&it.end)?'–'+it.end:'');
+      var toggle=it.kind==='commit'?'plannerToggleCommitment':'plannerToggleFocusDone';
+      html+='<div class="commit-row'+(it.done?' done':'')+'">'
+        +'<div class="commit-check" onclick="'+toggle+'(\''+it.id+'\')" role="button" tabindex="0" aria-label="Toggle '+escapeHtml(it.text)+'">'+(it.done?'✓':'')+'</div>'
         +'<div class="commit-body">'
-          +'<span class="commit-text">'+escapeHtml(c.text)+'</span>'
-          +(time?'<span class="commit-time">'+escapeHtml(time)+'</span>':'')
+          +'<span class="commit-text">'+escapeHtml(it.text)+(it.kind==='commit'&&it.recur==='weekly'?' <span class="commit-recur" title="Repeats weekly">↻</span>':'')+'</span>'
+          +(time?'<span class="commit-time">'+escapeHtml(time)+'</span>':(it.kind==='task'?'<span class="commit-time commit-time-soft">task</span>':''))
         +'</div>'
       +'</div>';
     });
     html+='</div>';
   }else{
-    html+='<div class="planner-empty-line">No scheduled commitments today.</div>';
+    html+='<div class="planner-empty-line">Nothing scheduled today.</div>';
   }
 
   var train=plannerTrainingLine(todayKey);
   if(train)html+=train;
 
   html+='</div>';
+  return html;
+}
+
+// Inbox — captured-but-unscheduled tasks, so a quick-add never disappears.
+// Each row can be pulled into today's focus or opened to set a date/time.
+function plannerInboxCard(){
+  var inbox=getInboxTasks();
+  if(!inbox.length)return '';
+  var html='<div class="card planner-card planner-inbox-card">';
+  html+='<div class="planner-card-head"><span class="planner-card-title">Inbox</span>'
+    +'<span class="planner-card-count">'+inbox.length+'</span></div>';
+  html+='<div class="planner-inbox-list">';
+  inbox.forEach(function(t){
+    html+='<div class="inbox-row">'
+      +'<div class="inbox-check" onclick="plannerToggleFocusDone(\''+t.id+'\')" role="button" tabindex="0" aria-label="Complete '+escapeHtml(t.text)+'"></div>'
+      +'<span class="inbox-text">'+escapeHtml(t.text)+'</span>'
+      +'<button class="btn btn-ghost btn-sm inbox-focus" onclick="plannerInboxMakeFocus(\''+t.id+'\')" title="Make today\'s focus">Focus</button>'
+      +(typeof openTaskEditModal==='function'?'<button class="inbox-edit" onclick="openTaskEditModal(\''+t.id+'\')" title="Set date/time" aria-label="Set date or time">⋯</button>':'')
+    +'</div>';
+  });
+  html+='</div></div>';
   return html;
 }
 
@@ -187,11 +380,25 @@ function plannerFocusCard(todayKey){
   if(focus.length){
     html+='<div class="planner-focus-list">';
     focus.forEach(function(t){
+      var canEdit=(typeof openTaskEditModal==='function');
       html+='<div class="focus-row'+(t.done?' done':'')+'">'
         +'<div class="focus-check" onclick="plannerToggleFocusDone(\''+t.id+'\')" role="button" tabindex="0" aria-label="Toggle '+escapeHtml(t.text)+'">'+(t.done?'✓':'')+'</div>'
-        +'<span class="focus-text">'+escapeHtml(t.text)+'</span>'
+        +'<span class="focus-text"'+(canEdit?' onclick="openTaskEditModal(\''+t.id+'\')" style="cursor:pointer"':'')+'>'+escapeHtml(t.text)+'</span>'
         +'<button class="focus-remove" onclick="plannerRemoveFocus(\''+t.id+'\')" title="Remove from today\'s focus" aria-label="Remove from today\'s focus">×</button>'
       +'</div>';
+      // Nested micro-steps (from "Break it down") — the activation-energy win,
+      // shown right where you execute so the next tiny action is always visible.
+      var subs=t.subSteps||[];
+      if(subs.length){
+        html+='<div class="focus-substeps">';
+        subs.forEach(function(s,si){
+          html+='<div class="focus-substep'+(s.done?' done':'')+'">'
+            +'<div class="focus-substep-tick" onclick="plannerToggleSubStep(\''+t.id+'\','+si+')" role="button" tabindex="0" aria-label="Toggle step '+escapeHtml(s.text)+'">'+(s.done?'✓':'')+'</div>'
+            +'<span class="focus-substep-text">'+escapeHtml(s.text)+'</span>'
+          +'</div>';
+        });
+        html+='</div>';
+      }
     });
     html+='</div>';
 
@@ -270,7 +477,7 @@ function plannerCaptureCard(){
 
 // ── Today-tab mutations (each re-renders) ──────────────────
 function plannerToggleCommitment(id){
-  toggleCommitment(id);
+  toggleCommitment(id,localDateKey(new Date()));
   renderPlanner();
 }
 
@@ -291,6 +498,15 @@ function plannerToggleFocusDone(id){
 function plannerRemoveFocus(id){
   removeFocusTask(id);
   plannerFocusNote='';
+  renderPlanner();
+}
+
+// Toggle a task's micro-step from the Planner focus card.
+function plannerToggleSubStep(taskId,idx){
+  var t=(STATE.tasks||[]).find(function(x){return x.id===taskId});
+  if(!t||!t.subSteps||!t.subSteps[idx])return;
+  t.subSteps[idx].done=!t.subSteps[idx].done;
+  saveState();
   renderPlanner();
 }
 
@@ -315,6 +531,16 @@ function plannerPickFocus(taskId){
     plannerFocusNote='';
     // Close the chooser once we've reached the cap of 3
     if(getTodayFocus(localDateKey(new Date())).length>=3)plannerFocusChooserOpen=false;
+  }
+  renderPlanner();
+}
+
+// Pull an inbox task into today's focus; gives a toast if the 3-focus cap is hit
+// (the inline note only renders on the focus card / chooser, not the inbox).
+function plannerInboxMakeFocus(taskId){
+  var ok=addFocusTask(taskId);
+  if(!ok&&typeof showCelebrationToast==='function'){
+    showCelebrationToast('Three focus tasks is plenty for today.','🎯');
   }
   renderPlanner();
 }

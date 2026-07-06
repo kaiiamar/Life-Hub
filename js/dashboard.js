@@ -107,7 +107,8 @@ var CONTEXTUAL_QUOTES={
   night:['Time to wind down.','Rest is part of the plan.','Dim the screen, quiet the mind.','Tomorrow starts with tonight\'s rest.']
 };
 
-function renderDashboard(){
+// Always-on Dashboard chrome (Hero, mood mini, nudge) — tab-independent (Req 8.4).
+function renderDashChrome(){
   var now=new Date();var todayKey=localDateKey(now);
   var ctx=getTimeContext();
   // Auto night mode (only if user hasn't set a manual preference)
@@ -116,7 +117,6 @@ function renderDashboard(){
     if(ctx.slot==='night')document.body.classList.add('night-mode');
     else document.body.classList.remove('night-mode');
   }
-  var gEl=document.getElementById('dash-greeting');if(gEl)gEl.innerHTML=ctx.greeting+', <em>Kai</em>.';
   renderDashStreak();
   // Apply time-based class to hero
   var hero=document.getElementById('hero');
@@ -144,37 +144,6 @@ function renderDashboard(){
     var existing=(STATE.reviews&&STATE.reviews.monthly&&STATE.reviews.monthly[monthKey]);
 
     var nudges=[];
-    // Bedtime catch-up nudge — 9pm to midnight, list any untracked-but-due habits
-    var hr2=now.getHours();
-    if(hr2>=21){
-      var todayK_b=localDateKey(now);
-      var dueButNotDone=(STATE.habits||[]).filter(function(h){
-        if(!isHabitDueToday(h))return false;
-        if(h.logs&&h.logs[todayK_b])return false;
-        return true;
-      });
-      if(dueButNotDone.length){
-        var bedDismissedKey='lh_bed_nudge_dismissed:'+todayK_b;
-        var bedDismissed=false;try{bedDismissed=!!sessionStorage.getItem(bedDismissedKey)}catch(e){}
-        if(!bedDismissed){
-          var bedItems=dueButNotDone.slice(0,5).map(function(h){
-            return '<button class="bed-nudge-item" onclick="bedNudgeTick(\''+h.id+'\')">'+(h.icon||'✅')+' '+escapeHtml(h.name)+'</button>';
-          }).join('');
-          nudges.push('<div class="review-nudge bed-nudge"><div class="review-nudge-icon" style="background:rgba(155,135,190,0.15)">🌙</div><div class="review-nudge-body" style="flex:1"><div class="review-nudge-title">Before bed catch-up</div><div class="review-nudge-sub">'+dueButNotDone.length+' habit'+(dueButNotDone.length===1?'':'s')+' untracked today. One tap each.</div><div class="bed-nudge-items">'+bedItems+'</div><div class="bed-nudge-actions"><button class="btn btn-accent btn-sm" onclick="bedNudgeTickAll()">Tick all</button><button class="btn btn-ghost btn-sm" onclick="dismissBedNudge()">Dismiss</button></div></div></div>');
-        }
-      }
-    }
-    // Evening gratitude nudge — after 6pm with nothing logged today
-    var todayK_n=localDateKey(now);
-    var hasGratitudeToday=(STATE.gratitude||[]).some(function(e){return e.date===todayK_n});
-    var hr=now.getHours();
-    if(hr>=18&&hr<23&&!hasGratitudeToday){
-      var dismissedKey='lh_gr_nudge_dismissed:'+todayK_n;
-      var dismissed=false;try{dismissed=!!sessionStorage.getItem(dismissedKey)}catch(e){}
-      if(!dismissed){
-        nudges.push('<div class="review-nudge" onclick="document.getElementById(\'dash-gr-win\')&&document.getElementById(\'dash-gr-win\').focus()" style="background:linear-gradient(135deg,rgba(234,208,170,0.15),rgba(217,123,108,0.08))"><div class="review-nudge-icon" style="background:rgba(234,208,170,0.25)">🙏</div><div class="review-nudge-body"><div class="review-nudge-title">Wind-down moment</div><div class="review-nudge-sub">Nothing logged in your gratitude yet today. One line takes 10 seconds.</div></div><button class="review-nudge-arrow" onclick="event.stopPropagation();dismissGratitudeNudge()" title="Dismiss for today" style="background:none;border:none;color:var(--text3);font-size:14px;cursor:pointer;padding:4px 8px">×</button></div>');
-      }
-    }
     if(dayOfMonth>=monthEnd-2&&!existing){
       var monthName=now.toLocaleDateString('en-GB',{month:'long'});
       nudges.push('<div class="review-nudge" onclick="nav(\'review\')"><div class="review-nudge-icon">🌙</div><div class="review-nudge-body"><div class="review-nudge-title">'+monthName+' is almost wrapped.</div><div class="review-nudge-sub">Time for your monthly review — 10 mins of honest reflection.</div></div><div class="review-nudge-arrow">→</div></div>');
@@ -182,20 +151,13 @@ function renderDashboard(){
     nudgeEl.innerHTML=nudges.join('');
   }
 
-  var goalsDone=STATE.goals.filter(function(g){return g.done}).length;
-  // Only count habits that are expected today (daily + weekly ones that haven't hit their target)
+  // Smart hero subtext — habits done + priorities ticked today.
   var expectedHabits=STATE.habits.filter(function(h){
     var status=habitDayStatus(h,todayKey);
     return status==='done'||status==='todo';  // exclude 'rest' (monthly/bi-monthly not today, or weekly already hit)
   });
   var habitsToday=expectedHabits.filter(function(h){return h.logs[todayKey]}).length;
-  var habitsTotal=expectedHabits.length;
-
   var priData=(function(){var wk=weekKey(now);var plan=(STATE.weeklyPlans||{})[wk]||{};var pris=(plan.priorities||[]).filter(function(p){return p&&p.trim()});var done=0;var td=plan.prioritiesDone||{};pris.forEach(function(_,i){if(td[i])done++});return {done:done,total:pris.length}})();
-  var priPct=priData.total>0?Math.round(priData.done/priData.total*100):0;
-  var habPct=habitsTotal>0?Math.round(habitsToday/habitsTotal*100):0;
-
-  // Smart hero subtext
   if(dEl){
     var dateStr=now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
     var parts=[];
@@ -205,91 +167,15 @@ function renderDashboard(){
     dEl.innerHTML=dateStr+'. '+insight;
   }
 
-  // Smart focus card — habits + daily tasks (today-scoped, no roadmap)
-  var focusStatEl=document.getElementById('focus-stat');
-  var focusSubEl=document.getElementById('focus-sub');
-  var focusBarsEl=document.getElementById('focus-bars');
-  var focusLabelEl=document.getElementById('focus-score-label');
-  if(focusStatEl&&focusSubEl&&focusBarsEl){
-    // Today's actionable tasks from the unified tasks list (priorities,
-    // overdue, due-today) — matches what the tasks card shows.
-    var wkStartF=weekKey(now);
-    var openTasks=(STATE.tasks||[]).filter(function(t){return !t.done});
-    var todayTasks=(STATE.tasks||[]).filter(function(t){
-      if(t.weekPriority===wkStartF)return true;
-      if(t.dueDate&&t.dueDate<=todayKey)return true;
-      return false;
-    });
-    var priDone=todayTasks.filter(function(t){return t.done}).length;
-    var priTotal=todayTasks.length;
-    var totalDone=habitsToday+priDone;
-    var totalAll=habitsTotal+priTotal;
-    var overallPct=totalAll>0?Math.round((totalDone/totalAll)*100):0;
-
-    var msg;
-    if(totalAll===0){
-      msg='Add a habit or today\'s first task to get going.';
-    }else if(overallPct>=100){
-      msg='Everything ticked. <em>Beautiful day.</em>';
-    }else if(overallPct>=75){
-      msg='You\'re <em>flying</em>. One or two to go.';
-    }else if(overallPct>=50){
-      msg='Good rhythm today — halfway there.';
-    }else if(overallPct>=25){
-      msg='Small steps compound. Pick one thing.';
-    }else if(totalDone>0){
-      msg='First one\'s down. Keep the momentum.';
-    }else{
-      msg='A fresh start. Begin with the smallest win.';
-    }
-
-    // Render as "done / total" rather than "/100"
-    focusStatEl.innerHTML=totalAll===0
-      ? '<span class="focus-stat-num">—</span>'
-      : '<span class="focus-stat-num">'+totalDone+'</span><span class="focus-stat-suffix"> / '+totalAll+'</span>';
-    if(focusLabelEl){
-      focusLabelEl.textContent=totalAll===0?'Nothing tracked today yet' : 'Habits + tasks done today';
-    }
-    focusSubEl.innerHTML=msg;
-
-    // The detailed habit/task breakdown lives in the cards directly below, so
-    // the focus card stays a clean summary: a single progress bar + CTA only
-    // when there's genuinely nothing to act on.
-    var barsHtml='';
-    if(totalAll>0){
-      barsHtml='<div class="focus-progress" role="progressbar" aria-valuenow="'+overallPct+'" aria-valuemin="0" aria-valuemax="100" aria-label="Today overall: '+overallPct+'%"><div class="focus-progress-fill" data-w="'+overallPct+'"></div></div>';
-    }else{
-      barsHtml='<div class="focus-bar focus-bar-empty"><span class="focus-bar-icon">✨</span><span class="focus-bar-label">Add a habit or task to begin</span><button class="focus-bar-cta" onclick="nav(\'habits\')">Set one →</button></div>';
-    }
-    focusBarsEl.innerHTML=barsHtml;
-    setTimeout(function(){
-      focusBarsEl.querySelectorAll('.focus-bar-fill,.focus-progress-fill').forEach(function(el){
-        var w=el.getAttribute('data-w');el.style.width=w+'%';
-      });
-    },80);
-  }
-
-  // Side stat orbs — today-scoped only (habits + daily tasks)
-  var todayPrisForStats=(STATE.dailyPriorities||{})[todayKey]||[];
-  var priDoneToday=todayPrisForStats.filter(function(p){return p.done}).length;
-  var priTotalToday=todayPrisForStats.length;
-  var priPctToday=priTotalToday>0?Math.round(priDoneToday/priTotalToday*100):0;
   // Monthly focus — surfaced in the hero header (this month, or last month's if unset)
   renderDashMonthlyFocus();
-  // Mini mood orb (item 4)
+  // Mini mood orb (item 4) — always-on overview element in chrome
   renderDashMoodMini();
-
-  var ppEl=document.getElementById('dash-priorities-preview');
-  if(ppEl){
-    if(!STATE.tasks)STATE.tasks=[];
-    ppEl.innerHTML=renderTasksCard();
-  }
-  var days7=weekDays(weekKey(now));var dl=['S','M','T','W','T','F','S'];
-  // What's next card (replaces dash-habits-preview)
-  renderDashWhatsNext();
   renderDashMoodCheckin();
-  renderDashWater();
-  renderDashTrainingToday();
+}
+
+// Week tab body — trends + relocated gratitude capture (Req 5).
+function renderDashWeek(){
   var recent=(STATE.workouts||[]).slice(-3).reverse();
   var recentRuns=((STATE.metrics||{}).run||[]).slice(-3).reverse();
   var combined=recent.map(function(w){return {type:'gym',date:w.date,name:w.name,sub:(w.muscleGroups||[]).join(', '),icon:((w.muscleGroups||[]).indexOf('Hyrox')!==-1)?'\u26a1':'\ud83c\udfcb\ufe0f'}}).concat(recentRuns.map(function(r){return {type:'run',date:r.date,name:r.distance+'km'+(r.time?' \u00b7 '+r.time:''),sub:r.note||'Run',icon:'\ud83c\udfc3'}})).sort(function(a,b){return b.date.localeCompare(a.date)}).slice(0,5);
@@ -302,11 +188,21 @@ function renderDashboard(){
   if(fpEl)fpEl.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px"><div style="background:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.4);border-radius:12px;padding:14px;text-align:center"><div style="font-size:10px;color:var(--neutral);text-transform:uppercase;letter-spacing:.05em;font-weight:600">Savings</div><div style="font-size:20px;font-family:var(--serif);font-weight:600;color:var(--secondary);margin-top:4px">'+fmtMoney(tSav)+'</div></div><div style="background:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.4);border-radius:12px;padding:14px;text-align:center"><div style="font-size:10px;color:var(--neutral);text-transform:uppercase;letter-spacing:.05em;font-weight:600">Total debt</div><div style="font-size:20px;font-family:var(--serif);font-weight:600;color:var(--primary);margin-top:4px">'+fmtMoney(tDebt)+'</div></div></div><div style="font-size:11px;color:var(--on-surface-variant)">'+fmtMoney(tInc)+' in \u00b7 '+fmtMoney(tExp)+' out \u00b7 <span style="color:'+(left>=0?'var(--mint)':'var(--red)')+';font-weight:600">'+fmtMoney(Math.abs(left))+' '+(left>=0?'left over':'over')+'</span></div><button class="btn btn-ghost btn-sm" onclick="nav(\'finance\')" style="margin-top:8px;width:100%;justify-content:center">View finance \u2192</button>';
   var rpEl=document.getElementById('dash-roadmap-preview');
   if(rpEl){rpEl.innerHTML=''}  // legacy: roadmap page removed, element may no longer exist
-
-  // Weekly top-3 priorities (moved from old Weekly Plan tab)
-  renderDashWeeklyTop3();
-  // Inline gratitude prompt (low-friction)
+  // Inline gratitude prompt (low-friction) — relocated to the Week tab
   renderDashGratitudeInline();
+}
+
+// Life tab body — thin wrapper over the existing goals + reviews snapshot renderer (Req 6).
+function renderDashLife(){
+  renderLifeTab();
+}
+
+// Coordinator — chrome always, then only the active tab (Req 8.1, 8.4).
+function renderDashboard(){
+  renderDashChrome();
+  var active=(document.querySelector('#page-dashboard .dash-tab.active')||{}).id;
+  if(active==='dash-tab-life') renderDashLife();
+  else renderDashWeek(); // default + Week
 }
 
 // ── CELEBRATIONS ──
@@ -384,7 +280,7 @@ h+='</div>';
 /* Sub-steps (item 10) */
 var subs=go.subGoals||[];
 var subsDone=subs.filter(function(s){return s.done}).length;
-h+='<div class="goal-substeps"><div class="goal-substeps-head"><span>Steps</span>'+(subs.length?'<span class="goal-substeps-count">'+subsDone+'/'+subs.length+'</span>':'')+'</div>';
+h+='<div class="goal-substeps"><div class="goal-substeps-head"><span>Steps</span><span style="display:flex;align-items:center;gap:8px">'+(subs.length?'<span class="goal-substeps-count">'+subsDone+'/'+subs.length+'</span>':'')+'<button class="goal-breakdown-btn" data-goal="'+go.id+'" onclick="breakDownGoal(\''+go.id+'\')" title="Suggest steps with AI">✨ Break it down</button></span></div>';
 if(subs.length){
   h+=subs.map(function(s,si){
     return '<div class="goal-substep'+(s.done?' done':'')+'">'
@@ -555,7 +451,8 @@ function switchDashTab(tab,btn){
   if(btn)btn.classList.add('active');
   var el=document.getElementById('dash-tab-'+tab);
   if(el)el.classList.add('active');
-  if(tab==='life')renderLifeTab();
+  if(tab==='life')renderDashLife();
+  else renderDashWeek();
 }
 
 // ── LIFE TAB ──
@@ -850,6 +747,92 @@ function deleteGoalSubStep(goalId,idx){
   goal.subGoals.splice(idx,1);
   saveState();
   renderGoals();
+}
+
+// ── AI "Break it down" (Claude via backend) ──
+// Turns a task/goal title into 3–5 concrete micro-steps to beat activation
+// energy. Shared helper returns a promise of a string[] (or null on failure).
+function aiBreakdown(title,kind){
+  if(typeof NOTIF_API==='undefined'||!NOTIF_API)return Promise.resolve(null);
+  return fetch(NOTIF_API+'/api/ai-narrative',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({breakdown:{title:title,kind:kind}})
+  }).then(function(r){return r.json()}).then(function(d){
+    return (d&&Array.isArray(d.steps)&&d.steps.length)?d.steps:null;
+  }).catch(function(){return null});
+}
+
+// Goal breakdown — appends AI-suggested steps to a goal's existing subGoals.
+function breakDownGoal(goalId){
+  var goal=STATE.goals.find(function(x){return x.id===goalId});
+  if(!goal)return;
+  var btn=document.querySelector('.goal-breakdown-btn[data-goal="'+goalId+'"]');
+  if(btn){btn.disabled=true;btn.textContent='✨ Thinking…'}
+  aiBreakdown(goal.name+(goal.desc?' — '+goal.desc:''),'goal').then(function(steps){
+    if(!steps){
+      if(typeof showCelebrationToast==='function')showCelebrationToast('Couldn\'t reach the AI just now.','⚠️');
+      if(btn){btn.disabled=false;btn.textContent='✨ Break it down'}
+      return;
+    }
+    if(!goal.subGoals)goal.subGoals=[];
+    steps.forEach(function(s){goal.subGoals.push({text:s,done:false})});
+    saveState();
+    renderGoals();
+    if(typeof showCelebrationToast==='function')showCelebrationToast('Added '+steps.length+' steps.','✨');
+  });
+}
+
+// Task breakdown — appends AI-suggested micro-steps to a task's subSteps, then
+// reopens the edit modal so they're visible and tickable.
+function breakDownTask(taskId){
+  var t=(STATE.tasks||[]).find(function(x){return x.id===taskId});
+  if(!t)return;
+  var btn=document.getElementById('task-breakdown-btn');
+  if(btn){btn.disabled=true;btn.textContent='✨ Thinking…'}
+  aiBreakdown(t.text,'task').then(function(steps){
+    if(!steps){
+      if(typeof showCelebrationToast==='function')showCelebrationToast('Couldn\'t reach the AI just now.','⚠️');
+      if(btn){btn.disabled=false;btn.textContent='✨ Break it down'}
+      return;
+    }
+    if(!t.subSteps)t.subSteps=[];
+    steps.forEach(function(s){t.subSteps.push({text:s,done:false})});
+    saveState();
+    if(typeof openModal==='function')openModal('editTask',taskId); // re-render modal with steps
+    if(typeof renderPlanner==='function')renderPlanner();
+    if(typeof renderDashboard==='function')renderDashboard();
+  });
+}
+
+// Task sub-step mutations (mirror the goal helpers).
+function toggleTaskSubStep(taskId,idx){
+  var t=(STATE.tasks||[]).find(function(x){return x.id===taskId});
+  if(!t||!t.subSteps||!t.subSteps[idx])return;
+  t.subSteps[idx].done=!t.subSteps[idx].done;
+  saveState();
+  if(typeof openModal==='function'&&document.getElementById('modal')&&document.getElementById('modal').style.display!=='none')openModal('editTask',taskId);
+  if(typeof renderPlanner==='function')renderPlanner();
+  if(typeof renderDashboard==='function')renderDashboard();
+}
+function deleteTaskSubStep(taskId,idx){
+  var t=(STATE.tasks||[]).find(function(x){return x.id===taskId});
+  if(!t||!t.subSteps)return;
+  t.subSteps.splice(idx,1);
+  saveState();
+  if(typeof openModal==='function')openModal('editTask',taskId);
+}
+function addTaskSubStep(taskId){
+  var inp=document.getElementById('task-substep-input');
+  if(!inp)return;
+  var text=inp.value.trim();
+  if(!text)return;
+  var t=(STATE.tasks||[]).find(function(x){return x.id===taskId});
+  if(!t)return;
+  if(!t.subSteps)t.subSteps=[];
+  t.subSteps.push({text:text,done:false});
+  saveState();
+  if(typeof openModal==='function')openModal('editTask',taskId);
 }
 
 
@@ -1165,6 +1148,7 @@ function renderTaskRow(t,isPriority){
     if(t.dueDate<todayKey){dueLabel=fmtDueRel(t.dueDate);dueClass='overdue'}
     else if(t.dueDate===todayKey){dueLabel='today';dueClass='today'}
     else dueLabel=fmtDueRel(t.dueDate);
+    if(t.dueTime)dueLabel+=' · '+t.dueTime;
   }
   var isWeekP=t.weekPriority===wkKey;
   var starIcon=isWeekP?'⭐':'☆';
@@ -1390,13 +1374,17 @@ function saveTaskEditFromModal(id){
   if(!t)return;
   var text=((document.getElementById('m-task-text')||{}).value||'').trim();
   var due=(document.getElementById('m-task-due')||{}).value||'';
+  var time=(document.getElementById('m-task-time')||{}).value||'';
   var priChecked=!!(document.getElementById('m-task-pri')||{}).checked;
   if(text)t.text=text;
   t.dueDate=due||null;
+  // A time only makes sense with a date; drop it if the date was cleared.
+  t.dueTime=(due&&time)?time:null;
   var wkKey=weekKey(new Date());
   if(priChecked)t.weekPriority=wkKey;
   else if(t.weekPriority===wkKey)delete t.weekPriority;
   saveState();
   if(typeof closeModal==='function')closeModal();
   renderDashboard();
+  if(typeof renderPlanner==='function')renderPlanner();
 }

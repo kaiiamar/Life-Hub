@@ -12,9 +12,10 @@
 <title>Kai's Life Hub 🤎</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Caveat:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style-new.css?v=7">
+<link rel="stylesheet" href="style-new.css?v=10">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
@@ -125,13 +126,12 @@
     <!-- ══ DASHBOARD ══ -->
     <div class="page" id="page-dashboard">
       <!-- HERO -->
-      <div class="hero" id="hero">
+      <div class="hero hero--overview" id="hero">
         <div class="blob blob-1"></div>
         <div class="blob blob-2"></div>
         <div class="blob blob-3"></div>
         <div class="hero-inner" id="hero-inner">
-          <div class="hero-eyebrow"><span class="pulse-dot"></span>Today's mission</div>
-          <h1 id="dash-greeting">Good morning, <em>Kai</em>.</h1>
+          <div class="hero-eyebrow"><span class="pulse-dot"></span>Your overview</div>
           <p class="hero-sub" id="dash-date-sub"></p>
           <div class="hero-streak" id="dash-streak" style="display:none"></div>
           <div class="hero-focus-banner" id="dash-monthly-focus-card" style="display:none" onclick="nav('review')">
@@ -143,72 +143,24 @@
         </div>
       </div>
 
+      <!-- Mood check-in mini — always-on overview chrome, directly under Hero -->
+      <div class="bento-stat dash-mood-orb" id="dash-mood-orb">
+        <div class="stat-orb accent">🌡️</div>
+        <div class="stat-label">Today's check-in</div>
+        <div id="dash-mood-checkin-mini"></div>
+      </div>
+
       <div id="dash-notification-prompt" style="margin-bottom:18px"></div>
       <div id="dash-review-nudge" style="margin-bottom:18px"></div>
 
-      <!-- BENTO LAYOUT — asymmetric rhythm -->
-      <div class="bento-main bento-main-2row">
-        <!-- FEATURED FOCUS CARD (large, top-left, spans 2 rows) -->
-        <div class="focus-card">
-          <div class="focus-label">
-            <span class="pulse-dot"></span>
-            Today's focus
-          </div>
-          <div class="focus-stat" id="focus-stat">—</div>
-          <div class="focus-score-label" id="focus-score-label">Habits &amp; tasks today</div>
-          <div class="focus-sub" id="focus-sub">Loading your day…</div>
-          <div class="focus-bars" id="focus-bars"></div>
-        </div>
-
-        <!-- Right side: quick mood -->
-        <div class="bento-stat dash-mood-orb" id="dash-mood-orb">
-          <div class="stat-orb accent">🌡️</div>
-          <div class="stat-label">Today's check-in</div>
-          <div id="dash-mood-checkin-mini"></div>
-        </div>
-      </div>
-
       <!-- Dashboard tabs -->
       <div class="page-tabs" style="margin-bottom:16px">
-        <button class="page-tab active" onclick="switchDashTab('today',this)">Today</button>
-        <button class="page-tab" onclick="switchDashTab('week',this)">This week</button>
+        <button class="page-tab active" onclick="switchDashTab('week',this)">This week</button>
         <button class="page-tab" onclick="switchDashTab('life',this)">Life</button>
       </div>
 
-      <!-- TODAY TAB -->
-      <div class="dash-tab active" id="dash-tab-today">
-        <!-- 0. Today's training -->
-        <div class="card dash-training-card" id="dash-training-card" style="margin-bottom:14px;display:none">
-          <div class="card-label">🏃 Today's training</div>
-          <div id="dash-training-today"></div>
-        </div>
-        <!-- 1. Action row — tasks + habits (where you tick) -->
-        <div class="bento-row-2">
-          <div class="card bento-priorities">
-            <div class="card-label">✅ Today's tasks</div>
-            <div id="dash-priorities-preview"></div>
-          </div>
-          <div class="card bento-habits whats-next-card">
-            <div class="card-label" id="whats-next-label">✨ What's next</div>
-            <div id="dash-whats-next"></div>
-          </div>
-        </div>
-
-        <!-- 2. Light daily logging — water + gratitude -->
-        <div class="bento-row-2" style="margin-top:14px">
-          <div class="card">
-            <div class="card-label">💧 Water today</div>
-            <div id="dash-water-tracker"></div>
-          </div>
-          <div class="card">
-            <div class="card-label" style="color:var(--accent-dark)">🙏 Gratitude</div>
-            <div id="dash-gratitude-inline"></div>
-          </div>
-        </div>
-      </div>
-
       <!-- THIS WEEK TAB -->
-      <div class="dash-tab" id="dash-tab-week">
+      <div class="dash-tab active" id="dash-tab-week">
         <!-- Mood week strip (item 8) -->
         <div class="card" style="margin-bottom:14px">
           <div class="card-label">🌈 Mood this week</div>
@@ -234,6 +186,10 @@
             <div class="card-label">💸 Finance snapshot</div>
             <div id="dash-finance-preview"></div>
           </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <div class="card-label" style="color:var(--accent-dark)">🙏 Gratitude</div>
+          <div id="dash-gratitude-inline"></div>
         </div>
       </div>
 
@@ -859,21 +815,21 @@
 
 
 
-<script src="js/state.js?v=7"></script>
-<script src="js/roadmap-data.js?v=7"></script>
-<script src="js/roadmap.js?v=7"></script>
-<script src="js/navigation.js?v=7"></script>
-<script src="js/dashboard.js?v=7"></script>
-<script src="js/habits.js?v=7"></script>
-<script src="js/workouts.js?v=7"></script>
-<script src="js/finance.js?v=7"></script>
-<script src="js/reviews.js?v=7"></script>
-<script src="js/relationships.js?v=7"></script>
-<script src="js/gratitude.js?v=7"></script>
-<script src="js/insights.js?v=7"></script>
-<script src="js/skincare.js?v=7"></script>
-<script src="js/modals.js?v=7"></script>
-<script src="js/planner.js?v=7"></script>
-<script src="js/init.js?v=7"></script>
+<script src="js/state.js?v=11"></script>
+<script src="js/roadmap-data.js?v=10"></script>
+<script src="js/roadmap.js?v=10"></script>
+<script src="js/navigation.js?v=10"></script>
+<script src="js/dashboard.js?v=10"></script>
+<script src="js/habits.js?v=10"></script>
+<script src="js/workouts.js?v=10"></script>
+<script src="js/finance.js?v=10"></script>
+<script src="js/reviews.js?v=10"></script>
+<script src="js/relationships.js?v=10"></script>
+<script src="js/gratitude.js?v=10"></script>
+<script src="js/insights.js?v=10"></script>
+<script src="js/skincare.js?v=10"></script>
+<script src="js/modals.js?v=10"></script>
+<script src="js/planner.js?v=10"></script>
+<script src="js/init.js?v=10"></script>
 </body>
 </html>

@@ -94,6 +94,7 @@ function logWaterGlass(count){
   saveState();
   renderDashWater();
   renderMetricsWater();
+  if(typeof renderPlannerWater === 'function') renderPlannerWater();
   // Celebrate hitting the daily target (crossing, not already there)
   var target=Number((STATE.waterSettings&&STATE.waterSettings.target)||8);
   if(prev<target&&STATE.water[today]>=target){

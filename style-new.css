@@ -387,6 +387,21 @@ h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-0.02em}
   color:rgba(26,26,31,0.75);max-width:600px;
 }
 
+/* ── HERO — overview variant (subordinate to Planner welcome) ── */
+/* Lighter, lower-prominence Hero for the reframed Dashboard: smaller vertical
+   padding and heading scale while reusing the base .hero tokens/blobs. */
+.hero--overview{
+  padding:22px 40px 24px;
+  border-radius:24px;
+}
+.hero--overview h1{
+  font-size:30px;
+  margin-bottom:6px;
+}
+.hero--overview .hero-eyebrow{
+  margin-bottom:8px;
+}
+
 /* ── TOP BAR (search + quick actions) ── */
 .top-bar{
   display:flex;align-items:center;gap:14px;
@@ -4436,6 +4451,46 @@ body.night-mode .focus-progress{background:rgba(255,255,255,0.1)}
 .planner-card-hint{font-size:11px;color:var(--text3);font-weight:500;flex-shrink:0}
 .planner-empty-line{font-size:13px;color:var(--text3);padding:4px 0}
 
+/* ── Home widgets: compact welcome, water cup, habit rows ── */
+/* Compact planner welcome — slim single row, not a hero */
+.planner-welcome{
+  display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+  padding:8px 4px 4px;margin-bottom:10px;
+}
+.planner-welcome-greet{font-family:var(--serif);font-size:17px;font-weight:500;color:var(--fg)}
+.planner-welcome-date{font-size:12px;color:var(--text3);flex-shrink:0}
+
+/* Planner water — single filling cup */
+.planner-water-body{display:flex;align-items:center;gap:16px}
+.pw-cup{
+  position:relative;width:46px;height:60px;flex-shrink:0;
+  border:2px solid var(--accent);border-top:none;
+  border-radius:6px 6px 14px 14px;overflow:hidden;
+  background:var(--accent-dim);
+}
+.pw-cup-fill{
+  position:absolute;left:0;right:0;bottom:0;      /* bottom-anchored */
+  height:0%;                                       /* set inline: height:<pct>% */
+  background:linear-gradient(180deg,var(--secondary),var(--mint));
+  transition:height .35s ease;
+}
+.pw-cup.full{box-shadow:0 0 0 2px var(--mint) inset}
+.planner-water-info{display:flex;flex-direction:column;gap:8px}
+.pw-figure{font-size:13px;color:var(--text2)}
+.pw-figure b{color:var(--fg);font-size:16px}
+
+/* Compact habit rows */
+.pw-habit-row{display:flex;align-items:center;gap:10px;padding:6px 0}
+.pw-habit-row + .pw-habit-row{border-top:1px solid var(--glass-border)}
+.pw-habit-check{
+  width:22px;height:22px;flex-shrink:0;border-radius:50%;
+  border:1.5px solid var(--accent);display:flex;align-items:center;justify-content:center;
+  font-size:12px;color:var(--accent);cursor:pointer;
+}
+.pw-habit-row.done .pw-habit-check{background:var(--grad-accent);color:#fff;border-color:transparent}
+.pw-habit-row.done .pw-habit-name{color:var(--text3);text-decoration:line-through}
+.pw-habit-name{font-size:14px;color:var(--fg)}
+
 /* ── Today at a glance: commitment rows (time + tick) ── */
 .planner-commitments{display:flex;flex-direction:column;gap:8px}
 .commit-row{
@@ -4625,3 +4680,73 @@ body.night-mode .focus-progress{background:rgba(255,255,255,0.1)}
 body.night-mode .commit-check,
 body.night-mode .focus-check,
 body.night-mode .week-check{background:rgba(255,255,255,0.06)}
+
+/* ── Planner: timeline "now" divider, task/recur chips, Inbox ── */
+.planner-now-line{
+  display:flex;align-items:center;gap:8px;
+  margin:4px 0;font-size:10px;font-weight:600;
+  color:var(--accent-dark);text-transform:uppercase;letter-spacing:0.06em;
+}
+.planner-now-line::before,.planner-now-line::after{
+  content:'';flex:1;height:1px;background:var(--accent-dim);
+}
+.commit-time-soft{background:var(--muted);color:var(--text3)}
+.commit-recur{font-size:11px;color:var(--accent-dark);opacity:0.8}
+
+/* Inbox card — captured, unscheduled tasks */
+.planner-inbox-list{display:flex;flex-direction:column;gap:8px}
+.inbox-row{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 12px;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius-xs);
+}
+.inbox-check{
+  width:22px;height:22px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--border);border-radius:50%;
+  background:var(--bg2);cursor:pointer;
+  transition:all 160ms var(--ease);
+}
+.inbox-check:hover{border-color:var(--accent)}
+.inbox-text{flex:1;min-width:0;font-size:14px;font-weight:500;color:var(--fg)}
+.inbox-focus{flex-shrink:0;white-space:nowrap}
+.inbox-edit{
+  flex-shrink:0;width:26px;height:26px;
+  display:flex;align-items:center;justify-content:center;
+  border:none;background:transparent;color:var(--text3);
+  font-size:16px;line-height:1;cursor:pointer;border-radius:8px;
+  transition:all 160ms var(--ease);
+}
+.inbox-edit:hover{background:var(--accent-dim);color:var(--accent-dark)}
+body.night-mode .inbox-check{background:rgba(255,255,255,0.06)}
+
+/* ── "Break it down" button + Planner focus micro-steps ── */
+.goal-breakdown-btn{
+  flex-shrink:0;border:1px solid var(--accent-dim);
+  background:var(--accent-dim);color:var(--accent-dark);
+  font-family:var(--sans);font-size:11px;font-weight:600;
+  padding:3px 10px;border-radius:var(--radius-pill);cursor:pointer;
+  transition:all 160ms var(--ease);white-space:nowrap;
+}
+.goal-breakdown-btn:hover:not(:disabled){background:var(--accent);color:var(--white)}
+.goal-breakdown-btn:disabled{opacity:0.6;cursor:default}
+
+.focus-substeps{
+  margin:-2px 0 8px 36px;display:flex;flex-direction:column;gap:5px;
+  padding-left:10px;border-left:2px solid var(--accent-dim);
+}
+.focus-substep{display:flex;align-items:center;gap:9px}
+.focus-substep-tick{
+  width:18px;height:18px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--border);border-radius:5px;
+  background:var(--bg2);cursor:pointer;
+  font-size:11px;font-weight:700;color:var(--white);
+  transition:all 160ms var(--ease);
+}
+.focus-substep-tick:hover{border-color:var(--accent)}
+.focus-substep.done .focus-substep-tick{background:var(--accent);border-color:var(--accent)}
+.focus-substep-text{font-size:13px;color:var(--text2)}
+.focus-substep.done .focus-substep-text{text-decoration:line-through;color:var(--text3)}
+body.night-mode .focus-substep-tick{background:rgba(255,255,255,0.06)}

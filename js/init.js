@@ -135,6 +135,18 @@ loadFromCloud(function(){
     STATE.__plannerMigrated=true;
     saveState();
   }
+  // Daily hygiene (runs every load — NOT guarded): focus is a per-day thing, so
+  // clear any focusDate left over from a previous day. The task itself stays in
+  // the inbox / week list; only the "today's focus" stamp resets, so yesterday's
+  // focus never lingers as clutter (auto-cleanup, no manual tidying).
+  (function(){
+    var _today=localDateKey(new Date());
+    var _changed=false;
+    (STATE.tasks||[]).forEach(function(t){
+      if(t.focusDate&&t.focusDate<_today){delete t.focusDate;_changed=true}
+    });
+    if(_changed)saveState();
+  })();
   // Auto-correct "debt free" type goals: target should be 0, startProgress = initial debt total
   (STATE.goals||[]).forEach(function(go){
     var name=(go.name||'').toLowerCase();
@@ -270,7 +282,11 @@ setupReminders();
 // ============================================================
 var confettiCanvas=null;
 function fireConfetti(opts){
-opts=opts||{};var duration=opts.duration||2500;var count=opts.count||80;var colors=opts.colors||['#a0522d','#c9973a','#d4845a','#6b9e7a','#5f9ea0','#8b6fb0','#c97b6e','#f59e0b'];
+opts=opts||{};
+// Celebrations scaled down for a calmer, less over-stimulating hit: cap the
+// piece count and duration regardless of what a caller requests, so even the
+// big milestone bursts stay gentle.
+var duration=Math.min(opts.duration||1600,1800);var count=Math.min(opts.count||40,55);var colors=opts.colors||['#a0522d','#c9973a','#d4845a','#6b9e7a','#5f9ea0','#8b6fb0','#c97b6e','#f59e0b'];
 if(!confettiCanvas){confettiCanvas=document.createElement('canvas');confettiCanvas.style.cssText='position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999';document.body.appendChild(confettiCanvas)}
 var cv=confettiCanvas;var ctx=cv.getContext('2d');cv.width=window.innerWidth;cv.height=window.innerHeight;
 var pieces=[];for(var i=0;i<count;i++){pieces.push({x:cv.width*(.2+Math.random()*.6),y:cv.height*-.1-Math.random()*cv.height*.3,w:6+Math.random()*6,h:4+Math.random()*4,color:colors[Math.floor(Math.random()*colors.length)],vx:(Math.random()-.5)*6,vy:2+Math.random()*4,rot:Math.random()*360,vr:(Math.random()-.5)*8,opacity:1})}
