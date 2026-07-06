@@ -238,6 +238,10 @@ function habitDayStatus(h,dateKey){
   return 'todo';
 }
 
+// The roadmap feature was removed. Finance and navigation flows still call
+// refreshRoadmapLiveCards(); keep a no-op stub so those calls don't throw.
+function refreshRoadmapLiveCards(){}
+
 function nav(page){
   // Transition out current page
   var current=document.querySelector('.page.active');
