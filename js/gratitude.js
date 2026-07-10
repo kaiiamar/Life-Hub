@@ -47,7 +47,8 @@ function renderWaterInto(el){
   var totalL=(totalMl/1000).toFixed(totalMl>=1000?1:2);
   var targetL=(targetMl/1000).toFixed(targetMl>=1000?1:2);
   var pct=Math.min(100,Math.round((glasses/Math.max(1,target))*100));
-  var progressColor=glasses>=target?'var(--mint)':glasses>=Math.ceil(target/2)?'var(--secondary)':'var(--text2)';
+  // Bloom glow-up (#3): water fill uses the mint gradient (matches preview .fill i).
+  var progressColor='var(--grad-green)';
 
   el.innerHTML=''
     +'<div class="water-hero">'

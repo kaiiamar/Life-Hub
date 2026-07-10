@@ -247,8 +247,8 @@ function plannerHabitCard(){
   }
   var doneCount=habits.filter(function(h){return h.logs&&h.logs[today]}).length;
   return ''
-    +'<div class="card planner-card planner-habits" id="planner-habits-card">'
-      +'<div class="planner-card-head"><span class="planner-card-title">Habits</span>'
+    +'<div class="card planner-card planner-habits card-hero-tier" id="planner-habits-card">'
+      +'<div class="planner-card-head"><span class="planner-card-title"><span class="section-rule-bar"></span>Habits</span>'
         +'<span class="planner-card-count">'+doneCount+'/'+habits.length+'</span></div>'
       +rows
     +'</div>';
@@ -289,8 +289,8 @@ function plannerGlanceCard(todayKey){
   });
   items.sort(function(a,b){return String(a.time||'99:99').localeCompare(String(b.time||'99:99'))});
 
-  var html='<div class="card planner-card">';
-  html+='<div class="planner-card-head"><span class="planner-card-title">Today at a glance</span></div>';
+  var html='<div class="card planner-card card-hero-tier">';
+  html+='<div class="planner-card-head"><span class="planner-card-title"><span class="section-rule-bar"></span>Today at a glance</span></div>';
 
   if(items.length){
     var nowHM=(function(){var d=new Date();return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)})();
@@ -329,7 +329,7 @@ function plannerGlanceCard(todayKey){
 function plannerInboxCard(){
   var inbox=getInboxTasks();
   if(!inbox.length)return '';
-  var html='<div class="card planner-card planner-inbox-card">';
+  var html='<div class="card planner-card planner-inbox-card card-quiet">';
   html+='<div class="planner-card-head"><span class="planner-card-title">Inbox</span>'
     +'<span class="planner-card-count">'+inbox.length+'</span></div>';
   html+='<div class="planner-inbox-list">';
@@ -363,8 +363,11 @@ function plannerTrainingLine(todayKey){
       text=t.label+(t.sub?' · '+t.sub:'');
     }
   }
+  // Bloom glow-up (#7): gradient "Training day" chip on active training days
+  // (matches preview .gu .chip). Rest days stay chip-free to keep it calm.
+  var chip=(t.session==='rest')?'':'<span class="chip">Training day</span>';
   return '<div class="planner-train-line"><span class="planner-train-icon">'+icon+'</span>'
-    +'<span class="planner-train-text">'+escapeHtml(text)+'</span></div>';
+    +'<span class="planner-train-text">'+escapeHtml(text)+'</span>'+chip+'</div>';
 }
 
 // "Daily Focus (1–3)" card — focus tasks, chooser, cap + completion states (R10.1–R10.4)

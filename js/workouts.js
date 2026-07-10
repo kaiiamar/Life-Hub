@@ -230,8 +230,12 @@ function renderTrainingBody(){
   var delta=latest.value-first.value;
   var goalW=STATE.weightGoal||80;
   var toGoal=latest.value-goalW;
+  // Bloom glow-up (#2): a 7-point sparkline of the last 7 logged weights beneath
+  // the current-weight number, in --accent. Omitted gracefully when <2 points.
+  var last7=weights.slice(-7).map(function(w){return w.value});
+  var weightSpark=(typeof sparklineSVG==='function')?sparklineSVG(last7,'var(--accent)'):'';
   el.innerHTML=
-    '<div class="stat-card"><div class="stat-orb blue">⚖️</div><div class="card-label">Current</div><div class="stat-big">'+latest.value+'<span style="font-size:16px;color:var(--text2)"> kg</span></div><div class="stat-sub">'+fmtDate(latest.date)+'</div></div>'
+    '<div class="stat-card"><div class="stat-orb blue">⚖️</div><div class="card-label">Current</div><div class="stat-big">'+latest.value+'<span style="font-size:16px;color:var(--text2)"> kg</span></div>'+weightSpark+'<div class="stat-sub">'+fmtDate(latest.date)+'</div></div>'
     +'<div class="stat-card"><div class="stat-orb '+(delta<=0?'green':'accent')+'">📉</div><div class="card-label">Change</div><div class="stat-big">'+(delta>=0?'+':'')+delta.toFixed(1)+'<span style="font-size:16px;color:var(--text2)"> kg</span></div><div class="stat-sub">since start</div></div>'
     +'<div class="stat-card"><div class="stat-orb gold">🎯</div><div class="card-label">To goal</div><div class="stat-big">'+(toGoal>0?toGoal.toFixed(1):'✓')+'<span style="font-size:16px;color:var(--text2)"> kg</span></div><div class="stat-sub">goal: '+goalW+' kg</div></div>';
   // Render log

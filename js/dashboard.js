@@ -20,6 +20,43 @@ function icon(name,size){
     +'aria-hidden="true" focusable="false">'+p+'</svg>';
 }
 
+// ── Bloom glow-up SVG helpers (#signature layer, matches design-preview-5) ──
+// Pure, dependency-free inline-SVG builders reused across dashboard, training,
+// habits and planner. sparklineSVG draws a tiny trend polyline; ringSVG draws a
+// progress ring with optional centre text. Defined here because dashboard.js is
+// loaded early (before habits/workouts/gratitude/planner), so every renderer can
+// call them. Colours accept CSS tokens (e.g. 'var(--accent)') — resolved by the
+// browser since the markup is injected live into the DOM.
+function sparklineSVG(values,color){
+  var vals=(values||[]).filter(function(v){return typeof v==='number'&&isFinite(v)});
+  if(vals.length<2)return '';  // gracefully omit with too few points
+  color=color||'var(--accent)';
+  var min=Math.min.apply(null,vals),max=Math.max.apply(null,vals);
+  var range=(max-min)||1;
+  var w=100,h=24,pad=3;
+  var step=w/(vals.length-1);
+  var pts=vals.map(function(v,i){
+    var x=i*step;
+    var y=(h-pad)-((v-min)/range)*(h-pad*2);
+    return (Math.round(x*10)/10)+','+(Math.round(y*10)/10);
+  }).join(' ');
+  return '<svg class="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true">'
+    +'<polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2.6" '
+    +'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+function ringSVG(pct,color,size,centerText){
+  pct=Math.max(0,Math.min(100,Number(pct)||0));
+  color=color||'var(--accent)';
+  size=size||34;
+  var r=(size-6)/2,cx=size/2,c=2*Math.PI*r,off=c-(pct/100)*c;
+  return '<svg class="ring" width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" aria-hidden="true">'
+    +'<circle cx="'+cx+'" cy="'+cx+'" r="'+r+'" fill="none" stroke="rgba(155,126,214,0.18)" stroke-width="3.5"/>'
+    +'<circle cx="'+cx+'" cy="'+cx+'" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="3.5" '
+    +'stroke-linecap="round" stroke-dasharray="'+c+'" stroke-dashoffset="'+off+'" transform="rotate(-90 '+cx+' '+cx+')"/>'
+    +(centerText?'<text x="'+cx+'" y="'+(cx+3)+'" text-anchor="middle" font-size="9" font-family="Baloo 2" fill="'+color+'">'+centerText+'</text>':'')
+    +'</svg>';
+}
+
 function focusBar(icon,label,val,pct,grad){
   return '<div class="focus-bar">'
     +'<span class="focus-bar-icon">'+icon+'</span>'
@@ -62,7 +99,14 @@ function renderDashStreak(){
   if(s<2){el.style.display='none';return}
   var todayDone=dayHadActivity(localDateKey(new Date()));
   el.style.display='';
-  el.innerHTML='<span class="hero-streak-flame">🔥</span><span class="hero-streak-num">'+s+'</span>'
+  // Bloom glow-up (#6): render the streak as a small ring with 🔥 inside next
+  // to the "N days showing up" pill. Ring fills toward a 30-day milestone; the
+  // streak value/logic is unchanged.
+  var ringPct=Math.min(100,Math.round(s/30*100));
+  var flame=(typeof ringSVG==='function')
+    ? '<span class="hero-streak-ring">'+ringSVG(ringPct,'var(--accent2)',34,'🔥')+'</span>'
+    : '<span class="hero-streak-flame">🔥</span>';
+  el.innerHTML=flame+'<span class="hero-streak-num">'+s+'</span>'
     +'<span class="hero-streak-label">day'+(s===1?'':'s')+' showing up</span>';
 }
 

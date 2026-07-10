@@ -229,6 +229,13 @@ function renderHabitCard(h,todayKey){
   html+='<div class="hb-title">'+escapeHtml(h.name)+'</div>';
   html+='<div class="hb-meta"><span class="hb-freq">'+h.freq+'</span><span class="hb-cat-dot" style="background:'+meta.color+'"></span><span class="hb-anchor">'+anchor.emoji+' '+anchor.label+'</span></div>';
   html+='</div>';
+  // Bloom glow-up (#4): consistency ring next to each habit — --accent for daily
+  // habits, --gold for everything else. Centre shows ✓ once done today.
+  var ringColor=(f==='daily')?'var(--accent)':'var(--gold)';
+  var ringCenter=todayStatus==='done'?'✓':'';
+  if(typeof ringSVG==='function'){
+    html+='<div class="hb-ring" title="'+consistency.pct+'% consistency">'+ringSVG(consistency.pct,ringColor,34,ringCenter)+'</div>';
+  }
   if(streakStr)html+='<div class="hb-streak" title="'+streak+' '+streakUnit+' streak">'+streakStr+'</div>';
   html+='<button class="hb-edit" onclick="openModal(\'editHabit\',\''+h.id+'\')" title="Edit">✎</button>';
   html+='</div>';
