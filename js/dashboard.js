@@ -1197,7 +1197,7 @@ function renderTaskRow(t,isPriority){
   var isWeekP=t.weekPriority===wkKey;
   var starIcon=isWeekP?'⭐':'☆';
   return '<div class="task-row'+(t.done?' done':'')+(isPriority?' is-priority':'')+'">'
-    +'<div class="task-check" onclick="toggleTask(\''+t.id+'\')">'+(t.done?'✓':'')+'</div>'
+    +'<div class="task-check" data-tick="task:'+t.id+'" onclick="toggleTask(\''+t.id+'\')">'+(t.done?'✓':'')+'</div>'
     +'<div class="task-body" onclick="editTaskInline(\''+t.id+'\')">'
       +'<span class="task-text">'+escapeHtml(t.text)+'</span>'
       +(dueLabel?'<span class="task-due '+dueClass+'">'+dueLabel+'</span>':'')
@@ -1363,6 +1363,7 @@ function toggleTask(id){
   saveState();
   renderDashboard();
   if(!wasDone&&t.done){
+    if(typeof bloomTick==='function')bloomTick('task:'+id);
     if(typeof showCelebrationToast==='function')showCelebrationToast('Done — '+t.text,'✓');
     if(typeof checkAllDoneToday==='function')checkAllDoneToday();
   }

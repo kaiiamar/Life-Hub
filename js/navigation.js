@@ -242,6 +242,29 @@ function habitDayStatus(h,dateKey){
 // refreshRoadmapLiveCards(); keep a no-op stub so those calls don't throw.
 function refreshRoadmapLiveCards(){}
 
+// Chart.js (~200KB) is only needed on Insights, Training-body and Finance.
+// Load it on demand the first time one of those views renders, then run the
+// waiting callbacks so the canvases actually draw. Cached: the script is only
+// ever injected once (Part 5.3).
+var _chartJsState='idle';// idle | loading | ready
+var _chartJsWaiters=[];
+function ensureChartJs(cb){
+  if(typeof Chart!=='undefined'){_chartJsState='ready';if(cb)cb();return}
+  if(cb)_chartJsWaiters.push(cb);
+  if(_chartJsState==='loading')return;
+  _chartJsState='loading';
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';
+  s.async=true;
+  s.onload=function(){
+    _chartJsState='ready';
+    var w=_chartJsWaiters.slice();_chartJsWaiters=[];
+    w.forEach(function(fn){try{fn()}catch(e){}});
+  };
+  s.onerror=function(){_chartJsState='idle';_chartJsWaiters=[]};
+  document.head.appendChild(s);
+}
+
 function nav(page){
   // Transition out current page
   var current=document.querySelector('.page.active');
@@ -281,9 +304,9 @@ function nav(page){
   }
 }
 
-function subNav(section,tab){var btns=document.querySelectorAll('#page-'+section+' .page-tab');var pages=document.querySelectorAll('#page-'+section+' .sub-page');btns.forEach(function(b){b.classList.remove('active')});pages.forEach(function(p){p.classList.remove('active')});event.target.classList.add('active');var spEl=document.getElementById(section+'-'+tab);if(spEl)spEl.classList.add('active');if(section==='finance'){renderFinance(tab);if(tab!=='overview')refreshRoadmapLiveCards()}if(section==='workout'){if(tab==='history')renderAllWorkouts();if(tab==='body')renderTrainingBody();if(tab==='myplan')renderMyPlanSchedule();if(tab==='overview')renderTrainingOverview()}if(section==='review'){if(tab==='monthly')renderMonthlyReview()}if(section==='lists'){var addBtn=document.getElementById('lists-add-btn');if(tab==='watch'){renderWatchlist();if(addBtn)addBtn.setAttribute('onclick',"openModal('addWatchItem')")}else if(tab==='wish'){renderWishlist();if(addBtn)addBtn.setAttribute('onclick',"openModal('addWishItem')")}}}
+function subNav(section,tab){var btns=document.querySelectorAll('#page-'+section+' .page-tab');var pages=document.querySelectorAll('#page-'+section+' .sub-page');btns.forEach(function(b){b.classList.remove('active')});pages.forEach(function(p){p.classList.remove('active')});event.target.classList.add('active');var spEl=document.getElementById(section+'-'+tab);if(spEl)spEl.classList.add('active');if(section==='finance'){renderFinance(tab);if(typeof Chart==='undefined')ensureChartJs(function(){renderFinance(tab)});if(tab!=='overview')refreshRoadmapLiveCards()}if(section==='workout'){if(tab==='history')renderAllWorkouts();if(tab==='body'){renderTrainingBody();if(typeof Chart==='undefined')ensureChartJs(renderTrainingBody)}if(tab==='myplan')renderMyPlanSchedule();if(tab==='overview')renderTrainingOverview()}if(section==='review'){if(tab==='monthly')renderMonthlyReview()}if(section==='lists'){var addBtn=document.getElementById('lists-add-btn');if(tab==='watch'){renderWatchlist();if(addBtn)addBtn.setAttribute('onclick',"openModal('addWatchItem')")}else if(tab==='wish'){renderWishlist();if(addBtn)addBtn.setAttribute('onclick',"openModal('addWishItem')")}}}
 
-function renderPage(page){if(page==='planner')renderPlanner();if(page==='dashboard')renderDashboard();if(page==='goals')renderGoals();if(page==='habits')renderHabits();if(page==='workout')renderWorkout();if(page==='finance')renderFinance('plan');if(page==='review')renderReview();if(page==='insights')renderInsights();if(page==='relationships')renderRelationships();if(page==='gratitude')renderGratitude();if(page==='lists'){renderWatchlist();renderWishlist()}if(page==='skincare')renderSkincare();if(page==='tasks')renderTasksArchive()}
+function renderPage(page){if(page==='planner')renderPlanner();if(page==='dashboard')renderDashboard();if(page==='goals')renderGoals();if(page==='habits')renderHabits();if(page==='workout'){renderWorkout();if(typeof Chart==='undefined')ensureChartJs(renderWorkout)}if(page==='finance'){renderFinance('plan');if(typeof Chart==='undefined')ensureChartJs(function(){renderFinance('plan')})}if(page==='review')renderReview();if(page==='insights'){renderInsights();if(typeof Chart==='undefined')ensureChartJs(renderInsights)}if(page==='relationships')renderRelationships();if(page==='gratitude')renderGratitude();if(page==='lists'){renderWatchlist();renderWishlist()}if(page==='skincare')renderSkincare();if(page==='tasks')renderTasksArchive()}
 
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('mobile-overlay').classList.toggle('open')}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('mobile-overlay').classList.remove('open')}

@@ -4827,7 +4827,8 @@ body.night-mode .page-emoji-tile{background:rgba(240,235,227,0.06)}
     55%{transform:scale(1.18)}
     100%{transform:scale(1)}
   }
-  .dot.just-ticked,.hb-week-day.just-ticked,.task-check.just-ticked{
+  .hb-week-day.just-ticked,.task-check.just-ticked,
+  .pw-habit-check.just-ticked,.focus-check.just-ticked{
     animation:bloomTickPop 200ms var(--ease-spring);
   }
 }

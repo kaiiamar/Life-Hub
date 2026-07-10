@@ -254,6 +254,7 @@ function renderNetWorthTrend(){
   destroyFC('nwTrend');
   var ctx=document.getElementById('networthTrendChart');
   if(!ctx)return;
+  if(typeof Chart==='undefined'){ensureChartJs(renderNetWorthTrend);return}
   var snaps=(STATE.netWorthSnapshots||[]).slice();
   // Add a "now" point for live context (not persisted)
   var live={date:localDateKey(new Date()),value:computeNetWorth(),live:true};
@@ -268,24 +269,28 @@ function renderNetWorthTrend(){
   var labels=snaps.map(function(s){var d=new Date(s.date+'T12:00:00');return d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'})});
   var data=snaps.map(function(s){return Number(s.value)});
 
+  // Bloom palette — read the live accent so light/dark themes stay in sync.
+  var _fcs=getComputedStyle(document.body);
+  var _facc=(_fcs.getPropertyValue('--accent')||'#9B7ED6').trim();
+  var _ftick=(_fcs.getPropertyValue('--text2')||'#8F86A3').trim();
   finCharts['nwTrend']=new Chart(ctx,{
     type:'line',
     data:{
       labels:labels,
       datasets:[{
         data:data,
-        borderColor:'#D97B6C',
-        backgroundColor:'rgba(217,123,108,0.12)',
+        borderColor:_facc,
+        backgroundColor:'rgba(155,126,214,0.12)',
         tension:0.35,fill:true,
-        pointRadius:4,pointBackgroundColor:'#D97B6C',pointBorderColor:'#fff',pointBorderWidth:2
+        pointRadius:4,pointBackgroundColor:_facc,pointBorderColor:'#fff',pointBorderWidth:2
       }]
     },
     options:{
       responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return fmtMoney(c.parsed.y)}}}},
       scales:{
-        y:{ticks:{callback:function(v){return '£'+(v/1000).toFixed(1)+'k'},color:'#8a6545',font:{size:10}},grid:{color:'rgba(0,0,0,0.05)'}},
-        x:{ticks:{color:'#8a6545',font:{size:10}},grid:{display:false}}
+        y:{ticks:{callback:function(v){return '£'+(v/1000).toFixed(1)+'k'},color:_ftick,font:{size:10}},grid:{color:'rgba(0,0,0,0.05)'}},
+        x:{ticks:{color:_ftick,font:{size:10}},grid:{display:false}}
       }
     }
   });

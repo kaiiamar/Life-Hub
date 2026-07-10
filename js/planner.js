@@ -253,7 +253,7 @@ function plannerHabitCard(){
     rows=habits.map(function(h){
       var done=!!(h.logs&&h.logs[today]);
       return '<div class="pw-habit-row'+(done?' done':'')+'">'
-        +'<div class="pw-habit-check" role="button" tabindex="0"'
+        +'<div class="pw-habit-check" role="button" tabindex="0" data-tick="pwhab:'+h.id+'"'
           +' aria-label="Toggle '+escapeHtml(h.name)+'"'
           +' onclick="plannerToggleHabit(\''+h.id+'\')">'+(done?'✓':'')+'</div>'
         +'<span class="pw-habit-name">'+(h.icon?escapeHtml(h.icon)+' ':'')+escapeHtml(h.name)+'</span>'
@@ -278,11 +278,13 @@ function plannerToggleHabit(hid){
   if(!h)return;
   if(!h.logs)h.logs={};
   var today=localDateKey(new Date());
+  var pwWasDone=!!h.logs[today];
   h.logs[today]=!h.logs[today];
   saveState();
   // Re-render just the planner habit widget in place
   var host=document.getElementById('planner-habits-card');
   if(host)host.outerHTML=plannerHabitCard();
+  if(!pwWasDone&&h.logs[today]&&typeof bloomTick==='function')bloomTick('pwhab:'+hid);
   // Keep Dashboard habit views in sync (guarded)
   if(typeof renderDashboard==='function')renderDashboard();
 }
@@ -451,7 +453,7 @@ function plannerFocusCard(todayKey){
     focus.forEach(function(t){
       var canEdit=(typeof openTaskEditModal==='function');
       html+='<div class="focus-row'+(t.done?' done':'')+'">'
-        +'<div class="focus-check" onclick="plannerToggleFocusDone(\''+t.id+'\')" role="button" tabindex="0" aria-label="Toggle '+escapeHtml(t.text)+'">'+(t.done?'✓':'')+'</div>'
+        +'<div class="focus-check" data-tick="focus:'+t.id+'" onclick="plannerToggleFocusDone(\''+t.id+'\')" role="button" tabindex="0" aria-label="Toggle '+escapeHtml(t.text)+'">'+(t.done?'✓':'')+'</div>'
         +'<span class="focus-text"'+(canEdit?' onclick="openTaskEditModal(\''+t.id+'\')" style="cursor:pointer"':'')+'>'+escapeHtml(t.text)+'</span>'
         +'<button class="focus-remove" onclick="plannerRemoveFocus(\''+t.id+'\')" title="Remove from today\'s focus" aria-label="Remove from today\'s focus">×</button>'
       +'</div>';
@@ -560,6 +562,7 @@ function plannerToggleFocusDone(id){
   saveState();
   renderPlanner();
   if(!wasDone&&t.done){
+    if(typeof bloomTick==='function')bloomTick('focus:'+id);
     if(typeof showCelebrationToast==='function')showCelebrationToast('Done — '+t.text,'✓');
   }
 }

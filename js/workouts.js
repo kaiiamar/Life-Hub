@@ -247,9 +247,13 @@ function renderTrainingBody(){
   }
   // Chart
   var ctx=document.getElementById('training-weight-chart');
-  if(ctx){
+  if(ctx&&typeof Chart!=='undefined'){
     if(ctx._ch)ctx._ch.destroy();
-    ctx._ch=new Chart(ctx,{type:'line',data:{labels:weights.map(function(w){return fmtDate(w.date)}),datasets:[{data:weights.map(function(w){return w.value}),borderColor:'#D97B6C',backgroundColor:'rgba(217,123,108,0.08)',tension:0.3,pointRadius:3,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8A8278',font:{size:10}}},y:{ticks:{color:'#8A8278',font:{size:10},callback:function(v){return v+'kg'}}}}}});
+    // Bloom palette — read the live accent so light/dark themes stay in sync.
+    var _cs=getComputedStyle(document.body);
+    var _acc=(_cs.getPropertyValue('--accent')||'#9B7ED6').trim();
+    var _tick=(_cs.getPropertyValue('--text2')||'#8F86A3').trim();
+    ctx._ch=new Chart(ctx,{type:'line',data:{labels:weights.map(function(w){return fmtDate(w.date)}),datasets:[{data:weights.map(function(w){return w.value}),borderColor:_acc,backgroundColor:'rgba(155,126,214,0.10)',tension:0.3,pointRadius:3,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:_tick,font:{size:10}}},y:{ticks:{color:_tick,font:{size:10},callback:function(v){return v+'kg'}}}}}});
   }
 }
 

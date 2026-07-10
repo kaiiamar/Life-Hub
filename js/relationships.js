@@ -1,5 +1,13 @@
-// RELATIONSHIPS
+// RELATIONSHIPS + WATCHLIST + WISHLIST
 // ============================================================
+// Despite the filename, this module owns three "More"-menu pages:
+//   1. Relationships — CRUD + check-in cadence (renderRelationships) plus the
+//      Dashboard preview widget (renderDashboardRelationships).
+//   2. Watchlist — media to-watch tracker (renderWatchlist).
+//   3. Wishlist — 30-day cooling-off purchase list (renderWishlist).
+// Relationship rendering lives HERE, not in dashboard.js — dashboard.js only
+// hosts the #dash-relationships-preview container that renderDashboardRelationships
+// fills. Kept as one file since all three are low-traffic list views.
 var relFilter='all';
 function renderRelationships(){var all=STATE.relationships||[];var filtered=relFilter==='all'?all:all.filter(function(r){return r.cat===relFilter});var el=document.getElementById('relationships-container');if(!el)return;if(!filtered.length){el.innerHTML='<div class="empty"><div class="empty-icon">&#129400;</div>No people added yet</div>';return}el.innerHTML=filtered.map(function(r){var daysSince=r.lastContact?Math.floor((new Date()-new Date(r.lastContact))/86400000):999;var overdue=daysSince>=r.freq;var urgency=overdue?'var(--red)':daysSince>=r.freq*0.75?'var(--amber)':'var(--mint)';return '<div class="card" style="margin-bottom:10px;border-left:4px solid '+(r.color||'var(--tan)')+'"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span style="font-size:26px">'+(r.icon||'&#128100;')+'</span><div style="flex:1"><div style="font-size:14px;font-weight:600">'+r.name+'</div><div style="font-size:12px;color:var(--text2)">'+r.cat+' &#183; Check in every '+r.freq+' days'+(r.note?' &#183; '+r.note:'')+'</div><div style="font-size:12px;color:'+urgency+';margin-top:2px;font-weight:500">'+(overdue?'&#9888;&#65039; Overdue &#8212; ':'Last contact ')+(daysSince===999?'never':daysSince+' days ago')+'</div></div><div style="display:flex;gap:6px"><button class="btn btn-sm btn-accent" onclick="logContact(\''+r.id+'\')">Log &#10003;</button><button class="btn btn-sm btn-ghost" onclick="openModal(\'editRelationship\',\''+r.id+'\')">Edit</button><button class="btn btn-sm btn-danger" onclick="confirmDelete(\'Remove?\',function(){deleteRelationship(\''+r.id+'\')})">&#215;</button></div></div></div>'}).join('')}
 function filterRel(cat,btn){relFilter=cat;document.querySelectorAll('#rel-filters .filter-btn').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');renderRelationships()}

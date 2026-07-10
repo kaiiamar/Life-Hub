@@ -261,7 +261,8 @@ function renderHabitCard(h,todayKey){
       var clickable=!d.future&&d.status!=='pre-start';
       var click=clickable?'onclick="toggleHabit(\''+h.id+'\',\''+d.key+'\')" role="button" tabindex="0" aria-label="Toggle '+escapeHtml(h.name)+' on '+d.key+'"':'';
       var title=d.date?'':'';
-      return '<div class="'+cls+'" '+click+'><span class="hb-week-letter">'+d.letter+'</span><span class="hb-week-mark">'+inner+'</span></div>';
+      var tick=clickable?' data-tick="hab:'+h.id+':'+d.key+'"':'';
+      return '<div class="'+cls+'"'+tick+' '+click+'><span class="hb-week-letter">'+d.letter+'</span><span class="hb-week-mark">'+inner+'</span></div>';
     }).join('')+'</div>';
   }
 
@@ -328,6 +329,7 @@ function toggleHabit(hid,day){
     renderDashboard();
   }
   if(!wasDone&&h.logs[day]){
+    if(typeof bloomTick==='function')bloomTick('hab:'+hid+':'+day);
     var s=habitStreak(h);
     if(s===7){fireConfetti();showCelebrationToast(h.name+' — 7 '+((h.freq||'daily')==='daily'?'day':'period')+' streak!','🔥')}
     else if(s===14){fireConfetti({count:120});showCelebrationToast(h.name+' — 2 week streak!','⚡')}
