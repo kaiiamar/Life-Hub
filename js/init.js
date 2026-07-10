@@ -175,8 +175,31 @@ loadFromCloud(function(){
   if(!STATE.roadmapDueDates)STATE.roadmapDueDates={};
   setSyncStatus('saved');setTimeout(function(){setSyncStatus('idle')},2000);
   try{renderPlanner()}catch(e){console.error('Render error:',e)}
+  try{updateAppBadge()}catch(e){}
 });
 startClock();
+
+// ============================================================
+// PWA APP-ICON BADGE (3.5)
+// ============================================================
+// Reflect today's incomplete focus tasks (focusDate===today && !done) on the
+// installed app icon. Guarded for browsers without the Badging API. Called on
+// load and after every planner render (see renderPlanner) so it stays in sync
+// with focus/task toggles for free.
+function updateAppBadge(){
+  try{
+    if(!('setAppBadge' in navigator))return;
+    var today=localDateKey(new Date());
+    var n=(STATE.tasks||[]).filter(function(t){return t&&t.focusDate===today&&!t.done}).length;
+    if(n>0){
+      navigator.setAppBadge(n).catch(function(){});
+    }else if('clearAppBadge' in navigator){
+      navigator.clearAppBadge().catch(function(){});
+    }else{
+      navigator.setAppBadge(0).catch(function(){});
+    }
+  }catch(e){}
+}
 
 // ============================================================
 // SERVICE WORKER & PUSH NOTIFICATIONS

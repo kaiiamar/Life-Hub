@@ -267,6 +267,8 @@ function quickLogToday(type){
     autoTickHabit('gym',today);
   }
   saveState();renderWorkout();
+  // Keep the Planner "Today's training" card (3.2) in sync when it's on-screen.
+  if(typeof renderPlanner==='function')renderPlanner();
   // First workout of the week = bigger celebration
   var wkStart=weekKey(new Date());
   var sessionsThisWeek=(STATE.workouts||[]).filter(function(s){return s.date>=wkStart&&s.type!=='Rest'});
@@ -321,6 +323,7 @@ function saveQuickLog(){
   STATE.workouts.push({id:g(),date:date,type:type,name:type,note:note,muscleGroups:[type]});
   autoTickHabit('gym',date);
   saveState();closeModal();renderWorkout();
+  if(typeof renderPlanner==='function')renderPlanner();
   showCelebrationToast(type+' session logged','💪');
 }
 
@@ -332,6 +335,7 @@ function saveRunFromWorkout(){
   if(!STATE.metrics)STATE.metrics={};if(!STATE.metrics.run)STATE.metrics.run=[];
   STATE.metrics.run.push({id:g(),date:date,distance:Number(dist),time:time,note:note});
   autoTickHabit('run',date);saveState();closeModal();renderWorkout();
+  if(typeof renderPlanner==='function')renderPlanner();
   var distNum=Number(dist);
   if(distNum>=10){fireConfetti({count:110,duration:2600,colors:['#5A8FB0','#7CA5C2','#6b9e7a','#d4845a']});showCelebrationToast(distNum+'km run — beast mode.','🏃')}
   else if(distNum>=5){fireConfetti({count:70,duration:2000,colors:['#5A8FB0','#7CA5C2','#6b9e7a']});showCelebrationToast(distNum+'km logged — nice one.','🏃')}
@@ -441,6 +445,7 @@ function toggleTrainEx(sessionId,exIdx){
       fireConfetti({count:120,duration:2600});
       showCelebrationToast(def.title.split('—')[0].trim()+' complete — logged!','💪');
       renderTrainingOverview();
+      if(typeof renderPlanner==='function')renderPlanner();
     }
   }
 }

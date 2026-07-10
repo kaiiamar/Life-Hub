@@ -164,7 +164,11 @@ function renderPlannerToday(){
   var el=document.getElementById('planner-today');
   if(!el)return;
   var todayKey=localDateKey(new Date());
-  el.innerHTML=plannerWelcomeCard()+plannerGlanceCard(todayKey)+plannerFocusCard(todayKey)+plannerInboxCard()+plannerCaptureCard()+plannerWaterCard()+plannerHabitCard();
+  // Part 3 (3.1): habits & training above the fold. Order —
+  // welcome → training card → habits → focus → glance → capture → water → inbox.
+  el.innerHTML=plannerWelcomeCard()+plannerTrainingCard(todayKey)+plannerHabitCard()+plannerFocusCard(todayKey)+plannerGlanceCard(todayKey)+plannerCaptureCard()+plannerWaterCard()+plannerInboxCard();
+  // Keep the PWA app-icon badge in sync with today's open focus count (3.5).
+  if(typeof updateAppBadge==='function')updateAppBadge();
 }
 
 // Compact time-based welcome row — reuses getTimeContext() from dashboard.js
@@ -192,6 +196,16 @@ function plannerWaterCard(){
   var ml=Number((STATE.waterSettings&&STATE.waterSettings.glassMl)||250);
   var pct=Math.min(100,Math.round((glasses/Math.max(1,target))*100));
   var full=glasses>=target;
+  // One-tap weight log (3.3): a compact row that opens the EXISTING weight
+  // metric-log modal (openModal('logMetric','weight') → saveMetric('weight')),
+  // so weight can be logged from Today without visiting Training → Body.
+  var weights=((STATE.metrics||{}).weight||[]).slice().sort(function(a,b){return String(a.date).localeCompare(String(b.date))});
+  var latestW=weights.length?weights[weights.length-1].value:null;
+  var weightRow=''
+    +'<div class="planner-weight-row">'
+      +'<span class="planner-weight-label">⚖️ Weight'+(latestW!=null?' · <b>'+latestW+' kg</b>':'')+'</span>'
+      +'<button class="btn btn-sm btn-ghost" onclick="openModal(\'logMetric\',\'weight\')">Log weight</button>'
+    +'</div>';
   return ''
     +'<div class="card planner-card planner-water" id="planner-water-card">'
       +'<div class="planner-card-head"><span class="planner-card-title">Water</span>'
@@ -205,6 +219,7 @@ function plannerWaterCard(){
           +'<button class="btn btn-sm btn-accent" onclick="logWaterGlass('+(glasses+1)+')">+ glass</button>'
         +'</div>'
       +'</div>'
+      +weightRow
     +'</div>';
 }
 
@@ -273,8 +288,9 @@ function plannerToggleHabit(hid){
 }
 
 // "Today at a glance" — a single time-ordered timeline mixing scheduled
-// commitments and any tasks due today (with an optional time), plus today's
-// training line (R11.2, R12.4). A "now" marker separates past from upcoming.
+// commitments and any tasks due today (with an optional time) (R11.2, R12.4).
+// A "now" marker separates past from upcoming. (Today's training now lives in
+// its own standalone card above the fold — see plannerTrainingCard, 3.2.)
 function plannerGlanceCard(todayKey){
   var commitments=getTodayCommitments(todayKey);
   var timedTasks=getTodayTimedTasks(todayKey);
@@ -317,9 +333,6 @@ function plannerGlanceCard(todayKey){
     html+='<div class="planner-empty-line">Nothing scheduled today.</div>';
   }
 
-  var train=plannerTrainingLine(todayKey);
-  if(train)html+=train;
-
   html+='</div>';
   return html;
 }
@@ -345,13 +358,34 @@ function plannerInboxCard(){
   return html;
 }
 
-// Today's training as a single compact line, reusing todaysTrainingSession() (R8.2 shared helper)
-function plannerTrainingLine(todayKey){
+// Detect whether a training session has already been logged for `dateKey`.
+// A strength/gym/rest session lands in STATE.workouts; a run lands in
+// STATE.metrics.run. Returns a short label for the done state, or null.
+function plannerTrainingLoggedToday(dateKey){
+  var w=(STATE.workouts||[]).filter(function(x){return x&&x.date===dateKey});
+  if(w.length){
+    var first=w[0];
+    return first.type||first.name||'Session';
+  }
+  var runs=((STATE.metrics||{}).run||[]).filter(function(r){return r&&r.date===dateKey});
+  if(runs.length)return 'Run';
+  return null;
+}
+
+// Part 3 (3.2): today's training promoted to a standalone card directly under
+// the welcome row. Session name + exercise count / run description, plus ONE-TAP
+// log buttons that reuse the EXISTING Training handlers — quickLogToday('Gym'|
+// 'Hyrox'|'Run'|'Rest') and openModal('logRun'). If a session is already logged
+// today (STATE.workouts / STATE.metrics.run), the buttons are replaced by a
+// gentle "<session> ✓ logged" confirmation. Styled card-hero-tier + section-rule-bar
+// to match the Bloom glow-up. Reuses todaysTrainingSession() (shared helper).
+function plannerTrainingCard(todayKey){
   if(typeof todaysTrainingSession!=='function')return '';
   var t=todaysTrainingSession(todayKey);
   if(!t)return '';
-  var icon,text;
-  if(t.session==='rest'){
+
+  var icon,text,isRest=(t.session==='rest');
+  if(isRest){
     icon='🌿';text=(t.label||'Rest')+(t.sub?' · '+t.sub:'');
   }else{
     var def=(typeof workoutDef==='function')?workoutDef(t.session):null;
@@ -363,11 +397,43 @@ function plannerTrainingLine(todayKey){
       text=t.label+(t.sub?' · '+t.sub:'');
     }
   }
-  // Bloom glow-up (#7): gradient "Training day" chip on active training days
-  // (matches preview .gu .chip). Rest days stay chip-free to keep it calm.
-  var chip=(t.session==='rest')?'':'<span class="chip">Training day</span>';
-  return '<div class="planner-train-line"><span class="planner-train-icon">'+icon+'</span>'
-    +'<span class="planner-train-text">'+escapeHtml(text)+'</span>'+chip+'</div>';
+
+  // Gradient "Training day" chip on active days; rest days stay calm/chip-free.
+  var chip=isRest?'':'<span class="chip">Training day</span>';
+
+  var html='<div class="card planner-card planner-training-card card-hero-tier" id="planner-training-card">';
+  html+='<div class="planner-card-head"><span class="planner-card-title"><span class="section-rule-bar"></span>Today\'s training</span>'+chip+'</div>';
+  html+='<div class="planner-train-line"><span class="planner-train-icon">'+icon+'</span>'
+    +'<span class="planner-train-text">'+escapeHtml(text)+'</span></div>';
+
+  var logged=plannerTrainingLoggedToday(todayKey);
+  if(logged){
+    // Done state — never the buttons once something's on the board today.
+    html+='<div class="planner-train-done">'+escapeHtml(logged)+' ✓ logged</div>';
+  }else{
+    // One-tap log buttons — contextual to the planned session, but always give
+    // quick access to the alternatives (life happens). All reuse existing handlers.
+    html+='<div class="planner-train-actions">';
+    if(isRest){
+      html+='<button class="btn btn-sm btn-accent" onclick="quickLogToday(\'Rest\')">Log rest 🌿</button>';
+      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Gym\')">Gym</button>';
+      html+='<button class="btn btn-sm btn-ghost" onclick="openModal(\'logRun\')">Run</button>';
+    }else if(t.session==='run'){
+      html+='<button class="btn btn-sm btn-accent" onclick="openModal(\'logRun\')">Log run 🏃</button>';
+      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Gym\')">Gym</button>';
+      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Rest\')">Rest</button>';
+    }else{
+      // Strength day (pairs with a recovery run).
+      html+='<button class="btn btn-sm btn-accent" onclick="quickLogToday(\'Gym\')">Log gym 💪</button>';
+      if(t.run)html+='<button class="btn btn-sm btn-ghost" onclick="openModal(\'logRun\')">Recovery run</button>';
+      else html+='<button class="btn btn-sm btn-ghost" onclick="openModal(\'logRun\')">Run</button>';
+      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Rest\')">Rest</button>';
+    }
+    html+='</div>';
+  }
+
+  html+='</div>';
+  return html;
 }
 
 // "Daily Focus (1–3)" card — focus tasks, chooser, cap + completion states (R10.1–R10.4)
@@ -595,7 +661,78 @@ function renderPlannerWeek(){
   var el=document.getElementById('planner-week');
   if(!el)return;
   var wkKey=weekKey(new Date());
-  el.innerHTML=plannerIntentionCard(wkKey)+plannerWeekTasksCard(wkKey)+plannerFixedTasksCard(wkKey);
+  el.innerHTML=plannerIntentionCard(wkKey)+plannerWeekTasksCard(wkKey)+plannerFixedTasksCard(wkKey)+plannerNextWeekCard(wkKey);
+}
+
+// Part 3 (3.4): "Set up next week" — surfaces on the current week on/after
+// Saturday (the last day of the Sun→Sat week). Lets you (a) set next week's
+// intention (stored like STATE.weeklyIntention, keyed to next week's weekKey)
+// and (b) bring unfinished weekPriority tasks along by re-tagging them to next
+// week. Zero-guilt: unfinished tasks are framed as "bring these along", never
+// as failures. Reuses weekKey()/weekDays() and the shared tasks model.
+function nextWeekKey(){
+  var d=new Date();
+  d.setDate(d.getDate()+7);
+  return weekKey(d);
+}
+function plannerNextWeekCard(wkKey){
+  // Only from Saturday (getDay()===6) — the final day of the current week.
+  if(new Date().getDay()!==6)return '';
+  var nextWk=nextWeekKey();
+  var intention=STATE.weeklyIntention;
+  var nextText=(intention&&intention.weekKey===nextWk)?(intention.text||''):'';
+  var carryover=getWeekTasks(wkKey).filter(function(t){return t&&!t.done});
+
+  var html='<div class="card planner-card planner-nextweek-card card-hero-tier">';
+  html+='<div class="planner-card-head"><span class="planner-card-title"><span class="section-rule-bar"></span>Set up next week</span></div>';
+  html+='<div class="planner-nextweek-sub">A calm head start — jot an intention and bring along anything you\'d still like to do.</div>';
+
+  // (a) Next week's intention
+  html+='<div class="planner-intention-row">'
+    +'<input type="text" id="planner-next-intention-input" class="planner-intention-input" placeholder="One intention for next week…" value="'+escapeHtml(nextText)+'" onkeydown="if(event.key===\'Enter\')plannerSaveNextIntention()">'
+    +'<button class="planner-intention-btn" onclick="plannerSaveNextIntention()">Save</button>'
+  +'</div>';
+  if(nextText){
+    html+='<div class="planner-intention-current">Set for next week.</div>';
+  }
+
+  // (b) Carry-forward unfinished tasks
+  if(carryover.length){
+    html+='<div class="planner-nextweek-carry-label">Bring these along?</div>';
+    html+='<div class="planner-nextweek-list">';
+    carryover.forEach(function(t){
+      html+='<div class="nextweek-row">'
+        +'<div class="nextweek-check" onclick="plannerCarryForward(\''+t.id+'\')" role="button" tabindex="0" aria-label="Bring '+escapeHtml(t.text)+' to next week"></div>'
+        +'<span class="nextweek-text">'+escapeHtml(t.text)+'</span>'
+        +'<button class="btn btn-ghost btn-sm nextweek-bring" onclick="plannerCarryForward(\''+t.id+'\')" title="Bring to next week">Bring along →</button>'
+      +'</div>';
+    });
+    html+='</div>';
+  }else{
+    html+='<div class="planner-empty-line">Nothing left hanging — a clean slate for next week.</div>';
+  }
+
+  html+='</div>';
+  return html;
+}
+
+// Save next week's intention (stored like weeklyIntention, keyed to next week).
+function plannerSaveNextIntention(){
+  var inp=document.getElementById('planner-next-intention-input');
+  if(!inp)return;
+  STATE.weeklyIntention={weekKey:nextWeekKey(),text:(inp.value||'').trim()};
+  saveState();
+  renderPlanner();
+}
+
+// Bring an unfinished task along to next week by re-tagging its weekPriority.
+function plannerCarryForward(taskId){
+  var t=(STATE.tasks||[]).find(function(x){return x.id===taskId});
+  if(!t)return;
+  t.weekPriority=nextWeekKey();
+  saveState();
+  renderPlanner();
+  if(typeof showCelebrationToast==='function')showCelebrationToast('Brought along to next week','🌱');
 }
 
 // Weekly intention — one line, prefilled when set for the current week (R9.1)

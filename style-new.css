@@ -4530,6 +4530,47 @@ body.night-mode .focus-progress{background:rgba(255,255,255,0.1)}
 .planner-train-icon{font-size:16px;line-height:1;flex-shrink:0}
 .planner-train-text{font-size:13px;font-weight:500;color:var(--accent-dark)}
 
+/* ── Today's training card (3.2) ── */
+.planner-training-card .planner-train-line{margin-top:0}
+.planner-train-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.planner-train-done{
+  margin-top:12px;padding:10px 12px;
+  background:var(--mint-dim);border-radius:var(--radius-xs);
+  font-size:13px;font-weight:600;color:var(--mint-dark,#4f7a5e);
+}
+
+/* ── One-tap weight row on the water card (3.3) ── */
+.planner-weight-row{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-top:12px;padding-top:12px;border-top:1px solid var(--border);
+}
+.planner-weight-label{font-size:13px;color:var(--text2)}
+.planner-weight-label b{color:var(--fg)}
+
+/* ── Set up next week card (3.4) ── */
+.planner-nextweek-sub{font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.4}
+.planner-nextweek-carry-label{
+  font-size:12px;font-weight:600;color:var(--text2);
+  margin:14px 0 8px;
+}
+.planner-nextweek-list{display:flex;flex-direction:column;gap:8px}
+.nextweek-row{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 12px;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius-xs);
+}
+.nextweek-check{
+  width:22px;height:22px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--border);border-radius:50%;
+  background:var(--bg2);cursor:pointer;
+  transition:all 160ms var(--ease);
+}
+.nextweek-check:hover{border-color:var(--accent)}
+.nextweek-text{flex:1;min-width:0;font-size:14px;font-weight:500;color:var(--fg)}
+.nextweek-bring{flex-shrink:0}
+
 /* ── Daily Focus card ── */
 .planner-focus-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
 .focus-row{
