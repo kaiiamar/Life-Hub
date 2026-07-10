@@ -240,7 +240,7 @@ function renderHabitCard(h,todayKey){
   if(f==='monthly'||f==='bi-monthly'){
     var period2=habitPeriodStatus(h,f);
     html+='<div class="hb-periods">'+period2.lastPeriods.map(function(p){
-      return '<div class="hb-period'+(p.done?' done':'')+'" title="'+p.label+(p.done?' — done':' — missed')+'"><span>'+p.label+'</span></div>';
+      return '<div class="hb-period'+(p.done?' done':'')+'" title="'+p.label+(p.done?' — done':' — not logged')+'"><span>'+p.label+'</span></div>';
     }).join('')+'</div>';
   }else{
     html+='<div class="hb-week">'+weekDates.map(function(d){

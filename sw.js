@@ -5,13 +5,13 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
 
 // Handle push notifications from the backend
 self.addEventListener('push',function(e){
-  var data={title:'Life Hub',body:'Reminder',icon:'/Life-Hub/icon-192.png'};
+  var data={title:'Life Hub',body:'Reminder',icon:'/Life-Hub/icon-192.jpg'};
   try{data=e.data.json()}catch(err){}
   e.waitUntil(
     self.registration.showNotification(data.title,{
       body:data.body,
-      icon:data.icon||'/Life-Hub/icon-192.png',
-      badge:'/Life-Hub/icon-192.png',
+      icon:data.icon||'/Life-Hub/icon-192.jpg',
+      badge:'/Life-Hub/icon-192.jpg',
       vibrate:[200,100,200]
     })
   );

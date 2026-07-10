@@ -63,7 +63,7 @@ function renderDashStreak(){
   var todayDone=dayHadActivity(localDateKey(new Date()));
   el.style.display='';
   el.innerHTML='<span class="hero-streak-flame">🔥</span><span class="hero-streak-num">'+s+'</span>'
-    +'<span class="hero-streak-label">day'+(s===1?'':'s')+' showing up'+(todayDone?'':' · keep it alive today')+'</span>';
+    +'<span class="hero-streak-label">day'+(s===1?'':'s')+' showing up</span>';
 }
 
 
@@ -250,7 +250,7 @@ sh+='</div></div>';
 /* the flex row is now closed; Up next renders as its own full-width row */
 /* Up next — most urgent undone goal */
 var upcoming=all.filter(function(g){return !g.done&&g.deadline}).sort(function(a,b){return a.deadline.localeCompare(b.deadline)});
-if(upcoming.length){var ug=upcoming[0];var udl=daysLeft(ug.deadline);var overdue=udl<0;sh+='<div style="background:linear-gradient(135deg,#fdf6e8,#f2e8d8);border:1.5px solid '+(overdue?'var(--red)':'var(--gold)')+';border-radius:var(--radius);padding:12px 18px;margin-top:12px;display:flex;align-items:center;gap:12px"><div style="font-size:22px">'+(overdue?'⚠️':'🎯')+'</div><div style="flex:1;min-width:0"><div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:'+(overdue?'var(--red)':'var(--gold)')+'">Up next</div><div style="font-size:14px;font-weight:600;margin-top:2px">'+ug.name+'</div></div><div style="text-align:right;flex-shrink:0"><div style="font-size:13px;font-weight:600;color:'+(overdue?'var(--red)':'var(--text)')+'">'+( overdue?Math.abs(udl)+' days overdue':udl+' days left')+'</div><div style="font-size:10px;color:var(--text3)">'+fmtDate(ug.deadline)+'</div></div></div>'}
+if(upcoming.length){var ug=upcoming[0];var udl=daysLeft(ug.deadline);var pastTarget=udl<0;sh+='<div style="background:linear-gradient(135deg,#fdf6e8,#f2e8d8);border:1.5px solid var(--gold);border-radius:var(--radius);padding:12px 18px;margin-top:12px;display:flex;align-items:center;gap:12px"><div style="font-size:22px">🎯</div><div style="flex:1;min-width:0"><div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gold)">Up next</div><div style="font-size:14px;font-weight:600;margin-top:2px">'+ug.name+'</div></div><div style="text-align:right;flex-shrink:0"><div style="font-size:13px;font-weight:600;color:var(--text)">'+(pastTarget?'target was':udl+' days left')+'</div><div style="font-size:10px;color:var(--text3)">'+fmtDate(ug.deadline)+'</div></div></div>'}
 sumEl.innerHTML=sh}else if(sumEl){sumEl.innerHTML=''}
 var filtered=all;if(goalFilter==='Done')filtered=all.filter(function(g){return g.done});else if(goalFilter==='Active')filtered=all.filter(function(g){return !g.done});else if(goalFilter!=='all')filtered=all.filter(function(g){return g.cat===goalFilter});
 var el=document.getElementById('goals-container');if(!el)return;if(!filtered.length){el.innerHTML='<div class="empty"><div class="empty-icon">\ud83c\udfaf</div>'+(total>0?'No goals match this filter':'No goals yet. Add one!')+'</div>';return}
@@ -264,12 +264,12 @@ h+='<div onclick="toggleGoalDone(\''+go.id+'\')" role="button" tabindex="0" aria
 /* Content */
 h+='<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px"><span class="badge badge-'+go.badge+'">'+go.cat+'</span>';
 if(isDone)h+='<span class="badge badge-done">Done</span>';
-else if(overdue)h+='<span class="badge badge-risk">Overdue</span>';
+else if(overdue)h+='<span class="badge">Past target date</span>';
 h+='</div>';
 h+='<div style="font-size:15px;font-weight:600;'+(isDone?'text-decoration:line-through;color:var(--text3)':'')+'">'+go.name+'</div>';
 if(go.desc)h+='<div style="font-size:12px;color:var(--text2);margin-top:3px;'+(isDone?'text-decoration:line-through':'')+'">'+go.desc+'</div>';
 /* Deadline */
-if(go.deadline){h+='<div style="font-size:11px;margin-top:6px;color:'+(overdue?'var(--red)':'var(--text3)')+'">📅 '+(isDone?'Completed':'Due '+fmtDate(go.deadline)+(dl>0?' · '+dl+' days left':''))+'</div>'}
+if(go.deadline){h+='<div style="font-size:11px;margin-top:6px;color:var(--text3)">📅 '+(isDone?'Completed':(overdue?'Target was '+fmtDate(go.deadline):'Due '+fmtDate(go.deadline)+(dl>0?' · '+dl+' days left':'')))+'</div>'}
 /* Live progress + linked badge */
 var srcInfo=getGoalSource(go);
 var livePct=goalPct(go);
@@ -1094,7 +1094,7 @@ function renderTasksCard(){
 
   if(overdue.length){
     html+='<div class="task-section task-overdue-section">';
-    html+='<div class="task-section-head"><span class="task-section-label" style="color:var(--red)">⚠️ Overdue</span><span class="task-section-count">'+overdue.length+'</span></div>';
+    html+='<div class="task-section-head"><span class="task-section-label" style="color:var(--text2)">↪ Carried over</span><span class="task-section-count">'+overdue.length+'</span></div>';
     overdue.forEach(function(t){html+=renderTaskRow(t,false)});
     html+='</div>';
   }
@@ -1174,7 +1174,7 @@ function fmtDueRel(dateKey){
   if(diff===1)return 'tomorrow';
   if(diff===-1)return 'yesterday';
   if(diff>1&&diff<=6)return 'in '+diff+'d';
-  if(diff<-1&&diff>=-6)return Math.abs(diff)+'d ago';
+  if(diff<-1&&diff>=-6)return 'from '+d.toLocaleDateString('en-GB',{weekday:'short'});
   return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
 }
 
