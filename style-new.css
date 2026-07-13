@@ -4539,6 +4539,52 @@ body.night-mode .focus-progress{background:rgba(255,255,255,0.1)}
   font-size:13px;font-weight:600;color:var(--mint-dark,#4f7a5e);
 }
 
+/* ── HM block: training card detail lines (addendum §2.2) ── */
+.planner-train-edit{
+  margin-left:auto;background:none;border:none;cursor:pointer;
+  color:var(--text3);font-size:18px;line-height:1;padding:2px 6px;border-radius:8px;
+}
+.planner-train-edit:hover{color:var(--accent-dark);background:var(--accent-dim)}
+.planner-train-desc{margin-top:8px;font-size:13px;font-weight:500;color:var(--fg)}
+.planner-train-pace{margin-top:3px;font-size:12px;color:var(--text2);font-family:var(--mono,inherit)}
+.planner-train-fuel{margin-top:6px;font-size:12px;color:var(--accent-dark);font-weight:500}
+.planner-train-context{
+  margin-top:10px;padding-top:8px;border-top:1px solid var(--border);
+  font-size:11px;color:var(--text3);
+}
+
+/* ── HM block: Week-tab read-only schedule (addendum §2.4) ── */
+.planner-sched-list{margin-top:10px;display:flex;flex-direction:column;gap:2px}
+.planner-sched-row{
+  display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius-xs);
+}
+.planner-sched-row.is-today{background:var(--accent-dim)}
+.planner-sched-day{
+  font-size:11px;font-weight:700;color:var(--text3);width:30px;flex-shrink:0;text-transform:uppercase;
+}
+.planner-sched-icon{font-size:15px;flex-shrink:0}
+.planner-sched-body{display:flex;flex-direction:column;min-width:0}
+.planner-sched-label{font-size:13px;font-weight:600;color:var(--fg)}
+.planner-sched-detail{font-size:11px;color:var(--text2)}
+.planner-sched-foot{margin-top:10px;font-size:11px;color:var(--text3)}
+
+/* ── HM block: Training page header + pain rule (addendum §5.5) ── */
+.train-plan-block-head{
+  display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;
+  padding:12px 14px;margin-bottom:10px;border-radius:var(--radius-sm);
+  background:var(--accent-dim);border-left:3px solid var(--accent);
+}
+.train-plan-block-week{font-size:14px;font-weight:700;color:var(--accent-dark)}
+.train-plan-block-race{font-size:12px;color:var(--text2)}
+.train-plan-painrule{
+  font-size:12px;color:var(--text2);padding:8px 12px;margin-bottom:12px;
+  background:var(--bg3);border-radius:var(--radius-xs);
+}
+.training-event-strategy{
+  font-size:11px;color:var(--text2);margin-top:4px;line-height:1.5;
+  font-family:var(--mono,inherit);
+}
+
 /* ── One-tap weight row on the water card (3.3) ── */
 .planner-weight-row{
   display:flex;align-items:center;justify-content:space-between;gap:10px;

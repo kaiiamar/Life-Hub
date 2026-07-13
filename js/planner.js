@@ -389,24 +389,47 @@ function plannerTrainingCard(todayKey){
   var icon,text,isRest=(t.session==='rest');
   if(isRest){
     icon='🌿';text=(t.label||'Rest')+(t.sub?' · '+t.sub:'');
+  }else if(t.isRace){
+    icon='🏁';text=t.label+' · '+(t.desc||'');
   }else{
     var def=(typeof workoutDef==='function')?workoutDef(t.session):null;
     if(def){
       icon=def.emoji||'🏋️';
-      text=t.label+' · '+def.exercises.length+' exercises'+(t.run?' · then recovery run':'');
+      // In-block strength days carry a session desc; otherwise show exercise count.
+      text=t.label+' · '+def.exercises.length+' exercises';
     }else{
-      icon='🏃';
-      text=t.label+(t.sub?' · '+t.sub:'');
+      icon=(t.runType==='long')?'🏃':(t.runType==='quality')?'⚡':'🏃';
+      text=t.label+(t.desc?' · '+t.desc:(t.sub?' · '+t.sub:''));
     }
   }
 
   // Gradient "Training day" chip on active days; rest days stay calm/chip-free.
-  var chip=isRest?'':'<span class="chip">Training day</span>';
+  var chip=isRest?'':'<span class="chip">'+(t.isRace?'Race day 🏁':'Training day')+'</span>';
+  // Editable run-days control (§2.3) — only while in-block and on active days.
+  var editBtn=(t.block&&!isRest)?'<button class="planner-train-edit" onclick="openModal(\'editRunDays\')" title="Adjust run days" aria-label="Adjust run days">⋯</button>':'';
 
   var html='<div class="card planner-card planner-training-card card-hero-tier" id="planner-training-card">';
-  html+='<div class="planner-card-head"><span class="planner-card-title"><span class="section-rule-bar"></span>Today\'s training</span>'+chip+'</div>';
+  html+='<div class="planner-card-head"><span class="planner-card-title"><span class="section-rule-bar"></span>Today\'s training</span>'+chip+editBtn+'</div>';
   html+='<div class="planner-train-line"><span class="planner-train-icon">'+icon+'</span>'
     +'<span class="planner-train-text">'+escapeHtml(text)+'</span></div>';
+
+  // In-block run session detail: the full session string + pace band.
+  if(t.block&&!isRest){
+    if(t.desc&&t.session==='run'&&!t.isRace)html+='<div class="planner-train-desc">'+escapeHtml(t.desc)+'</div>';
+    if(t.detail)html+='<div class="planner-train-pace">'+escapeHtml(t.detail)+'</div>';
+    // Strength day that pairs with an easy run afterwards.
+    if(t.easyRun)html+='<div class="planner-train-desc">then easy run · '+escapeHtml(t.easyRun)+(t.easyDetail?' ('+escapeHtml(t.easyDetail)+')':'')+'</div>';
+    // Fuelling reminder — long-run days, weeks 6–10 only.
+    if(t.fuelText)html+='<div class="planner-train-fuel">🥤 '+escapeHtml(t.fuelText)+'</div>';
+    // Race-day strategy / race-week taper reassurance.
+    if(t.isRace&&t.raceStrategy)html+='<div class="planner-train-desc">'+escapeHtml(t.raceStrategy)+'</div>';
+    else if(t.block.phase==='race week'&&!t.isRace)html+='<div class="planner-train-fuel">race week — keep it light</div>';
+    // Forward-only week context sub-line.
+    var ctxBits=['Week '+t.block.n+' of '+t.block.total];
+    if(t.block.daysToBirthday!=null&&t.block.daysToBirthday>0)ctxBits.push(t.block.daysToBirthday+' days to your birthday');
+    ctxBits.push(t.block.daysToRace+' days to race day');
+    html+='<div class="planner-train-context">'+ctxBits.join(' · ')+'</div>';
+  }
 
   var logged=plannerTrainingLoggedToday(todayKey);
   if(logged){
@@ -664,7 +687,48 @@ function renderPlannerWeek(){
   var el=document.getElementById('planner-week');
   if(!el)return;
   var wkKey=weekKey(new Date());
-  el.innerHTML=plannerIntentionCard(wkKey)+plannerWeekTasksCard(wkKey)+plannerFixedTasksCard(wkKey)+plannerNextWeekCard(wkKey);
+  el.innerHTML=plannerIntentionCard(wkKey)+plannerBlockScheduleCard(wkKey)+plannerWeekTasksCard(wkKey)+plannerFixedTasksCard(wkKey)+plannerNextWeekCard(wkKey);
+}
+
+// Read-only training schedule for the current HM block week (addendum §2.4):
+// the three runs + two strength sessions laid out by day, above the week's
+// life tasks. Returns '' outside the block so nothing shows off-plan.
+function plannerBlockScheduleCard(wkKey){
+  if(typeof todaysTrainingSession!=='function'||typeof weekDays!=='function')return '';
+  var ctx=(typeof resolveHmWeek==='function')?resolveHmWeek(localDateKey(new Date())):null;
+  if(!ctx)return '';
+  var days=weekDays(wkKey);            // Sun-first date keys
+  var dayShort=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var todayKey=localDateKey(new Date());
+  function row(dow,isToday,icon,label,detail){
+    return '<div class="planner-sched-row'+(isToday?' is-today':'')+'">'
+      +'<span class="planner-sched-day">'+dayShort[dow]+'</span>'
+      +'<span class="planner-sched-icon">'+icon+'</span>'
+      +'<span class="planner-sched-body"><span class="planner-sched-label">'+escapeHtml(label)+'</span>'
+      +(detail?'<span class="planner-sched-detail">'+escapeHtml(detail)+'</span>':'')+'</span>'
+    +'</div>';
+  }
+  var rows='';
+  days.forEach(function(dk){
+    var s=todaysTrainingSession(dk);
+    if(!s||s.session==='rest')return;
+    var dow=new Date(dk+'T12:00:00').getDay();
+    var isToday=dk===todayKey;
+    if(s.session==='strength-a'||s.session==='strength-b'){
+      rows+=row(dow,isToday,'🏋️',s.label,s.desc||s.sub||'');
+      if(s.easyRun)rows+=row(dow,isToday,'🏃','Easy run',s.easyRun);
+    }else{
+      var icon=s.isRace?'🏁':(s.runType==='quality'?'⚡':'🏃');
+      rows+=row(dow,isToday,icon,s.label,s.desc||s.sub||'');
+    }
+  });
+  if(!rows)return '';
+  var html='<div class="card planner-card planner-sched-card">';
+  html+='<div class="planner-card-head"><span class="planner-card-title"><span class="section-rule-bar"></span>This week\'s training</span><span class="planner-card-count">Week '+ctx.n+' of '+ctx.total+'</span></div>';
+  html+='<div class="planner-sched-list">'+rows+'</div>';
+  html+='<div class="planner-sched-foot">Training\'s already laid out — planning is just for life tasks.</div>';
+  html+='</div>';
+  return html;
 }
 
 // Part 3 (3.4): "Set up next week" — surfaces on the current week on/after

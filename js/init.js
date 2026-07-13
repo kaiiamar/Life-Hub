@@ -58,6 +58,20 @@ loadFromCloud(function(){
     saveState();
   }
 
+  // ---- HALF MARATHON RACE BLOCK SEED (one-shot) ---------------------------
+  // Load the dated 10-week block (13 Jul – 20 Sep 2026) and adopt the block-
+  // arranged weekly template. Guarded with __hmBlockSeeded so it runs once.
+  // HM_RACE_BLOCK + TRAINING_TEMPLATE come from workouts.js (loaded before
+  // init.js per index.html script order). (addendum §1)
+  if(!STATE.__hmBlockSeeded){
+    if(!STATE.trainingPlan)STATE.trainingPlan={template:[],checks:{}};
+    if(typeof TRAINING_TEMPLATE!=='undefined')STATE.trainingPlan.template=JSON.parse(JSON.stringify(TRAINING_TEMPLATE));
+    if(typeof HM_RACE_BLOCK!=='undefined')STATE.trainingPlan.raceBlock=JSON.parse(JSON.stringify(HM_RACE_BLOCK));
+    if(!STATE.trainingPlan.checks)STATE.trainingPlan.checks={};
+    STATE.__hmBlockSeeded=true;
+    saveState();
+  }
+
   // ---- TASKS MIGRATION (one-shot) -----------------------------------------
   // Old data: STATE.dailyPriorities[date] = [{text,done}]
   //           STATE.weeklyPlans[wkKey].priorities = [3 strings]

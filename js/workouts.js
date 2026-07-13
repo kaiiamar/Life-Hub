@@ -45,31 +45,121 @@ var STRENGTH_B={
   ]
 };
 // Weekly template — Mon→Sun. session: 'strength-a'|'strength-b'|'run'|'rest'.
+// Arranged for the HM block (addendum §1.1): strength never lands within 24h
+// before a quality/long run, lower-body stays knee-safe, gym precedes any
+// same-day run. Tue = Strength A then easy run; Thu = quality; Sun = long.
 var TRAINING_TEMPLATE=[
-  {day:'Mon',session:'strength-b',label:'Strength B (Upper)',sub:'+ Recovery run',run:true},
-  {day:'Tue',session:'run',label:'Speed Run',sub:'NRC speed session',run:false},
+  {day:'Mon',session:'rest',label:'Rest',sub:'Recover',run:false},
+  {day:'Tue',session:'strength-a',label:'Strength A (Lower)',sub:'Knee-safe · then easy run',run:true},
   {day:'Wed',session:'rest',label:'Rest',sub:'Recover',run:false},
-  {day:'Thu',session:'strength-a',label:'Strength A (Lower)',sub:'+ Recovery run',run:true},
-  {day:'Fri',session:'run',label:'Speed Run',sub:'NRC speed session',run:false},
+  {day:'Thu',session:'run',label:'Quality run',sub:'Tempo / intervals',run:false},
+  {day:'Fri',session:'strength-b',label:'Strength B (Upper)',sub:'Upper & core',run:false},
   {day:'Sat',session:'rest',label:'Rest',sub:'Optional easy walk',run:false},
-  {day:'Sun',session:'run',label:'Long Run',sub:'NRC long run',run:false}
+  {day:'Sun',session:'run',label:'Long run',sub:'Build the distance',run:false}
 ];
+
+// ── HALF MARATHON RACE BLOCK (13 Jul – 20 Sep 2026, sub-2:30) ────────────────
+// Dated, week-aware plan seeded into STATE.trainingPlan.raceBlock via a guarded
+// one-shot migration (__hmBlockSeeded) in init.js. runDays maps easy/quality/
+// long to JS getDay() weekdays and is user-editable (addendum §2.3).
+var HM_RACE_BLOCK={
+  race:{name:'Half Marathon',date:'2026-09-20',goal:'Sub 2:30',goalPace:'7:06/km',
+    strategy:'First 5k @ 7:15 · settle 7:05 · checkpoints: 10k by 1:11, 15k by 1:47'},
+  paces:{easy:'7:45–8:15 /km',race:'7:00–7:10 /km',tempo:'6:45–7:00 /km',interval:'6:20–6:35 /km'},
+  birthday:'2026-08-12',
+  runDays:{easy:2,quality:4,long:0},
+  weeks:[
+    {n:1,start:'2026-07-13',phase:'base',easy:'5k easy',quality:'Tempo 4k — 1k easy · 2k @ 6:50–7:00 · 1k easy',long:'10k all easy'},
+    {n:2,start:'2026-07-20',phase:'build',easy:'5k easy',quality:'Intervals — 1k WU · 5×800m @ 6:25–6:35, 90s walk rec · 1k CD',long:'12k easy'},
+    {n:3,start:'2026-07-27',phase:'build',easy:'6k easy',quality:'Tempo 5k — 1k easy · 3k @ 6:50 · 1k easy',long:'13k easy'},
+    {n:4,start:'2026-08-03',phase:'cutback',easy:'5k easy',quality:'Intervals — 1k WU · 4×1k @ 6:30, 2min walk rec · 1k CD',long:'11k easy — recovery week'},
+    {n:5,start:'2026-08-10',phase:'build',easy:'6k easy',quality:'Tempo 6k — 1k easy · 4k @ 6:50–7:00 · 1k easy',long:'14k — last 3k @ race pace 7:06'},
+    {n:6,start:'2026-08-17',phase:'build',easy:'6k easy',quality:'Intervals — 1k WU · 6×800m @ 6:25–6:35, 90s rec · 1k CD',long:'16k easy',fuel:true},
+    {n:7,start:'2026-08-24',phase:'build',easy:'6k easy',quality:'7k session — 1k easy · 5k @ race pace 7:06 · 1k easy',long:'17k — last 4k @ race pace',fuel:true},
+    {n:8,start:'2026-08-31',phase:'peak',easy:'6k easy',quality:'Tempo 6k — 1k easy · 4k @ 6:45–6:55 · 1k easy',long:'19k easy — the confidence builder',fuel:true},
+    {n:9,start:'2026-09-07',phase:'taper',easy:'5k easy',quality:'5k — 1k easy · 3k @ race pace · 1k easy',long:'12k easy',fuel:true},
+    {n:10,start:'2026-09-14',phase:'race week',easy:'4k easy (Tue)',quality:'3k — 2k easy + 4×30s strides @ race pace (Thu)',long:'RACE DAY — Sun 20 Sep 🏁',fuel:true}
+  ]
+};
 function workoutDef(id){return id==='strength-a'?STRENGTH_A:id==='strength-b'?STRENGTH_B:null}
 
 function getTrainingPlan(){
   if(!STATE.trainingPlan)STATE.trainingPlan={template:JSON.parse(JSON.stringify(TRAINING_TEMPLATE)),checks:{}};
   if(!STATE.trainingPlan.template)STATE.trainingPlan.template=JSON.parse(JSON.stringify(TRAINING_TEMPLATE));
   if(!STATE.trainingPlan.checks)STATE.trainingPlan.checks={};
+  // Defensive backfill: ensure the dated race block is present (addendum §1).
+  if(!STATE.trainingPlan.raceBlock&&typeof HM_RACE_BLOCK!=='undefined')STATE.trainingPlan.raceBlock=JSON.parse(JSON.stringify(HM_RACE_BLOCK));
+  if(STATE.trainingPlan.raceBlock&&!STATE.trainingPlan.raceBlock.runDays)STATE.trainingPlan.raceBlock.runDays={easy:2,quality:4,long:0};
   return STATE.trainingPlan;
 }
 
-// Today's planned session (for dashboard + bot). Returns the template row.
+// Resolve which race-block week a date falls in (block start … race day, both
+// inclusive). Returns {week,n,total,daysToRace,daysToBirthday} or null when the
+// date is outside the block. Countdowns are always forward (never negative).
+function resolveHmWeek(dateKey){
+  var plan=getTrainingPlan();
+  var block=plan.raceBlock;
+  if(!block||!block.weeks||!block.weeks.length)return null;
+  var key=dateKey||localDateKey(new Date());
+  var weeks=block.weeks;
+  if(key<weeks[0].start||key>block.race.date)return null;
+  var wk=null;
+  for(var i=0;i<weeks.length;i++){if(weeks[i].start<=key)wk=weeks[i];else break;}
+  if(!wk)return null;
+  function daysBetween(a,b){return Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/86400000);}
+  return {
+    week:wk,n:wk.n,total:weeks.length,
+    daysToRace:Math.max(0,daysBetween(key,block.race.date)),
+    daysToBirthday:(block.birthday&&block.birthday>=key)?daysBetween(key,block.birthday):null
+  };
+}
+
+// Today's planned session (Today card, Training page, bot mirror). Overlays the
+// dated HM race block onto the weekly template when the date is in-block, else
+// returns the plain template row unchanged. Extra fields (desc/detail/block/
+// runType/fuelText/isRace) are additive so existing callers keep working.
+// (addendum §2.1). Any change here MUST be mirrored in the backend _planner.js.
 function todaysTrainingSession(dateKey){
   var d=dateKey?new Date(dateKey+'T12:00:00'):new Date();
-  var dow=d.getDay(); // 0 Sun..6 Sat
-  var idx=(dow+6)%7;  // map to Mon=0..Sun=6
+  var key=dateKey||localDateKey(d);
+  var dow=d.getDay();               // 0 Sun..6 Sat
   var plan=getTrainingPlan();
-  return plan.template[idx];
+  var base=plan.template[(dow+6)%7]; // Mon=0..Sun=6
+  var ctx=resolveHmWeek(key);
+  if(!ctx)return base;
+  var block=plan.raceBlock;
+  var rd=block.runDays||{easy:2,quality:4,long:0};
+  var wk=ctx.week;
+  var fuelText=wk.fuel?'practise fuelling: gel/sweets ~every 40min':'';
+  var blockInfo={n:ctx.n,total:ctx.total,phase:wk.phase,daysToRace:ctx.daysToRace,daysToBirthday:ctx.daysToBirthday,fuel:!!wk.fuel,race:block.race};
+  var runType=null;
+  if(dow===rd.long)runType='long';
+  else if(dow===rd.quality)runType='quality';
+  else if(dow===rd.easy)runType='easy';
+  var out={session:base.session,label:base.label,sub:base.sub,run:base.run,block:blockInfo,runType:runType,desc:'',detail:'',fuelText:'',isRace:(key===block.race.date)};
+  if(out.isRace){
+    out.session='run';out.label='RACE DAY';out.desc=wk.long;out.detail=block.paces.race;out.runType='long';out.run=false;out.raceStrategy=block.race.strategy;
+    return out;
+  }
+  if(base.session==='strength-a'||base.session==='strength-b'){
+    out.desc=base.label;
+    if(runType==='easy'){out.run=true;out.easyRun=wk.easy;out.easyDetail=block.paces.easy;}
+    return out;
+  }
+  if(runType==='long'){
+    out.session='run';out.label='Long run';out.desc=wk.long;out.detail=block.paces.easy;out.fuelText=fuelText;out.run=false;
+    return out;
+  }
+  if(runType==='quality'){
+    out.session='run';out.label='Quality session';out.desc=wk.quality;out.detail=/interval/i.test(wk.quality)?block.paces.interval:block.paces.tempo;out.run=false;
+    return out;
+  }
+  if(runType==='easy'){
+    out.session='run';out.label='Easy run';out.desc=wk.easy;out.detail=block.paces.easy;out.run=false;
+    return out;
+  }
+  out.session='rest';out.label='Rest';out.sub=base.sub||'Recover';
+  return out;
 }
 
 function renderWorkout(){
@@ -189,14 +279,18 @@ function renderTrainingEvents(){
     el.innerHTML='<div class="empty-prompt-mini">No events scheduled. Add your Hyrox race, half marathon, or any target date.</div>';
     return;
   }
+  var raceBlock=(STATE.trainingPlan&&STATE.trainingPlan.raceBlock)||null;
   el.innerHTML=upcoming.map(function(e){
     var d=new Date(e.date);
     var daysAway=Math.ceil((d-now)/86400000);
     var urgency=daysAway<=14?'var(--accent-dark)':daysAway<=60?'var(--gold)':'var(--text2)';
+    // Race-day strategy summary for the block's race event (addendum §6).
+    var strategy=(raceBlock&&raceBlock.race&&e.date===raceBlock.race.date&&raceBlock.race.strategy)?raceBlock.race.strategy:'';
     return '<div class="training-event">'
       +'<div class="training-event-date"><div class="training-event-num">'+d.getDate()+'</div><div class="training-event-mon">'+d.toLocaleDateString('en-GB',{month:'short'}).toUpperCase()+'</div></div>'
-      +'<div class="training-event-body"><div class="training-event-title">'+e.name+'</div>'
-      +'<div class="training-event-sub" style="color:'+urgency+'">'+daysAway+' days away'+(e.note?' · '+e.note:'')+'</div></div>'
+      +'<div class="training-event-body"><div class="training-event-title">'+e.name+(raceBlock&&e.date===raceBlock.race.date?' · '+raceBlock.race.goal:'')+'</div>'
+      +'<div class="training-event-sub" style="color:'+urgency+'">'+daysAway+' days away'+(e.note?' · '+e.note:'')+'</div>'
+      +(strategy?'<div class="training-event-strategy">'+strategy+'</div>':'')+'</div>'
       +'<button class="btn-danger" onclick="deleteTrainingEvent(\''+e.id+'\')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px">×</button>'
       +'</div>';
   }).join('');
@@ -215,6 +309,41 @@ function saveTrainingEvent(){
   if(!STATE.trainingEvents)STATE.trainingEvents=[];
   STATE.trainingEvents.push({id:g(),name:name,date:date,note:note});
   saveState();closeModal();renderTrainingOverview();
+}
+
+// Persist a remap of the HM block run days (addendum §2.3). Values are JS
+// getDay() weekday numbers (0 Sun..6 Sat).
+function saveRunDays(){
+  var plan=getTrainingPlan();
+  if(!plan.raceBlock)return;
+  var e=Number((document.getElementById('m-rd-easy')||{}).value);
+  var q=Number((document.getElementById('m-rd-quality')||{}).value);
+  var l=Number((document.getElementById('m-rd-long')||{}).value);
+  plan.raceBlock.runDays={easy:e,quality:q,long:l};
+  saveState();
+  if(typeof closeModal==='function')closeModal();
+  if(typeof renderPlanner==='function')renderPlanner();
+  var wp=document.getElementById('page-workout');
+  if(typeof renderWorkout==='function'&&wp&&wp.classList.contains('active'))renderWorkout();
+  if(typeof showCelebrationToast==='function')showCelebrationToast('Run days updated','🗓️');
+}
+
+// "Repeat this week" — shift the whole block's week starts forward by 7 days so
+// a missed week is repeated rather than compressed (addendum §5.4). Zero-guilt:
+// framed as repeating, never as falling behind.
+function repeatHmWeek(){
+  var plan=getTrainingPlan();
+  var block=plan.raceBlock;
+  if(!block||!block.weeks)return;
+  block.weeks.forEach(function(w){
+    var d=new Date(w.start+'T12:00:00');d.setDate(d.getDate()+7);
+    w.start=localDateKey(d);
+  });
+  saveState();
+  if(typeof renderPlanner==='function')renderPlanner();
+  var wp=document.getElementById('page-workout');
+  if(typeof renderWorkout==='function'&&wp&&wp.classList.contains('active'))renderWorkout();
+  if(typeof showCelebrationToast==='function')showCelebrationToast('Week repeated — plan shifted a week','🔁');
 }
 
 function renderTrainingBody(){
@@ -245,15 +374,30 @@ function renderTrainingBody(){
       return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-weight:600">'+w.value+' kg</span><span style="font-size:12px;color:var(--text2)">'+fmtDate(w.date)+'</span></div>';
     }).join('');
   }
-  // Chart
+  // Chart — 7-entry rolling average is the primary truth; daily points sit
+  // faint behind it (daily noise is the #1 discouragement trigger, §4.1). A
+  // soft "steady range" band gives context, never judgement (§4.2): no reading
+  // is ever flagged red for sitting above it.
   var ctx=document.getElementById('training-weight-chart');
   if(ctx&&typeof Chart!=='undefined'){
     if(ctx._ch)ctx._ch.destroy();
-    // Bloom palette — read the live accent so light/dark themes stay in sync.
     var _cs=getComputedStyle(document.body);
     var _acc=(_cs.getPropertyValue('--accent')||'#9B7ED6').trim();
     var _tick=(_cs.getPropertyValue('--text2')||'#8F86A3').trim();
-    ctx._ch=new Chart(ctx,{type:'line',data:{labels:weights.map(function(w){return fmtDate(w.date)}),datasets:[{data:weights.map(function(w){return w.value}),borderColor:_acc,backgroundColor:'rgba(155,126,214,0.10)',tension:0.3,pointRadius:3,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:_tick,font:{size:10}}},y:{ticks:{color:_tick,font:{size:10},callback:function(v){return v+'kg'}}}}}});
+    var _labels=weights.map(function(w){return fmtDate(w.date)});
+    var _vals=weights.map(function(w){return w.value});
+    var _avg=_vals.map(function(_,i){var seg=_vals.slice(Math.max(0,i-6),i+1);return Math.round(seg.reduce(function(a,b){return a+b},0)/seg.length*10)/10;});
+    // Guide band: 92.0kg at 13 Jul 2026, -0.5kg/week, ±0.75kg.
+    var _bRef=new Date('2026-07-13T12:00:00'),_bStart=92.0,_bSlope=-0.5,_bHalf=0.75;
+    function _bandC(dk){var wks=(new Date(dk+'T12:00:00')-_bRef)/(7*86400000);return _bStart+_bSlope*wks;}
+    var _bHigh=weights.map(function(w){return Math.round((_bandC(w.date)+_bHalf)*10)/10;});
+    var _bLow=weights.map(function(w){return Math.round((_bandC(w.date)-_bHalf)*10)/10;});
+    ctx._ch=new Chart(ctx,{type:'line',data:{labels:_labels,datasets:[
+      {label:'Steady range',data:_bHigh,borderColor:'transparent',backgroundColor:'rgba(155,126,214,0.10)',pointRadius:0,fill:'+1',tension:0.3},
+      {label:'_bandlow',data:_bLow,borderColor:'transparent',backgroundColor:'transparent',pointRadius:0,fill:false,tension:0.3},
+      {label:'Daily',data:_vals,borderColor:'rgba(155,126,214,0.28)',backgroundColor:'transparent',pointRadius:2,pointBackgroundColor:'rgba(155,126,214,0.4)',borderWidth:1,tension:0.3},
+      {label:'7-day avg',data:_avg,borderColor:_acc,backgroundColor:'transparent',pointRadius:0,borderWidth:2.5,tension:0.3}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{filter:function(it){return it.text!=='_bandlow'},color:_tick,font:{size:10},boxWidth:10,padding:10}}},scales:{x:{ticks:{color:_tick,font:{size:10}}},y:{ticks:{color:_tick,font:{size:10},callback:function(v){return v+'kg'}}}}}});
   }
 }
 
@@ -369,7 +513,18 @@ function renderMyPlanSchedule(){
     'run':{c:'var(--mint)',badge:'badge-per',bg:'var(--mint-dim)'},
     'rest':{c:'var(--text3)',badge:'',bg:'var(--bg3)'}
   };
-  var html='<div class="train-plan-list">';
+  // Block header — week/phase context + the one pain rule (addendum §5.5).
+  var block=plan.raceBlock;
+  var blockCtx=(typeof resolveHmWeek==='function')?resolveHmWeek(localDateKey(new Date())):null;
+  var html='';
+  if(block&&blockCtx){
+    html+='<div class="train-plan-block-head">'
+      +'<div class="train-plan-block-week">Week '+blockCtx.n+' of '+blockCtx.total+' · '+blockCtx.week.phase+'</div>'
+      +'<div class="train-plan-block-race">'+block.race.goal+' · '+blockCtx.daysToRace+' days to race day</div>'
+    +'</div>';
+  }
+  html+='<div class="train-plan-painrule">Any pain that changes your gait = stop and rest.</div>';
+  html+='<div class="train-plan-list">';
   plan.template.forEach(function(d,i){
     var def=workoutDef(d.session);
     var cm=sessionColors[d.session]||sessionColors.rest;
