@@ -352,7 +352,35 @@ function repeatHmWeek(){
   if(typeof showCelebrationToast==='function')showCelebrationToast('Week repeated — plan shifted a week','🔁');
 }
 
+// Apple Health sync status line (Body tab). Shows last sync + today's steps
+// (both fed by the backend /api/health-sync endpoint) and a setup guide.
+function renderHealthSync(){
+  var el=document.getElementById('health-sync-status');
+  if(!el)return;
+  var h=STATE.health||{};
+  var last=h.lastSync?new Date(h.lastSync):null;
+  var todayKey=localDateKey(new Date());
+  var stepsToday=(h.steps&&h.steps[todayKey]!=null)?h.steps[todayKey]:null;
+  var sub;
+  if(last){
+    var mins=Math.floor((Date.now()-last.getTime())/60000);
+    var lastStr=mins<=1?'just now':mins<60?mins+' min ago':mins<1440?Math.floor(mins/60)+'h ago':fmtDate(localDateKey(last));
+    sub='Last synced '+lastStr+(stepsToday!=null?' · '+Number(stepsToday).toLocaleString()+' steps today':'');
+  }else{
+    sub='Not connected yet — auto-log weight & runs from your iPhone.';
+  }
+  el.innerHTML='<div class="card" style="display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap">'
+    +'<div style="display:flex;align-items:center;gap:10px">'
+      +'<span style="font-size:22px">🍎</span>'
+      +'<div><div style="font-size:13px;font-weight:600">Apple Health sync</div>'
+        +'<div style="font-size:11px;color:var(--text2)">'+sub+'</div></div>'
+    +'</div>'
+    +'<button class="btn btn-sm btn-ghost" onclick="openModal(\'healthSync\')">Setup guide</button>'
+  +'</div>';
+}
+
 function renderTrainingBody(){
+  if(typeof renderHealthSync==='function')renderHealthSync();
   var el=document.getElementById('training-body-stats');
   if(!el)return;
   var weights=((STATE.metrics||{}).weight||[]).slice().sort(function(a,b){return a.date.localeCompare(b.date)});
