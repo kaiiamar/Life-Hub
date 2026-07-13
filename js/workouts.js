@@ -147,6 +147,12 @@ function todaysTrainingSession(dateKey){
     return out;
   }
   if(runType==='long'){
+    // Race week: the long-run slot the day before the race is a shakeout, not
+    // a long run (the race itself is handled by the isRace branch above).
+    if(blockInfo.phase==='race week'){
+      out.session='run';out.label='Shakeout';out.desc='2k easy shakeout or rest — race tomorrow';out.detail=block.paces.easy;out.run=false;
+      return out;
+    }
     out.session='run';out.label='Long run';out.desc=wk.long;out.detail=block.paces.easy;out.fuelText=fuelText;out.run=false;
     return out;
   }
@@ -205,14 +211,14 @@ function renderTrainingOverview(){
       var pd=plan[(i+6)%7];  // align to plan order (starts Mon)
       var planType=pd?pd.label:'';
       var planSession=pd?pd.session:'';
+      // Zero-guilt: past unlogged days are never flagged red or "missed".
       var statusClass='';
       if(items.length>0)statusClass='done';
-      else if(isPast&&planSession!=='rest')statusClass='missed';
       else if(isToday)statusClass='today';
       return '<div class="training-day '+statusClass+'">'
         +'<div class="training-day-name">'+dayLabels[i]+'</div>'
         +'<div class="training-day-plan">'+(planType||'—')+'</div>'
-        +'<div class="training-day-logged">'+(items.length>0?items.map(function(x){return '✓ '+(x.type||x.name||'session')}).join('<br>'):(statusClass==='missed'?'missed':'—'))+'</div>'
+        +'<div class="training-day-logged">'+(items.length>0?items.map(function(x){return '✓ '+(x.type||x.name||'session')}).join('<br>'):'—')+'</div>'
         +'</div>';
     }).join('')+'</div>';
   }
