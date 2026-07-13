@@ -334,6 +334,36 @@ function saveRunDays(){
   if(typeof showCelebrationToast==='function')showCelebrationToast('Run days updated','🗓️');
 }
 
+// AI "replan this week" — asks the backend to reshuffle the remaining runs
+// across the days left this week (respecting rest-day spacing), then pre-fills
+// the run-day dropdowns in the modal so the user can review and Save. Applies
+// through the same runDays mechanism as the manual editor.
+function aiReplanWeek(){
+  var noteEl=document.getElementById('rd-replan-note');
+  if(typeof NOTIF_API==='undefined'||!NOTIF_API){if(noteEl)noteEl.textContent='AI not available.';return}
+  var ctx=(typeof resolveHmWeek==='function')?resolveHmWeek(localDateKey(new Date())):null;
+  var wk=ctx?ctx.week:null;
+  var order=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  var todayIdx=(new Date().getDay()+6)%7; // Mon=0..Sun=6
+  var remaining=order.slice(todayIdx);
+  var sessions=[
+    {key:'easy',desc:wk?wk.easy:'easy run'},
+    {key:'quality',desc:wk?wk.quality:'quality session'},
+    {key:'long',desc:wk?wk.long:'long run'}
+  ];
+  if(noteEl)noteEl.textContent='Thinking…';
+  fetch(NOTIF_API+'/api/ai-narrative',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({replan:{today:order[todayIdx],remainingDays:remaining,sessions:sessions}})})
+    .then(function(r){return r.json()}).then(function(d){
+      var p=d&&d.replan;
+      if(!p){if(noteEl)noteEl.textContent='Couldn\u2019t suggest a plan right now.';return}
+      var nameToNum={Sunday:0,Monday:1,Tuesday:2,Wednesday:3,Thursday:4,Friday:5,Saturday:6};
+      ['easy','quality','long'].forEach(function(k){
+        if(p[k]!=null&&nameToNum[p[k]]!=null){var sel=document.getElementById('m-rd-'+k);if(sel)sel.value=String(nameToNum[p[k]])}
+      });
+      if(noteEl)noteEl.textContent=p.note?('💡 '+p.note+' — review and Save.'):'Suggestion ready — review and Save.';
+    }).catch(function(){if(noteEl)noteEl.textContent='Couldn\u2019t reach AI.';});
+}
+
 // "Repeat this week" — shift the whole block's week starts forward by 7 days so
 // a missed week is repeated rather than compressed (addendum §5.4). Zero-guilt:
 // framed as repeating, never as falling behind.

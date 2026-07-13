@@ -12,7 +12,7 @@
 <title>Kai's Life Hub 🤎</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fredoka:wght@400;500;600;700&family=Baloo+2:wght@500;600;700&family=Caveat:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style-new.css?v=22">
+<link rel="stylesheet" href="style-new.css?v=23">
 <!-- Chart.js is lazy-loaded on first visit to a chart page — see ensureChartJs() in js/navigation.js (Part 5.3) -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -48,7 +48,7 @@
             <div class="topnav-drop-section">
               <div class="topnav-drop-label">Reflect</div>
               <button class="topnav-drop-item" onclick="nav('review')">🌙 Reviews</button>
-              <button class="topnav-drop-item" onclick="nav('insights')">💡 Insights</button>
+              <button class="topnav-drop-item" onclick="openInsights()">💡 Insights</button>
             </div>
             <div class="topnav-drop-section">
               <div class="topnav-drop-label">Life</div>
@@ -90,7 +90,7 @@
       <button class="nav-item" onclick="nav('finance')">💸 Finance</button>
       <button class="nav-item" onclick="nav('review')">📝 Reviews</button>
       <button class="nav-item" onclick="nav('gratitude')">🙏 Gratitude</button>
-      <button class="nav-item" onclick="nav('insights')">💡 Insights</button>
+      <button class="nav-item" onclick="openInsights()">💡 Insights</button>
       <button class="nav-item" onclick="nav('relationships')">🤎 Relationships</button>
       <button class="nav-item" onclick="nav('skincare')">✨ Skincare</button>
       <button class="nav-item" onclick="nav('lists')">🎬 Lists</button>
@@ -157,6 +157,7 @@
       <div class="page-tabs" style="margin-bottom:16px">
         <button class="page-tab active" onclick="switchDashTab('week',this)">This week</button>
         <button class="page-tab" onclick="switchDashTab('life',this)">Life</button>
+        <button class="page-tab" id="dash-tab-btn-insights" onclick="switchDashTab('insights',this)">Insights</button>
       </div>
 
       <!-- THIS WEEK TAB -->
@@ -203,6 +204,79 @@
           <div class="card">
             <div class="card-label">📝 Recent reviews</div>
             <div id="dash-reviews-snapshot"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- INSIGHTS TAB (merged from the old standalone Insights page) -->
+      <div class="dash-tab" id="dash-tab-insights">
+        <!-- Pulse check -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-label">📊 Pulse check — how things are going</div>
+          <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;padding:12px 0">
+            <div style="text-align:center;flex-shrink:0">
+              <div style="position:relative;width:110px;height:110px;margin:0 auto">
+                <svg width="110" height="110" viewBox="0 0 110 110"><circle cx="55" cy="55" r="46" fill="none" stroke="var(--bg4)" stroke-width="8"/><circle id="pulse-overall-ring" cx="55" cy="55" r="46" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="289.03" stroke-dashoffset="289.03" transform="rotate(-90 55 55)" style="transition:stroke-dashoffset .8s ease"/></svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><span id="pulse-overall-num" style="font-family:var(--serif);font-size:28px;font-weight:700;color:var(--text)">0</span><span style="font-size:10px;color:var(--text3);font-weight:600">OVERALL</span></div>
+              </div>
+              <div id="pulse-overall-label" style="font-size:12px;font-weight:600;margin-top:6px;color:var(--text2)"></div>
+            </div>
+            <div id="pulse-bars" style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:10px"></div>
+          </div>
+        </div>
+
+        <!-- Charts row -->
+        <div class="grid-2" style="margin-bottom:20px">
+          <div class="card">
+            <div class="card-label">✅ Habit consistency — last 4 weeks</div>
+            <div class="chart-wrap"><canvas id="insightHabitChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-label">🌡️ Mood trend — last 14 days</div>
+            <div class="chart-wrap"><canvas id="insightMoodChart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- AI narrative — this week's story -->
+        <div class="card" id="insights-narrative-card" style="margin-bottom:20px;display:none">
+          <div class="card-label">📖 This week's story</div>
+          <div id="insights-narrative" class="insights-narrative"></div>
+        </div>
+
+        <!-- Mood correlations -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-label">✨ Mood correlations</div>
+          <div id="mood-correlations"></div>
+        </div>
+
+        <!-- Smart insights grid -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px">🧠 Smart observations</div>
+          <div id="insights-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
+        </div>
+
+        <!-- Review trends -->
+        <div class="grid-2" style="margin-bottom:20px">
+          <div class="card">
+            <div class="card-label">📅 Monthly review ratings</div>
+            <div class="chart-wrap"><canvas id="insightReviewChart"></canvas></div>
+            <div id="review-trend-summary" style="margin-top:8px"></div>
+          </div>
+          <div class="card">
+            <div class="card-label">📝 Latest review snapshot</div>
+            <div id="review-latest-snapshot"></div>
+          </div>
+        </div>
+
+        <!-- Countdowns + Debt insight -->
+        <div class="grid-2" style="margin-bottom:20px">
+          <div class="card">
+            <div class="card-label">⏳ Goal countdowns</div>
+            <div id="countdown-grid"></div>
+          </div>
+          <div class="card">
+            <div class="card-label">💳 Debt snapshot</div>
+            <div id="debt-calc-auto"></div>
           </div>
         </div>
       </div>
@@ -626,81 +700,6 @@
       </div>
     </div>
 
-    <!-- ══ INSIGHTS ══ -->
-    <div class="page" id="page-insights">
-      <div class="page-header"><div class="header-row"><div style="display:flex;align-items:center;gap:12px"><div class="page-emoji-tile">📊</div><div><h1>Insights</h1><p>Your life at a glance — powered by your data</p></div></div><button class="btn btn-accent" onclick="nav('review')">📝 Take into review</button></div></div>
-
-      <!-- Pulse check -->
-      <div class="card" style="margin-bottom:20px">
-        <div class="card-label">📊 Pulse check — how things are going</div>
-        <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;padding:12px 0">
-          <div style="text-align:center;flex-shrink:0">
-            <div style="position:relative;width:110px;height:110px;margin:0 auto">
-              <svg width="110" height="110" viewBox="0 0 110 110"><circle cx="55" cy="55" r="46" fill="none" stroke="var(--bg4)" stroke-width="8"/><circle id="pulse-overall-ring" cx="55" cy="55" r="46" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="289.03" stroke-dashoffset="289.03" transform="rotate(-90 55 55)" style="transition:stroke-dashoffset .8s ease"/></svg>
-              <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><span id="pulse-overall-num" style="font-family:var(--serif);font-size:28px;font-weight:700;color:var(--text)">0</span><span style="font-size:10px;color:var(--text3);font-weight:600">OVERALL</span></div>
-            </div>
-            <div id="pulse-overall-label" style="font-size:12px;font-weight:600;margin-top:6px;color:var(--text2)"></div>
-          </div>
-          <div id="pulse-bars" style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:10px"></div>
-        </div>
-      </div>
-
-      <!-- Charts row -->
-      <div class="grid-2" style="margin-bottom:20px">
-        <div class="card">
-          <div class="card-label">✅ Habit consistency — last 4 weeks</div>
-          <div class="chart-wrap"><canvas id="insightHabitChart"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-label">🌡️ Mood trend — last 14 days</div>
-          <div class="chart-wrap"><canvas id="insightMoodChart"></canvas></div>
-        </div>
-      </div>
-
-      <!-- AI narrative — this week's story -->
-      <div class="card" id="insights-narrative-card" style="margin-bottom:20px;display:none">
-        <div class="card-label">📖 This week's story</div>
-        <div id="insights-narrative" class="insights-narrative"></div>
-      </div>
-
-      <!-- Mood correlations -->
-      <div class="card" style="margin-bottom:20px">
-        <div class="card-label">✨ Mood correlations</div>
-        <div id="mood-correlations"></div>
-      </div>
-
-      <!-- Smart insights grid -->
-      <div style="margin-bottom:20px">
-        <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px">🧠 Smart observations</div>
-        <div id="insights-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
-      </div>
-
-      <!-- Review trends -->
-      <div class="grid-2" style="margin-bottom:20px">
-        <div class="card">
-          <div class="card-label">📅 Monthly review ratings</div>
-          <div class="chart-wrap"><canvas id="insightReviewChart"></canvas></div>
-          <div id="review-trend-summary" style="margin-top:8px"></div>
-        </div>
-        <div class="card">
-          <div class="card-label">📝 Latest review snapshot</div>
-          <div id="review-latest-snapshot"></div>
-        </div>
-      </div>
-
-      <!-- Countdowns + Debt insight -->
-      <div class="grid-2" style="margin-bottom:20px">
-        <div class="card">
-          <div class="card-label">⏳ Goal countdowns</div>
-          <div id="countdown-grid"></div>
-        </div>
-        <div class="card">
-          <div class="card-label">💳 Debt snapshot</div>
-          <div id="debt-calc-auto"></div>
-        </div>
-      </div>
-    </div>
-
     <!-- ══ TASKS ARCHIVE ══ -->
     <div class="page" id="page-tasks">
       <div class="page-header">
@@ -815,19 +814,19 @@
 
 
 
-<script src="js/state.js?v=22"></script>
-<script src="js/navigation.js?v=22"></script>
-<script src="js/dashboard.js?v=22"></script>
-<script src="js/habits.js?v=22"></script>
-<script src="js/workouts.js?v=22"></script>
-<script src="js/finance.js?v=22"></script>
-<script src="js/reviews.js?v=22"></script>
-<script src="js/relationships.js?v=22"></script>
-<script src="js/gratitude.js?v=22"></script>
-<script src="js/insights.js?v=22"></script>
-<script src="js/skincare.js?v=22"></script>
-<script src="js/modals.js?v=22"></script>
-<script src="js/planner.js?v=22"></script>
-<script src="js/init.js?v=22"></script>
+<script src="js/state.js?v=23"></script>
+<script src="js/navigation.js?v=23"></script>
+<script src="js/dashboard.js?v=23"></script>
+<script src="js/habits.js?v=23"></script>
+<script src="js/workouts.js?v=23"></script>
+<script src="js/finance.js?v=23"></script>
+<script src="js/reviews.js?v=23"></script>
+<script src="js/relationships.js?v=23"></script>
+<script src="js/gratitude.js?v=23"></script>
+<script src="js/insights.js?v=23"></script>
+<script src="js/skincare.js?v=23"></script>
+<script src="js/modals.js?v=23"></script>
+<script src="js/planner.js?v=23"></script>
+<script src="js/init.js?v=23"></script>
 </body>
 </html>

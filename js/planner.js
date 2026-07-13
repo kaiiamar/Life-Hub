@@ -166,9 +166,65 @@ function renderPlannerToday(){
   var todayKey=localDateKey(new Date());
   // Part 3 (3.1): habits & training above the fold. Order —
   // welcome → training card → habits → focus → glance → capture → water → inbox.
-  el.innerHTML=plannerWelcomeCard()+plannerTrainingCard(todayKey)+plannerHabitCard()+plannerFocusCard(todayKey)+plannerGlanceCard(todayKey)+plannerCaptureCard()+plannerWaterCard()+plannerInboxCard();
+  el.innerHTML=plannerWelcomeCard()+plannerEveningSweepCard(todayKey)+plannerTrainingCard(todayKey)+plannerHabitCard()+plannerFocusCard(todayKey)+plannerGlanceCard(todayKey)+plannerCaptureCard()+plannerWaterCard()+plannerInboxCard();
   // Keep the PWA app-icon badge in sync with today's open focus count (3.5).
   if(typeof updateAppBadge==='function')updateAppBadge();
+  // Evening sweep: fetch the AI one-liner once the card is in the DOM (§evening).
+  loadEveningSweep(todayKey);
+}
+
+// Evening sweep (AI): after ~5pm, a single generated sentence reflecting the
+// day ("3/4 habits, strength done, water low again"). Cheap (~50 tokens),
+// cached per stats-signature so it only regenerates when something changes.
+// Renders an empty placeholder card synchronously; loadEveningSweep fills it.
+function plannerEveningSweepCard(todayKey){
+  if(new Date().getHours()<17)return '';
+  return '<div class="card planner-card planner-sweep-card" id="planner-sweep-card" style="display:none">'
+    +'<div class="planner-card-head"><span class="planner-card-title"><span class="section-rule-bar"></span>Evening sweep</span></div>'
+    +'<div class="planner-sweep-body" id="planner-sweep-body"></div>'
+  +'</div>';
+}
+
+function computeEveningSweepStats(todayKey){
+  var habits=(STATE.habits||[]).filter(function(h){
+    var s=(typeof habitDayStatus==='function')?habitDayStatus(h,todayKey):'todo';
+    return s==='done'||s==='todo';
+  });
+  var habitsTotal=habits.length;
+  var habitsDone=habits.filter(function(h){return h.logs&&h.logs[todayKey]}).length;
+  var training=null;
+  var logged=(typeof plannerTrainingLoggedToday==='function')?plannerTrainingLoggedToday(todayKey):'';
+  var t=(typeof todaysTrainingSession==='function')?todaysTrainingSession(todayKey):null;
+  if(logged)training=logged+' logged';
+  else if(t&&t.session==='rest')training='rest day';
+  else if(t)training=(t.label||'training')+' still to do';
+  var glasses=(STATE.water&&STATE.water[todayKey])||0;
+  var target=Number((STATE.waterSettings&&STATE.waterSettings.target)||8);
+  var waterPct=Math.min(100,Math.round((glasses/Math.max(1,target))*100));
+  var focus=(STATE.tasks||[]).filter(function(x){return x&&x.focusDate===todayKey});
+  var focusTotal=focus.length;
+  var focusDone=focus.filter(function(x){return x.done}).length;
+  if(habitsTotal===0&&!training&&glasses===0&&focusTotal===0)return null;
+  return {habitsDone:habitsDone,habitsTotal:habitsTotal,training:training,waterPct:waterPct,focusDone:focusDone,focusTotal:focusTotal};
+}
+
+function loadEveningSweep(todayKey){
+  var card=document.getElementById('planner-sweep-card');
+  if(!card)return;
+  if(typeof NOTIF_API==='undefined'||!NOTIF_API)return;
+  var stats=computeEveningSweepStats(todayKey);
+  if(!stats)return;
+  var body=document.getElementById('planner-sweep-body');
+  var sig=[stats.habitsDone,stats.habitsTotal,stats.training,stats.waterPct,stats.focusDone,stats.focusTotal].join('|').replace(/[^a-z0-9]/gi,'');
+  var cacheKey='lh_sweep_'+todayKey+'_'+sig;
+  try{var cached=localStorage.getItem(cacheKey);if(cached){body.textContent=cached;card.style.display='';return}}catch(e){}
+  body.innerHTML='<span class="planner-sweep-loading">Reading your day…</span>';
+  card.style.display='';
+  fetch(NOTIF_API+'/api/ai-narrative',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sweep:stats})})
+    .then(function(r){return r.json()}).then(function(d){
+      if(d&&d.sweep){body.textContent=d.sweep;try{localStorage.setItem(cacheKey,d.sweep)}catch(e){}}
+      else card.style.display='none';
+    }).catch(function(){card.style.display='none'});
 }
 
 // Compact time-based welcome row — reuses getTimeContext() from dashboard.js

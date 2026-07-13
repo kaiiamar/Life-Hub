@@ -4553,6 +4553,10 @@ body.night-mode .focus-progress{background:rgba(255,255,255,0.1)}
   font-size:11px;color:var(--text3);
 }
 
+/* ── Evening sweep card (AI one-liner) ── */
+.planner-sweep-body{font-size:13px;line-height:1.5;color:var(--fg);margin-top:8px}
+.planner-sweep-loading{color:var(--text3);font-style:italic}
+
 /* ── HM block: Week-tab read-only schedule (addendum §2.4) ── */
 .planner-sched-list{margin-top:10px;display:flex;flex-direction:column;gap:2px}
 .planner-sched-row{

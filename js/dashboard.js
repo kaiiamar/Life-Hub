@@ -246,6 +246,7 @@ function renderDashboard(){
   renderDashChrome();
   var active=(document.querySelector('#page-dashboard .dash-tab.active')||{}).id;
   if(active==='dash-tab-life') renderDashLife();
+  else if(active==='dash-tab-insights'){if(typeof renderInsights==='function')renderInsights()}
   else renderDashWeek(); // default + Week
 }
 
@@ -496,7 +497,18 @@ function switchDashTab(tab,btn){
   var el=document.getElementById('dash-tab-'+tab);
   if(el)el.classList.add('active');
   if(tab==='life')renderDashLife();
+  else if(tab==='insights'){if(typeof renderInsights==='function')renderInsights()}
   else renderDashWeek();
+}
+
+// Open the Dashboard and activate its Insights tab (the old Insights page is
+// now folded in here). Called from the nav menus.
+function openInsights(){
+  if(typeof nav==='function')nav('dashboard');
+  setTimeout(function(){
+    var b=document.getElementById('dash-tab-btn-insights');
+    switchDashTab('insights',b);
+  },220);
 }
 
 // ── LIFE TAB ──
