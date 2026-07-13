@@ -72,6 +72,22 @@ loadFromCloud(function(){
     saveState();
   }
 
+  // ---- HM BLOCK RE-SEED V2 (one-shot) -------------------------------------
+  // The weekly layout changed (Mon easy · Tue strength · Wed rest · Thu quality
+  // · Fri rest · Sat long · Sun rest). Existing users already have the old
+  // template/runDays saved, and __hmBlockSeeded blocks a re-run — so force the
+  // template + run-day mapping to the current values once, guarded by a new
+  // flag. Weeks data is unchanged; user weigh-ins/checks are untouched.
+  if(!STATE.__hmBlockV2){
+    if(STATE.trainingPlan){
+      if(typeof TRAINING_TEMPLATE!=='undefined')STATE.trainingPlan.template=JSON.parse(JSON.stringify(TRAINING_TEMPLATE));
+      if(!STATE.trainingPlan.raceBlock&&typeof HM_RACE_BLOCK!=='undefined')STATE.trainingPlan.raceBlock=JSON.parse(JSON.stringify(HM_RACE_BLOCK));
+      if(STATE.trainingPlan.raceBlock)STATE.trainingPlan.raceBlock.runDays={easy:1,quality:4,long:6};
+    }
+    STATE.__hmBlockV2=true;
+    saveState();
+  }
+
   // ---- TASKS MIGRATION (one-shot) -----------------------------------------
   // Old data: STATE.dailyPriorities[date] = [{text,done}]
   //           STATE.weeklyPlans[wkKey].priorities = [3 strings]

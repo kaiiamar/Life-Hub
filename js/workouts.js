@@ -45,17 +45,17 @@ var STRENGTH_B={
   ]
 };
 // Weekly template — Mon→Sun. session: 'strength-a'|'strength-b'|'run'|'rest'.
-// Arranged for the HM block (addendum §1.1): strength never lands within 24h
-// before a quality/long run, lower-body stays knee-safe, gym precedes any
-// same-day run. Tue = Strength A then easy run; Thu = quality; Sun = long.
+// Kai's layout: Mon easy run · Tue strength & mobility · Wed rest · Thu quality
+// · Fri rest · Sat long run · Sun rest. Runs map to easy=Mon, quality=Thu,
+// long=Sat via HM_RACE_BLOCK.runDays.
 var TRAINING_TEMPLATE=[
-  {day:'Mon',session:'rest',label:'Rest',sub:'Recover',run:false},
-  {day:'Tue',session:'strength-a',label:'Strength A (Lower)',sub:'Knee-safe · then easy run',run:true},
+  {day:'Mon',session:'run',label:'Easy run',sub:'Easy pace',run:false},
+  {day:'Tue',session:'strength-a',label:'Strength & mobility',sub:'Knee-safe lower + mobility',run:false},
   {day:'Wed',session:'rest',label:'Rest',sub:'Recover',run:false},
   {day:'Thu',session:'run',label:'Quality run',sub:'Tempo / intervals',run:false},
-  {day:'Fri',session:'strength-b',label:'Strength B (Upper)',sub:'Upper & core',run:false},
-  {day:'Sat',session:'rest',label:'Rest',sub:'Optional easy walk',run:false},
-  {day:'Sun',session:'run',label:'Long run',sub:'Build the distance',run:false}
+  {day:'Fri',session:'rest',label:'Rest',sub:'Recover',run:false},
+  {day:'Sat',session:'run',label:'Long run',sub:'Build the distance',run:false},
+  {day:'Sun',session:'rest',label:'Rest',sub:'Recover',run:false}
 ];
 
 // ── HALF MARATHON RACE BLOCK (13 Jul – 20 Sep 2026, sub-2:30) ────────────────
@@ -67,7 +67,7 @@ var HM_RACE_BLOCK={
     strategy:'First 5k @ 7:15 · settle 7:05 · checkpoints: 10k by 1:11, 15k by 1:47'},
   paces:{easy:'7:45–8:15 /km',race:'7:00–7:10 /km',tempo:'6:45–7:00 /km',interval:'6:20–6:35 /km'},
   birthday:'2026-08-12',
-  runDays:{easy:2,quality:4,long:0},
+  runDays:{easy:1,quality:4,long:6},
   weeks:[
     {n:1,start:'2026-07-13',phase:'base',easy:'5k easy',quality:'Tempo 4k — 1k easy · 2k @ 6:50–7:00 · 1k easy',long:'10k all easy'},
     {n:2,start:'2026-07-20',phase:'build',easy:'5k easy',quality:'Intervals — 1k WU · 5×800m @ 6:25–6:35, 90s walk rec · 1k CD',long:'12k easy'},
@@ -89,7 +89,7 @@ function getTrainingPlan(){
   if(!STATE.trainingPlan.checks)STATE.trainingPlan.checks={};
   // Defensive backfill: ensure the dated race block is present (addendum §1).
   if(!STATE.trainingPlan.raceBlock&&typeof HM_RACE_BLOCK!=='undefined')STATE.trainingPlan.raceBlock=JSON.parse(JSON.stringify(HM_RACE_BLOCK));
-  if(STATE.trainingPlan.raceBlock&&!STATE.trainingPlan.raceBlock.runDays)STATE.trainingPlan.raceBlock.runDays={easy:2,quality:4,long:0};
+  if(STATE.trainingPlan.raceBlock&&!STATE.trainingPlan.raceBlock.runDays)STATE.trainingPlan.raceBlock.runDays={easy:1,quality:4,long:6};
   return STATE.trainingPlan;
 }
 
