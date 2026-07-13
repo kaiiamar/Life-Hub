@@ -506,6 +506,7 @@ function renderMyPlanSchedule(){
   var el=document.getElementById('myplan-schedule');if(!el)return;
   var plan=getTrainingPlan();
   var wk=weekKey(new Date());
+  var wdays=(typeof weekDays==='function')?weekDays(wk):null; // Sun-first date keys
   var todayIdx=(new Date().getDay()+6)%7;
   var sessionColors={
     'strength-a':{c:'var(--accent)',badge:'badge-fin',bg:'var(--accent-dim)'},
@@ -540,9 +541,25 @@ function renderMyPlanSchedule(){
     html+='<div class="train-plan-day'+(isToday?' is-today':'')+'" style="border-left:4px solid '+cm.c+'">';
     html+='<div class="train-plan-head"'+(def?' onclick="toggleTrainDay(\''+d.session+'\')" style="cursor:pointer"':'')+'>';
     html+='<div class="train-plan-head-main">';
+    // Overlay this week's ACTUAL block session onto the run rows (and the easy
+    // run that pairs with Tue strength) so the schedule shows the real plan,
+    // not generic placeholders. Falls back to the template off-plan.
+    var rowLabel=d.label;
+    var rowSub=d.sub+(def?' · '+def.duration:'');
+    if(block&&blockCtx&&wdays&&typeof todaysTrainingSession==='function'){
+      var s=todaysTrainingSession(wdays[(i+1)%7]);
+      if(s){
+        if(d.session==='run'&&s.session==='run'){
+          rowLabel=s.label;
+          rowSub=(s.desc||d.sub)+(s.detail?' · '+s.detail:'');
+        }else if((d.session==='strength-a'||d.session==='strength-b')&&s.easyRun){
+          rowSub=d.sub+(def?' · '+def.duration:'')+' · then easy run: '+s.easyRun;
+        }
+      }
+    }
     html+='<div class="train-plan-dayname">'+(dayNames[d.day]||d.day)+(isToday?' · Today':'')+'</div>';
-    html+='<div class="train-plan-label">'+d.label+'</div>';
-    html+='<div class="train-plan-sub">'+d.sub+(def?' · '+def.duration:'')+'</div>';
+    html+='<div class="train-plan-label">'+rowLabel+'</div>';
+    html+='<div class="train-plan-sub">'+rowSub+'</div>';
     html+='</div>';
     html+='<div class="train-plan-head-right">'+progressBadge+(def?'<span class="train-plan-chevron" id="chev-'+d.session+'">▸</span>':'')+'</div>';
     html+='</div>';
