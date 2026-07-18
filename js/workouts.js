@@ -502,7 +502,12 @@ function deleteWorkout(id){
 
 function renderAllWorkouts(){
   var el=document.getElementById('all-workouts');if(!el)return;
-  var all=(STATE.workouts||[]).slice().reverse();
+  // Merge gym sessions AND runs into one unified history (runs live in metrics.run).
+  var sessions=(STATE.workouts||[]).slice();
+  var runs=((STATE.metrics||{}).run||[]).map(function(r){
+    return {id:r.id,date:r.date,type:'Run',name:'Run',note:(r.distance?r.distance+'km':'')+(r.time?' · '+r.time:'')+(r.note?' · '+r.note:''),isRun:true};
+  });
+  var all=sessions.concat(runs).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')});
   if(!all.length){el.innerHTML='<div class="empty">No sessions yet</div>';return}
   var fEl=document.getElementById('muscle-filters');
   if(fEl){
@@ -517,7 +522,11 @@ function filterWorkouts(type,btn){
   document.querySelectorAll('#muscle-filters .filter-btn').forEach(function(b){b.classList.remove('active')});
   btn.classList.add('active');
   var el=document.getElementById('all-workouts');if(!el)return;
-  var all=(STATE.workouts||[]).slice().reverse();
+  var sessions=(STATE.workouts||[]).slice();
+  var runs=((STATE.metrics||{}).run||[]).map(function(r){
+    return {id:r.id,date:r.date,type:'Run',name:'Run',note:(r.distance?r.distance+'km':'')+(r.time?' · '+r.time:'')+(r.note?' · '+r.note:''),isRun:true};
+  });
+  var all=sessions.concat(runs).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')});
   var filtered=type==='All'?all:all.filter(function(w){return (w.type||'Other')===type});
   el.innerHTML=filtered.length?filtered.map(function(w){return sessionCard(w)}).join(''):'<div class="empty">No sessions for '+type+'</div>';
 }
@@ -579,8 +588,9 @@ function renderMyPlanSchedule(){
   var blockCtx=(typeof resolveHmWeek==='function')?resolveHmWeek(localDateKey(new Date())):null;
   var html='';
   if(block&&blockCtx){
+    var _hasOverride=block.weekOverrides&&block.weekOverrides[wk];
     html+='<div class="train-plan-block-head">'
-      +'<div class="train-plan-block-week">Week '+blockCtx.n+' of '+blockCtx.total+' · '+blockCtx.week.phase+'</div>'
+      +'<div class="train-plan-block-week">Week '+blockCtx.n+' of '+blockCtx.total+' · '+blockCtx.week.phase+(_hasOverride?' <span style="font-size:11px;color:var(--accent);font-weight:500">· adjusted this week</span>':'')+'</div>'
       +'<div class="train-plan-block-race">'+block.race.goal+' · '+blockCtx.daysToRace+' days to race day</div>'
     +'</div>';
   }
