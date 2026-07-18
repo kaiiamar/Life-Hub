@@ -4811,6 +4811,13 @@ body.night-mode .week-check{background:rgba(255,255,255,0.06)}
   transition:all 160ms var(--ease);
 }
 .inbox-edit:hover{background:var(--accent-dim);color:var(--accent-dark)}
+.inbox-delete{
+  flex-shrink:0;width:26px;height:26px;
+  display:flex;align-items:center;justify-content:center;
+  border:none;background:none;color:var(--text3);cursor:pointer;
+  font-size:16px;border-radius:var(--radius-xs);transition:all 160ms var(--ease);
+}
+.inbox-delete:hover{background:var(--red-dim,rgba(224,96,127,0.12));color:var(--red)}
 body.night-mode .inbox-check{background:rgba(255,255,255,0.06)}
 
 /* ── "Break it down" button + Planner focus micro-steps ── */

@@ -157,6 +157,45 @@ function switchPlannerTab(tab,btn){
 function renderPlanner(){
   renderPlannerToday();
   if(typeof renderPlannerWeek==='function')renderPlannerWeek();
+  renderPlannerInbox();
+}
+
+// ── Inbox tab ──────────────────────────────────────────────
+function renderPlannerInbox(){
+  var el=document.getElementById('planner-inbox');
+  if(!el)return;
+  var inbox=getInboxTasks();
+  if(!inbox.length){
+    el.innerHTML='<div class="card planner-card"><div class="planner-empty-line">Inbox clear — everything has a home.</div></div>';
+    return;
+  }
+  var html='<div class="card planner-card">';
+  html+='<div class="planner-card-head"><span class="planner-card-title"><span class="section-rule-bar"></span>Inbox</span>'
+    +'<span class="planner-card-count">'+inbox.length+'</span></div>';
+  html+='<div class="planner-inbox-list">';
+  inbox.forEach(function(t){
+    html+='<div class="inbox-row">'
+      +'<div class="inbox-check" onclick="plannerToggleFocusDone(\''+t.id+'\')" role="button" tabindex="0" aria-label="Complete '+escapeHtml(t.text)+'"></div>'
+      +'<span class="inbox-text">'+escapeHtml(t.text)+'</span>'
+      +'<button class="btn btn-ghost btn-sm inbox-focus" onclick="plannerInboxMakeFocus(\''+t.id+'\')" title="Make today\'s focus">Focus</button>'
+      +(typeof openTaskEditModal==='function'?'<button class="inbox-edit" onclick="openTaskEditModal(\''+t.id+'\')" title="Set date/time" aria-label="Set date or time">⋯</button>':'')
+      +'<button class="inbox-delete" onclick="deleteInboxTask(\''+t.id+'\')" title="Delete" aria-label="Delete task">×</button>'
+    +'</div>';
+  });
+  html+='</div></div>';
+  el.innerHTML=html;
+}
+
+function deleteInboxTask(id){
+  if(typeof confirmDelete==='function'){
+    confirmDelete('Remove this task?',function(){
+      STATE.tasks=(STATE.tasks||[]).filter(function(t){return t.id!==id});
+      saveState();renderPlanner();
+    });
+  }else{
+    STATE.tasks=(STATE.tasks||[]).filter(function(t){return t.id!==id});
+    saveState();renderPlanner();
+  }
 }
 
 // ── Today tab ──────────────────────────────────────────────
@@ -166,7 +205,7 @@ function renderPlannerToday(){
   var todayKey=localDateKey(new Date());
   // Part 3 (3.1): habits & training above the fold. Order —
   // welcome → training card → habits → focus → glance → capture → water → inbox.
-  el.innerHTML=plannerWelcomeCard()+plannerEveningSweepCard(todayKey)+plannerTrainingCard(todayKey)+plannerHabitCard()+plannerFocusCard(todayKey)+plannerGlanceCard(todayKey)+plannerCaptureCard()+plannerWaterCard()+plannerInboxCard();
+  el.innerHTML=plannerWelcomeCard()+plannerEveningSweepCard(todayKey)+plannerTrainingCard(todayKey)+plannerHabitCard()+plannerFocusCard(todayKey)+plannerGlanceCard(todayKey)+plannerCaptureCard()+plannerWaterCard();
   // Keep the PWA app-icon badge in sync with today's open focus count (3.5).
   if(typeof updateAppBadge==='function')updateAppBadge();
   // Evening sweep: fetch the AI one-liner once the card is in the DOM (§evening).
@@ -503,6 +542,7 @@ function plannerTrainingCard(todayKey){
       html+='<button class="btn btn-sm btn-accent" onclick="openModal(\'logRun\')">Log run 🏃</button>';
       html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Gym\')">Gym</button>';
       html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Rest\')">Rest</button>';
+      if(t.runType)html+='<button class="btn btn-sm btn-ghost" onclick="openModal(\'moveRun\',\''+t.runType+'\')" title="Move this run to another day">Move to…</button>';
     }else{
       // Strength day (pairs with a recovery run).
       html+='<button class="btn btn-sm btn-accent" onclick="quickLogToday(\'Gym\')">Log gym 💪</button>';

@@ -128,7 +128,12 @@ function todaysTrainingSession(dateKey){
   var ctx=resolveHmWeek(key);
   if(!ctx)return base;
   var block=plan.raceBlock;
-  var rd=block.runDays||{easy:2,quality:4,long:0};
+  var rd=block.runDays||{easy:1,quality:4,long:6};
+  // Per-week overrides: if this week's runDays have been moved (e.g. quality
+  // to Friday), apply that. Stored as raceBlock.weekOverrides[weekKey]={...}.
+  var _wkKey=(typeof weekKey==='function')?weekKey(d):null;
+  var _wkOver=(block.weekOverrides&&_wkKey&&block.weekOverrides[_wkKey])||null;
+  if(_wkOver){rd={easy:_wkOver.easy!=null?_wkOver.easy:rd.easy,quality:_wkOver.quality!=null?_wkOver.quality:rd.quality,long:_wkOver.long!=null?_wkOver.long:rd.long}}
   var wk=ctx.week;
   var fuelText=wk.fuel?'practise fuelling: gel/sweets ~every 40min':'';
   var blockInfo={n:ctx.n,total:ctx.total,phase:wk.phase,daysToRace:ctx.daysToRace,daysToBirthday:ctx.daysToBirthday,fuel:!!wk.fuel,race:block.race};
@@ -315,6 +320,25 @@ function saveTrainingEvent(){
   if(!STATE.trainingEvents)STATE.trainingEvents=[];
   STATE.trainingEvents.push({id:g(),name:name,date:date,note:note});
   saveState();closeModal();renderTrainingOverview();
+}
+
+// Move a specific run type (easy/quality/long) to a different day for THIS
+// WEEK ONLY. Stored as raceBlock.weekOverrides[weekKey]={...} so it doesn't
+// touch the global mapping. Called from the training card "Move to…" modal.
+function moveRunThisWeek(runType,toDow){
+  var plan=getTrainingPlan();
+  if(!plan.raceBlock)return;
+  if(!plan.raceBlock.weekOverrides)plan.raceBlock.weekOverrides={};
+  var wk=(typeof weekKey==='function')?weekKey(new Date()):null;
+  if(!wk)return;
+  if(!plan.raceBlock.weekOverrides[wk])plan.raceBlock.weekOverrides[wk]=JSON.parse(JSON.stringify(plan.raceBlock.runDays||{easy:1,quality:4,long:6}));
+  plan.raceBlock.weekOverrides[wk][runType]=Number(toDow);
+  saveState();
+  if(typeof closeModal==='function')closeModal();
+  if(typeof renderPlanner==='function')renderPlanner();
+  var wp=document.getElementById('page-workout');
+  if(typeof renderWorkout==='function'&&wp&&wp.classList.contains('active'))renderWorkout();
+  if(typeof showCelebrationToast==='function')showCelebrationToast('Moved to '+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][Number(toDow)],'🗓️');
 }
 
 // Persist a remap of the HM block run days (addendum §2.3). Values are JS
