@@ -205,7 +205,8 @@ function renderPlannerToday(){
   var todayKey=localDateKey(new Date());
   // Part 3 (3.1): habits & training above the fold. Order —
   // welcome → training card → habits → focus → glance → capture → water → inbox.
-  el.innerHTML=plannerWelcomeCard()+plannerEveningSweepCard(todayKey)+plannerTrainingCard(todayKey)+plannerHabitCard()+plannerFocusCard(todayKey)+plannerGlanceCard(todayKey)+plannerCaptureCard()+plannerWaterCard();
+  // Order: welcome → evening sweep → training → schedule → habits → focus → capture → water.
+  el.innerHTML=plannerWelcomeCard()+plannerEveningSweepCard(todayKey)+plannerTrainingCard(todayKey)+plannerScheduleCard(todayKey)+plannerHabitCard()+plannerFocusCard(todayKey)+plannerCaptureCard()+plannerWaterCard();
   // Keep the PWA app-icon badge in sync with today's open focus count (3.5).
   if(typeof updateAppBadge==='function')updateAppBadge();
   // Evening sweep: fetch the AI one-liner once the card is in the DOM (§evening).
@@ -388,7 +389,7 @@ function plannerToggleHabit(hid){
 // commitments and any tasks due today (with an optional time) (R11.2, R12.4).
 // A "now" marker separates past from upcoming. (Today's training now lives in
 // its own standalone card above the fold — see plannerTrainingCard, 3.2.)
-function plannerGlanceCard(todayKey){
+function plannerScheduleCard(todayKey){
   var commitments=getTodayCommitments(todayKey);
   var timedTasks=getTodayTimedTasks(todayKey);
 
@@ -403,14 +404,14 @@ function plannerGlanceCard(todayKey){
   items.sort(function(a,b){return String(a.time||'99:99').localeCompare(String(b.time||'99:99'))});
 
   var html='<div class="card planner-card card-hero-tier">';
-  html+='<div class="planner-card-head"><span class="planner-card-title"><span class="section-rule-bar"></span>Today at a glance</span></div>';
+  html+='<div class="planner-card-head"><span class="planner-card-title"><span class="section-rule-bar"></span>Schedule</span>'
+    +'<button class="btn btn-sm btn-ghost" onclick="openModal(\'addTimeBlock\')" title="Add time block">+ Block</button></div>';
 
   if(items.length){
     var nowHM=(function(){var d=new Date();return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)})();
     var nowShown=false;
     html+='<div class="planner-commitments">';
     items.forEach(function(it){
-      // Drop a subtle "now" divider before the first still-upcoming timed item.
       if(!nowShown&&it.time&&it.time>=nowHM){
         html+='<div class="planner-now-line"><span>now · '+escapeHtml(nowHM)+'</span></div>';
         nowShown=true;
@@ -423,15 +424,40 @@ function plannerGlanceCard(todayKey){
           +'<span class="commit-text">'+escapeHtml(it.text)+(it.kind==='commit'&&it.recur==='weekly'?' <span class="commit-recur" title="Repeats weekly">↻</span>':'')+'</span>'
           +(time?'<span class="commit-time">'+escapeHtml(time)+'</span>':(it.kind==='task'?'<span class="commit-time commit-time-soft">task</span>':''))
         +'</div>'
+        +'<button class="commit-delete" onclick="deleteTimeBlock(\''+it.id+'\',\''+it.kind+'\')" title="Remove" aria-label="Remove">×</button>'
       +'</div>';
     });
     html+='</div>';
   }else{
-    html+='<div class="planner-empty-line">Nothing scheduled today.</div>';
+    html+='<div class="planner-empty-line">Nothing time-blocked today. Tap + Block to plan your day.</div>';
   }
 
   html+='</div>';
   return html;
+}
+
+// Delete a time block (commitment or timed task) and re-render.
+function deleteTimeBlock(id,kind){
+  if(kind==='commit'){
+    STATE.commitments=(STATE.commitments||[]).filter(function(c){return c.id!==id});
+  }else{
+    var t=(STATE.tasks||[]).find(function(x){return x.id===id});
+    if(t){delete t.dueTime;delete t.dueDate;}
+  }
+  saveState();renderPlanner();
+}
+
+// Save a new time block (commitment) from the modal.
+function saveTimeBlock(){
+  var text=((document.getElementById('m-tb-text')||{}).value||'').trim();
+  if(!text)return;
+  var date=(document.getElementById('m-tb-date')||{}).value||localDateKey(new Date());
+  var start=(document.getElementById('m-tb-start')||{}).value||'';
+  var end=(document.getElementById('m-tb-end')||{}).value||'';
+  var recur=(document.getElementById('m-tb-recur')||{}).checked?'weekly':'';
+  if(!STATE.commitments)STATE.commitments=[];
+  STATE.commitments.push({id:g(),text:text,date:date,start:start,end:end,done:false,recur:recur,createdAt:new Date().toISOString()});
+  saveState();closeModal();renderPlanner();
 }
 
 // Inbox — captured-but-unscheduled tasks, so a quick-add never disappears.

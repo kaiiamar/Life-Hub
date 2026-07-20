@@ -4513,6 +4513,13 @@ body.night-mode .focus-progress{background:rgba(255,255,255,0.1)}
 .commit-check:hover{border-color:var(--accent)}
 .commit-row.done .commit-check{background:var(--accent);border-color:var(--accent)}
 .commit-body{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;min-width:0;flex:1}
+.commit-delete{
+  flex-shrink:0;width:24px;height:24px;
+  display:flex;align-items:center;justify-content:center;
+  border:none;background:none;color:var(--text3);cursor:pointer;
+  font-size:15px;border-radius:var(--radius-xs);transition:all 160ms var(--ease);
+}
+.commit-delete:hover{background:var(--red-dim,rgba(224,96,127,0.12));color:var(--red)}
 .commit-text{font-size:14px;font-weight:500;color:var(--fg)}
 .commit-row.done .commit-text{text-decoration:line-through;color:var(--text3)}
 .commit-time{
