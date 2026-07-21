@@ -376,7 +376,7 @@ function aiReplanWeek(){
     {key:'long',desc:wk?wk.long:'long run'}
   ];
   if(noteEl)noteEl.textContent='Thinking…';
-  fetch(NOTIF_API+'/api/ai-narrative',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({replan:{today:order[todayIdx],remainingDays:remaining,sessions:sessions}})})
+  lifeHubApiFetch(NOTIF_API+'/api/ai-narrative',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({replan:{today:order[todayIdx],remainingDays:remaining,sessions:sessions}})})
     .then(function(r){return r.json()}).then(function(d){
       var p=d&&d.replan;
       if(!p){if(noteEl)noteEl.textContent='Couldn\u2019t suggest a plan right now.';return}

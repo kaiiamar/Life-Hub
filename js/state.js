@@ -23,6 +23,32 @@ try{
 
 function loadState(){try{var v=localStorage.getItem(KEY);return v?JSON.parse(v):null}catch(e){return null}}
 
+// Attach the signed-in Firebase identity to calls made to the private backend.
+// The backend verifies this token and binds it to LIFEHUB_FIREBASE_UID; caller-
+// supplied user IDs are never trusted.
+function getLifeHubIdToken(){
+  if(!_firebaseReady||!auth)return Promise.reject(new Error('Sign in required'));
+  var current=auth.currentUser||_authUser;
+  if(current)return current.getIdToken();
+  return new Promise(function(resolve,reject){
+    var settled=false;var off=function(){};
+    var timer=setTimeout(function(){if(settled)return;settled=true;off();reject(new Error('Sign in timed out'))},10000);
+    off=auth.onAuthStateChanged(function(user){
+      if(settled)return;settled=true;clearTimeout(timer);off();
+      if(!user){reject(new Error('Sign in required'));return}
+      _authUser=user;user.getIdToken().then(resolve,reject);
+    },function(error){if(settled)return;settled=true;clearTimeout(timer);off();reject(error)});
+  });
+}
+function lifeHubApiFetch(url,options){
+  options=options||{};
+  return getLifeHubIdToken().then(function(token){
+    var requestOptions=Object.assign({},options);
+    requestOptions.headers=Object.assign({},options.headers||{},{Authorization:'Bearer '+token});
+    return fetch(url,requestOptions);
+  });
+}
+
 // localStorage always saves (device-local, not exposed). Cloud sync only runs
 // when signed in — an unauthenticated client never writes to Firestore.
 function saveState(){try{localStorage.setItem(KEY,JSON.stringify(STATE))}catch(e){}

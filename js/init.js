@@ -252,7 +252,6 @@ function bloomTick(key){
 // SERVICE WORKER & PUSH NOTIFICATIONS
 // ============================================================
 var NOTIF_API='https://lifehub-notifications.vercel.app';// Set to your Vercel URL after deploy, e.g. 'https://lifehub-notifications.vercel.app'
-var NOTIF_USER_ID='kai-lifehub';
 
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){})}
 
@@ -283,10 +282,10 @@ function subscribeToPush(){
       return reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key})
     }).then(function(sub){
       if(!sub)return;
-      return fetch(NOTIF_API+'/api/subscribe',{
+      return lifeHubApiFetch(NOTIF_API+'/api/subscribe',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({subscription:sub.toJSON(),userId:NOTIF_USER_ID})
+        body:JSON.stringify({subscription:sub.toJSON()})
       })
     }).catch(function(e){console.log('Push subscribe failed:',e)})
   })
@@ -295,10 +294,10 @@ function syncRemindersToBackend(){
   if(!NOTIF_API){showCelebrationToast('No backend URL set','⚠️');return}
   var reminders=getReminders();
   var enabledCount=reminders.filter(function(r){return r.enabled}).length;
-  fetch(NOTIF_API+'/api/reminders',{
+  lifeHubApiFetch(NOTIF_API+'/api/reminders',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({userId:NOTIF_USER_ID,reminders:reminders})
+    body:JSON.stringify({reminders:reminders})
   }).then(function(r){return r.json()}).then(function(data){
     console.log('Reminders synced:',data);
     if(typeof data.schedules==='string'&&data.schedules.indexOf('skipped')===0){

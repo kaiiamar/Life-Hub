@@ -273,7 +273,7 @@ function loadEveningSweep(todayKey){
   try{var cached=localStorage.getItem(cacheKey);if(cached){body.textContent=cached;card.style.display='';return}}catch(e){}
   body.innerHTML='<span class="planner-sweep-loading">Reading your day…</span>';
   card.style.display='';
-  fetch(NOTIF_API+'/api/ai-narrative',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sweep:stats})})
+  lifeHubApiFetch(NOTIF_API+'/api/ai-narrative',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sweep:stats})})
     .then(function(r){return r.json()}).then(function(d){
       if(d&&d.sweep){body.textContent=d.sweep;try{localStorage.setItem(cacheKey,d.sweep)}catch(e){}}
       else card.style.display='none';

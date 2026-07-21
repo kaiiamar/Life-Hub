@@ -810,7 +810,7 @@ function deleteGoalSubStep(goalId,idx){
 // energy. Shared helper returns a promise of a string[] (or null on failure).
 function aiBreakdown(title,kind){
   if(typeof NOTIF_API==='undefined'||!NOTIF_API)return Promise.resolve(null);
-  return fetch(NOTIF_API+'/api/ai-narrative',{
+  return lifeHubApiFetch(NOTIF_API+'/api/ai-narrative',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({breakdown:{title:title,kind:kind}})

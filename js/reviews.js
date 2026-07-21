@@ -388,7 +388,7 @@ function draftReviewWithAI(){
   if(btn){btn.textContent='✨ Drafting…';btn.disabled=true}
 
   var summary=computeMonthSummary(key);
-  fetch(NOTIF_API+'/api/ai-review-draft',{
+  lifeHubApiFetch(NOTIF_API+'/api/ai-review-draft',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({summary:summary})

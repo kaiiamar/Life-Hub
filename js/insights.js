@@ -348,7 +348,7 @@ function renderInsightsNarrative(){
   card.style.display='';
   el.innerHTML='<span class="insights-narrative-loading">Reading your week…</span>';
 
-  fetch(NOTIF_API+'/api/ai-narrative',{
+  lifeHubApiFetch(NOTIF_API+'/api/ai-narrative',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({stats:stats})
