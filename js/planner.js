@@ -165,24 +165,39 @@ function renderPlannerInbox(){
   var el=document.getElementById('planner-inbox');
   if(!el)return;
   var inbox=getInboxTasks();
-  if(!inbox.length){
-    el.innerHTML='<div class="card planner-card"><div class="planner-empty-line">Inbox clear — everything has a home.</div></div>';
-    return;
-  }
-  var html='<div class="card planner-card">';
-  html+='<div class="planner-card-head"><span class="planner-card-title"><span class="section-rule-bar"></span>Inbox</span>'
-    +'<span class="planner-card-count">'+inbox.length+'</span></div>';
-  html+='<div class="planner-inbox-list">';
-  inbox.forEach(function(t){
-    html+='<div class="inbox-row">'
-      +'<div class="inbox-check" onclick="plannerToggleFocusDone(\''+t.id+'\')" role="button" tabindex="0" aria-label="Complete '+escapeHtml(t.text)+'"></div>'
-      +'<span class="inbox-text">'+escapeHtml(t.text)+'</span>'
-      +'<button class="btn btn-ghost btn-sm inbox-focus" onclick="plannerInboxMakeFocus(\''+t.id+'\')" title="Make today\'s focus">Focus</button>'
-      +(typeof openTaskEditModal==='function'?'<button class="inbox-edit" onclick="openTaskEditModal(\''+t.id+'\')" title="Set date/time" aria-label="Set date or time">⋯</button>':'')
-      +'<button class="inbox-delete" onclick="deleteInboxTask(\''+t.id+'\')" title="Delete" aria-label="Delete task">×</button>'
-    +'</div>';
+  // Also include done inbox tasks (completed in-place) for done styling
+  var allInbox=(STATE.tasks||[]).filter(function(t){
+    return t&&!t.dueDate&&!t.weekPriority&&!t.focusDate;
   });
-  html+='</div></div>';
+  // Use only open inbox tasks for count / empty state
+  var openCount=inbox.length;
+
+  var html='';
+  // Header
+  html+='<div class="card planner-card pw-inbox-header-card">';
+  html+='<div class="pw-inbox-head"><span class="pw-inbox-title">Inbox</span>'
+    +(openCount?'<span class="pw-inbox-pill">'+openCount+' to sort</span>':'')+'</div>';
+  html+='<div class="pw-inbox-helper">Empty your head here \u2014 sort it out later.</div>';
+  html+='</div>';
+
+  // Capture input
+  html+=plannerCaptureCard();
+
+  if(!openCount){
+    html+='<div class="card planner-card pw-inbox-empty"><span class="pw-inbox-empty-icon">\uD83D\uDCE5</span><span class="pw-inbox-empty-text">All clear. Nothing to sort.</span></div>';
+  }else{
+    // Task cards — each is a separate card
+    inbox.forEach(function(t){
+      html+='<div class="card planner-card pw-inbox-task-card">'
+        +'<div class="pw-inbox-task-row">'
+          +'<div class="pw-inbox-check" onclick="plannerToggleFocusDone(\''+t.id+'\')" role="button" tabindex="0" aria-label="Complete '+escapeHtml(t.text)+'"></div>'
+          +'<span class="pw-inbox-text">'+escapeHtml(t.text)+'</span>'
+          +'<button class="pw-inbox-delete" onclick="deleteInboxTask(\''+t.id+'\')" title="Delete" aria-label="Delete task">\u00D7</button>'
+        +'</div>'
+      +'</div>';
+    });
+  }
+
   el.innerHTML=html;
 }
 
@@ -824,7 +839,150 @@ function renderPlannerWeek(){
   var el=document.getElementById('planner-week');
   if(!el)return;
   var wkKey=weekKey(new Date());
-  el.innerHTML=plannerIntentionCard(wkKey)+plannerBlockScheduleCard(wkKey)+plannerWeekTasksCard(wkKey)+plannerFixedTasksCard(wkKey)+plannerNextWeekCard(wkKey);
+  el.innerHTML=plannerWeekHeaderCard(wkKey)+plannerWeekPrioritiesCard(wkKey)+plannerHabitConsistencyCard(wkKey)+plannerTrainingSplitCard(wkKey)+plannerIntentionCard(wkKey)+plannerBlockScheduleCard(wkKey)+plannerFixedTasksCard(wkKey)+plannerNextWeekCard(wkKey);
+}
+
+// Week header card — "This week" + date range + 7-day strip
+function plannerWeekHeaderCard(wkKey){
+  var days=weekDays(wkKey);
+  var todayKey=localDateKey(new Date());
+  var dayLabels=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  // Reorder to Mon–Sun for display
+  var displayDays=days.slice(1).concat(days.slice(0,1));
+  // Compute date range label (e.g. "20–26 Jul") from Mon to Sun
+  var first=new Date(displayDays[0]+'T12:00:00');
+  var last=new Date(displayDays[6]+'T12:00:00');
+  var rangeStr=first.getDate()+'\u2013'+last.getDate()+' '+last.toLocaleDateString('en-GB',{month:'short'});
+
+  var html='<div class="card planner-card pw-week-header-card">';
+  html+='<div class="pw-week-header-top"><span class="pw-week-header-title">This week</span><span class="pw-week-header-range">'+rangeStr+'</span></div>';
+  html+='<div class="pw-week-daystrip">';
+  displayDays.forEach(function(dk){
+    var d=new Date(dk+'T12:00:00');
+    var dow=d.getDay();
+    var isToday=dk===todayKey;
+    html+='<div class="pw-week-daycell'+(isToday?' is-today':'')+'">'
+      +'<span class="pw-week-daycell-label">'+dayLabels[dow]+'</span>'
+      +'<span class="pw-week-daycell-num">'+d.getDate()+'</span>'
+    +'</div>';
+  });
+  html+='</div></div>';
+  return html;
+}
+
+// Priorities card — maps to weekPriority tasks (gold accent)
+function plannerWeekPrioritiesCard(wkKey){
+  var tasks=getWeekTasks(wkKey);
+  var todayKey=localDateKey(new Date());
+
+  var html='<div class="card planner-card pw-priorities-card">';
+  html+='<div class="pw-priorities-label">\u2B50 PRIORITIES THIS WEEK</div>';
+
+  if(plannerWeekNote){
+    html+='<div class="planner-focus-note">'+escapeHtml(plannerWeekNote)+'</div>';
+  }
+
+  if(tasks.length){
+    html+='<div class="pw-priorities-list">';
+    tasks.forEach(function(t){
+      var isFocus=t.focusDate===todayKey;
+      html+='<div class="pw-priority-row'+(t.done?' done':'')+'">'
+        +'<div class="pw-priority-check'+(t.done?' done':'')+'" onclick="plannerToggleWeekDone(\''+t.id+'\')" role="button" tabindex="0" aria-label="Toggle '+escapeHtml(t.text)+'">'+(t.done?'\u2713':'')+'</div>'
+        +'<span class="pw-priority-text">'+escapeHtml(t.text)+'</span>'
+        +(t.done
+            ?''
+            :(isFocus
+                ?'<span class="week-focus-flag" title="Already today\'s focus">\u2605 Today</span>'
+                :'<button class="btn btn-ghost btn-sm week-make-focus" onclick="plannerWeekMakeFocus(\''+t.id+'\')" title="Make today\'s focus">Focus</button>'))
+      +'</div>';
+    });
+    html+='</div>';
+  }else{
+    html+='<div class="planner-empty-line">No priorities for this week yet.</div>';
+  }
+
+  // Inline add
+  html+='<div class="planner-week-add-row">'
+    +'<input type="text" id="planner-week-add-input" class="planner-capture-input" placeholder="Add a priority\u2026" onkeydown="if(event.key===\'Enter\')plannerAddWeekTask()">'
+    +'<button class="planner-capture-btn" onclick="plannerAddWeekTask()">+</button>'
+  +'</div>';
+
+  html+='</div>';
+  return html;
+}
+
+// Habit consistency card — 7-column dot grid for the current week
+function plannerHabitConsistencyCard(wkKey){
+  var habits=(STATE.habits||[]).filter(function(h){
+    var f=(h.freq||'daily').toLowerCase();
+    return f==='daily'||/^\d+x\/week$/.test(f)||f==='weekly';
+  });
+  if(!habits.length)return '';
+  var days=weekDays(wkKey);
+  // Reorder to Mon–Sun for display
+  var displayDays=days.slice(1).concat(days.slice(0,1));
+  var colLabels=['M','T','W','T','F','S','S'];
+
+  // Compute overall consistency
+  var totalCells=0,filledCells=0;
+  habits.forEach(function(h){
+    displayDays.forEach(function(dk){
+      var s=(typeof habitDayStatus==='function')?habitDayStatus(h,dk):'todo';
+      if(s==='done'||s==='todo'){totalCells++;if(s==='done')filledCells++;}
+    });
+  });
+  var pct=totalCells?Math.round((filledCells/totalCells)*100):0;
+
+  var html='<div class="card planner-card pw-consistency-card">';
+  html+='<div class="pw-consistency-head"><span class="pw-consistency-title">Habit consistency</span><span class="pw-consistency-pct">'+pct+'%</span></div>';
+  html+='<div class="pw-consistency-grid">';
+  // Column headers
+  html+='<div class="pw-cg-row pw-cg-header"><span class="pw-cg-label"></span>';
+  colLabels.forEach(function(l){html+='<span class="pw-cg-col-head">'+l+'</span>'});
+  html+='</div>';
+  // Habit rows
+  habits.forEach(function(h){
+    var name=(h.icon?h.icon+' ':'')+h.name;
+    html+='<div class="pw-cg-row"><span class="pw-cg-label" title="'+escapeHtml(h.name)+'">'+escapeHtml(name)+'</span>';
+    displayDays.forEach(function(dk){
+      var s=(typeof habitDayStatus==='function')?habitDayStatus(h,dk):'todo';
+      var filled=(s==='done');
+      var applicable=(s==='done'||s==='todo');
+      html+='<span class="pw-cg-dot'+(filled?' filled':'')+(applicable?'':' rest')+'"></span>';
+    });
+    html+='</div>';
+  });
+  html+='</div></div>';
+  return html;
+}
+
+// Training split card — Mon–Sun schedule for the current week
+function plannerTrainingSplitCard(wkKey){
+  if(typeof todaysTrainingSession!=='function')return '';
+  var days=weekDays(wkKey);
+  // Reorder to Mon–Sun for display
+  var displayDays=days.slice(1).concat(days.slice(0,1));
+  var todayKey=localDateKey(new Date());
+  var dayLabels=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  var html='<div class="card planner-card pw-split-card">';
+  html+='<div class="pw-split-head">\uD83C\uDFCB\uFE0F Training split</div>';
+  html+='<div class="pw-split-list">';
+  displayDays.forEach(function(dk){
+    var d=new Date(dk+'T12:00:00');
+    var dow=d.getDay();
+    var isToday=dk===todayKey;
+    var s=todaysTrainingSession(dk);
+    var label=s?s.label:'Rest';
+    var isRest=(!s||s.session==='rest');
+    html+='<div class="pw-split-row'+(isToday?' is-today':'')+(isRest?' is-rest':'')+'">'
+      +'<span class="pw-split-day'+(isToday?' is-today':'')+'">'+dayLabels[dow]+'</span>'
+      +'<span class="pw-split-session'+(isRest?' is-rest':'')+'">'+escapeHtml(label)+'</span>'
+      +(isToday?'<span class="pw-split-today-badge">TODAY</span>':'')
+    +'</div>';
+  });
+  html+='</div></div>';
+  return html;
 }
 
 // Read-only training schedule for the current HM block week (addendum §2.4):

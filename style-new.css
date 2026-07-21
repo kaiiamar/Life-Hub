@@ -525,8 +525,8 @@ h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-0.02em}
 
 /* ── PAGE HEADER ── */
 .page-header{margin-bottom:22px;overflow:visible}
-.page-header h1{font-family:var(--serif);font-size:30px;font-weight:500;margin-bottom:4px;color:var(--fg);letter-spacing:-0.02em}
-.page-header p{color:var(--text2);font-size:13px}
+.page-header h1{font-family:var(--serif);font-size:30px;font-weight:500;margin-bottom:4px;color:#6b3a1f;letter-spacing:-0.02em}
+.page-header p{color:#8a6545;font-size:13px}
 .header-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 
 /* ── PROGRESS ── */
@@ -669,7 +669,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-0.02em}
   color:var(--text2);font-size:12px;font-weight:500;
   cursor:pointer;transition:all 200ms var(--ease);
 }
-.filter-btn.active{background:var(--grad-accent);color:var(--white);border-color:transparent;box-shadow:var(--shadow-sm)}
+.filter-btn.active{background:#c97b6e;color:#fffdf9;border-color:transparent;box-shadow:var(--shadow-sm)}
 .filter-btn:hover:not(.active){background:var(--white);color:var(--fg);transform:translateY(-1px)}
 
 /* ── PAGE TABS ── */
@@ -4429,10 +4429,13 @@ body.night-mode .focus-progress{background:rgba(255,255,255,0.1)}
 
 /* Tab panes (mirror .sub-page show/hide) */
 .planner-tab{display:none}
-.planner-tab.active{display:block;padding:0 15px}
+.planner-tab.active{display:flex;flex-direction:column;gap:14px;padding:0 15px}
+#planner-inbox.planner-tab.active{gap:9px}
+#planner-inbox .pw-inbox-header-card{margin-bottom:0}
+#planner-inbox .planner-capture-card{margin-bottom:0}
 
 /* Card shell — journal-design spacing: 14px gap, 16-20px padding */
-.planner-card{margin-bottom:14px}
+.planner-card{margin-bottom:0}
 .planner-card:last-child{margin-bottom:0}
 .planner-card-head{
   display:flex;align-items:center;justify-content:space-between;
@@ -4689,7 +4692,6 @@ body.night-mode .focus-progress{background:rgba(255,255,255,0.1)}
 /* ── Water + Weight side-by-side row (Journal design) ── */
 .planner-water-weight-row{
   display:grid;grid-template-columns:1fr 1fr;gap:14px;
-  margin-bottom:14px;
 }
 .planner-water-weight-row .planner-card{margin-bottom:0}
 .pw-water-mini,.pw-weight-mini{
@@ -5024,6 +5026,151 @@ body.night-mode .inbox-check{background:rgba(255,255,255,0.06)}
 body.night-mode .focus-substep-tick{background:rgba(255,255,255,0.06)}
 
 /* ══════════════════════════════════════════════
+   PLANNER — This Week tab (journal design v27)
+══════════════════════════════════════════════ */
+
+/* Week header card — title + day strip */
+.pw-week-header-card{padding:18px 20px 16px}
+.pw-week-header-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+.pw-week-header-title{font-family:var(--serif);font-size:20px;font-weight:600;color:#6b3a1f}
+.pw-week-header-range{font-family:var(--serif);font-size:14px;font-style:italic;color:#8a6545}
+.pw-week-daystrip{display:flex;justify-content:space-between;align-items:center}
+.pw-week-daycell{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  min-width:34px;padding:6px 4px;border-radius:12px;
+}
+.pw-week-daycell.is-today{background:#c97b6e;border-radius:50%;width:42px;height:56px;justify-content:center}
+.pw-week-daycell-label{
+  font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:0.06em;color:#8a6545;
+}
+.pw-week-daycell.is-today .pw-week-daycell-label{color:#fffdf9}
+.pw-week-daycell-num{font-family:var(--serif);font-size:18px;font-weight:600;color:#2c1a0e}
+.pw-week-daycell.is-today .pw-week-daycell-num{color:#fffdf9}
+
+/* Priorities card — gold accent */
+.pw-priorities-card{border-left:3px solid #d4a96a;padding:16px 20px}
+.pw-priorities-label{
+  font-size:10.5px;font-weight:700;text-transform:uppercase;
+  letter-spacing:0.06em;color:#8a6545;margin-bottom:12px;
+}
+.pw-priorities-list{display:flex;flex-direction:column}
+.pw-priority-row{
+  display:flex;align-items:center;gap:12px;
+  padding:11px 0;
+  border-bottom:1px solid rgba(160,110,60,0.1);
+}
+.pw-priority-row:last-child{border-bottom:none}
+.pw-priority-check{
+  width:22px;height:22px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid rgba(160,110,60,0.3);border-radius:50%;
+  background:transparent;cursor:pointer;
+  font-size:12px;font-weight:700;color:#fff;
+  transition:all 160ms ease;
+}
+.pw-priority-check:hover{border-color:#d4a96a}
+.pw-priority-check.done{background:#d4a96a;border-color:#d4a96a}
+.pw-priority-text{flex:1;min-width:0;font-size:14px;font-weight:500;color:#2c1a0e}
+.pw-priority-row.done .pw-priority-text{text-decoration:line-through;color:#b89870}
+
+/* Habit consistency card */
+.pw-consistency-card{padding:16px 20px}
+.pw-consistency-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+.pw-consistency-title{font-family:var(--serif);font-size:16px;font-weight:600;color:#6b3a1f}
+.pw-consistency-pct{font-family:var(--serif);font-size:14px;color:#6b9e7a}
+.pw-consistency-grid{display:flex;flex-direction:column;gap:0}
+.pw-cg-row{display:flex;align-items:center;height:32px}
+.pw-cg-row.pw-cg-header{height:24px}
+.pw-cg-label{
+  width:78px;flex-shrink:0;
+  font-size:12px;color:#2c1a0e;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.pw-cg-header .pw-cg-label{visibility:hidden}
+.pw-cg-col-head{
+  flex:1;text-align:center;
+  font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:0.06em;color:#8a6545;
+}
+.pw-cg-dot{
+  flex:1;display:flex;align-items:center;justify-content:center;
+}
+.pw-cg-dot::after{
+  content:'';display:block;
+  width:15px;height:15px;border-radius:50%;
+  border:1.5px solid rgba(160,110,60,0.28);
+  transition:all 160ms ease;
+}
+.pw-cg-dot.filled::after{background:#c97b6e;border-color:#c97b6e}
+.pw-cg-dot.rest::after{opacity:0.3}
+
+/* Training split card */
+.pw-split-card{padding:16px 20px}
+.pw-split-head{font-family:var(--serif);font-size:16px;font-weight:600;color:#6b3a1f;margin-bottom:12px}
+.pw-split-list{display:flex;flex-direction:column;gap:2px}
+.pw-split-row{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 10px;border-radius:var(--radius-xs);
+}
+.pw-split-row.is-today{background:rgba(201,123,110,0.12)}
+.pw-split-day{
+  font-size:11px;font-weight:700;text-transform:uppercase;
+  min-width:36px;color:#8a6545;
+}
+.pw-split-day.is-today{color:#b0563c}
+.pw-split-session{font-size:14px;font-weight:500;color:#2c1a0e;flex:1}
+.pw-split-session.is-rest{font-style:italic;color:#b89870}
+.pw-split-today-badge{
+  font-size:10px;font-weight:700;text-transform:uppercase;
+  background:#d4845a;color:#fffdf9;
+  padding:3px 8px;border-radius:999px;flex-shrink:0;
+}
+
+/* ══════════════════════════════════════════════
+   PLANNER — Inbox tab (journal design v27)
+══════════════════════════════════════════════ */
+.pw-inbox-header-card{padding:18px 20px 14px}
+.pw-inbox-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.pw-inbox-title{font-family:var(--serif);font-size:20px;font-weight:600;color:#6b3a1f}
+.pw-inbox-pill{
+  font-size:12px;font-weight:600;
+  background:rgba(201,123,110,0.14);color:#c97b6e;
+  padding:4px 12px;border-radius:999px;
+}
+.pw-inbox-helper{font-family:var(--serif);font-size:13px;font-style:italic;color:#8a6545}
+.pw-inbox-empty{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:40px 20px;gap:8px;
+}
+.pw-inbox-empty-icon{font-size:32px}
+.pw-inbox-empty-text{font-size:14px;color:#8a6545}
+.pw-inbox-task-card{padding:12px 16px}
+.pw-inbox-task-row{display:flex;align-items:center;gap:12px}
+.pw-inbox-check{
+  width:22px;height:22px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid rgba(160,110,60,0.3);border-radius:50%;
+  background:transparent;cursor:pointer;
+  font-size:12px;font-weight:700;color:#fff;
+  transition:all 160ms ease;
+}
+.pw-inbox-check:hover{border-color:var(--accent)}
+.pw-inbox-text{flex:1;min-width:0;font-size:14px;font-weight:500;color:#2c1a0e}
+.pw-inbox-delete{
+  flex-shrink:0;width:28px;height:28px;
+  display:flex;align-items:center;justify-content:center;
+  border:none;background:none;color:var(--text3);cursor:pointer;
+  font-size:16px;border-radius:var(--radius-xs);
+  transition:all 160ms var(--ease);
+}
+.pw-inbox-delete:hover{background:rgba(192,57,43,0.1);color:#c0392b}
+/* Done state for inbox cards */
+.pw-inbox-task-card.done{background:#f5efe4}
+.pw-inbox-task-card.done .pw-inbox-check{background:#6b9e7a;border-color:#6b9e7a}
+.pw-inbox-task-card.done .pw-inbox-text{text-decoration:line-through;color:#b89870}
+
+/* ══════════════════════════════════════════════
    BLOOM — Part 4 additions
 ══════════════════════════════════════════════ */
 
@@ -5032,9 +5179,9 @@ body.night-mode .focus-substep-tick{background:rgba(255,255,255,0.06)}
   width:72px;height:72px;flex-shrink:0;
   display:flex;align-items:center;justify-content:center;
   font-size:34px;line-height:1;
-  background:var(--surface-dim);
+  background:#f2e8d8;
   border-radius:18px;
-  border-left:3px solid var(--accent);
+  border:1px solid rgba(160,110,60,0.15);
 }
 body.night-mode .page-emoji-tile{background:rgba(240,235,227,0.06)}
 
