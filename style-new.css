@@ -325,17 +325,17 @@ h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-0.02em}
 }
 .hero .blob-1{
   top:-20%;right:-10%;width:300px;height:300px;
-  background:radial-gradient(circle,rgba(255,255,255,0.7),transparent 70%);
+  background:radial-gradient(circle,rgba(212,169,106,0.4),transparent 70%);
   animation:float1 12s ease-in-out infinite;
 }
 .hero .blob-2{
   bottom:-30%;left:-5%;width:260px;height:260px;
-  background:radial-gradient(circle,rgba(155,135,190,0.5),transparent 70%);
+  background:radial-gradient(circle,rgba(201,123,110,0.35),transparent 70%);
   animation:float2 14s ease-in-out infinite;
 }
 .hero .blob-3{
   top:40%;right:25%;width:180px;height:180px;
-  background:radial-gradient(circle,rgba(244,199,169,0.7),transparent 70%);
+  background:radial-gradient(circle,rgba(107,158,122,0.35),transparent 70%);
   animation:float3 10s ease-in-out infinite;
 }
 @keyframes float1{
@@ -353,7 +353,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-0.02em}
 .hero-inner{position:relative;z-index:1;transition:transform 400ms var(--ease)}
 .hero-eyebrow{
   font-size:11px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;
-  color:rgba(26,26,31,0.7);margin-bottom:12px;display:flex;align-items:center;gap:8px;
+  color:#8a6545;margin-bottom:12px;display:flex;align-items:center;gap:8px;
 }
 .hero-eyebrow::before{content:'—';opacity:0.6}
 .hero-eyebrow .pulse-dot{
@@ -371,14 +371,14 @@ h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-0.02em}
   line-height:1.05;color:var(--fg);letter-spacing:-0.03em;
   margin-bottom:10px;
 }
-.hero h1 em{font-style:italic;color:#7A3A2F;font-weight:400}
+.hero h1 em{font-style:italic;color:#b0563c;font-weight:400}
 .hero-sub{
-  font-size:15px;color:rgba(26,26,31,0.7);line-height:1.55;max-width:560px;
+  font-size:15px;color:#8a6545;line-height:1.55;max-width:560px;
 }
 .hero-sub em,.hero-sub strong{font-style:normal;color:var(--fg);font-weight:600}
 .hero-quote{
   margin-top:20px;padding:14px 18px;
-  background:rgba(255,255,255,0.55);
+  background:rgba(255,253,249,0.75);
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   border:1px solid rgba(255,255,255,0.65);
   border-radius:var(--radius-sm);
@@ -1045,7 +1045,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-0.02em}
 }
 .focus-card::after{
   content:'';position:absolute;bottom:-30%;left:-10%;width:50%;height:130%;
-  background:radial-gradient(circle,rgba(155,135,190,0.12),transparent 60%);
+  background:radial-gradient(circle,rgba(201,123,110,0.1),transparent 60%);
   pointer-events:none;
   animation:float2 18s ease-in-out infinite;
 }
@@ -1101,7 +1101,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-0.02em}
 }
 .bento-stat::before{
   content:'';position:absolute;inset:0;
-  background:linear-gradient(135deg,rgba(255,255,255,0.4),transparent 50%);
+  background:linear-gradient(135deg,rgba(255,253,249,0.4),transparent 50%);
   pointer-events:none;
 }
 .bento-stat:hover{transform:translateY(-3px) scale(1.01);box-shadow:var(--shadow-hover)}
@@ -1254,8 +1254,8 @@ h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-0.02em}
 
 /* 4. Hero quote — cleaner solid card */
 .hero-quote{
-  background:rgba(255,255,255,0.85);
-  border:1px solid rgba(255,255,255,0.9);
+  background:rgba(255,253,249,0.85);
+  border:1px solid rgba(160,110,60,0.12);
   color:var(--fg);
   font-style:italic;
   box-shadow:0 2px 12px rgba(26,26,31,0.04);
@@ -1336,35 +1336,35 @@ h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-0.02em}
    DYNAMIC ENVIRONMENTAL + PREMIUM POLISH
 ────────────────────────────────────────── */
 
-/* 1. Time-based hero gradients */
+/* 1. Time-based hero gradients — warm journal palette */
 .hero.time-morning{
-  background:linear-gradient(120deg,#FCE7F3 0%,#C9B6EC 25%,#B79BE6 50%,#D4B4D9 75%,#FCE7F3 100%);
+  background:linear-gradient(120deg,#fdf6e8 0%,#fdeee4 25%,#fbe2d1 50%,#f7e0d0 75%,#fdf6e8 100%);
   background-size:300% 300%;
   animation:gradientMove 15s ease infinite;
 }
 .hero.time-afternoon{
-  background:linear-gradient(120deg,#C5D8EA 0%,#A8C4DD 25%,#7CA5C2 50%,#C9B6EC 75%,#C5D8EA 100%);
+  background:linear-gradient(120deg,#f2e8d8 0%,#fdeee4 25%,#f7e0d0 50%,#e8dcc8 75%,#f2e8d8 100%);
   background-size:300% 300%;
   animation:gradientMove 18s ease infinite;
 }
 .hero.time-evening{
-  background:linear-gradient(120deg,#E6B8D4 0%,#C5A0C9 25%,#9B87BE 50%,#6B5A8A 75%,#E6B8D4 100%);
+  background:linear-gradient(120deg,#f0e4d6 0%,#e8d4c4 25%,#d4b8a0 50%,#c9a888 75%,#f0e4d6 100%);
   background-size:300% 300%;
   animation:gradientMove 20s ease infinite;
 }
 .hero.time-night{
-  background:linear-gradient(120deg,#4A4668 0%,#6B5A8A 25%,#3A3552 50%,#5A4F7A 75%,#4A4668 100%);
+  background:linear-gradient(120deg,#3a2a1e 0%,#4a3828 25%,#2a1f16 50%,#3a2a1e 75%,#3a2a1e 100%);
   background-size:300% 300%;
   animation:gradientMove 22s ease infinite;
 }
 .hero.time-night h1,
 .hero.time-night .hero-eyebrow,
-.hero.time-night .hero-sub{color:#FAF7F2}
-.hero.time-night h1 em{color:#C9B6EC}
-.hero.time-night .hero-sub strong{color:#FAF7F2}
+.hero.time-night .hero-sub{color:#f5efe4}
+.hero.time-night h1 em{color:#d4a96a}
+.hero.time-night .hero-sub strong{color:#f5efe4}
 .hero.time-night .hero-quote{
-  background:rgba(255,255,255,0.15);
-  border-color:rgba(255,255,255,0.2);
+  background:rgba(255,253,249,0.1);
+  border-color:rgba(160,110,60,0.2);
   color:rgba(255,255,255,0.9);
 }
 
@@ -1385,7 +1385,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-0.02em}
   content:'';
   position:absolute;
   top:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.9),transparent);
+  background:linear-gradient(90deg,transparent,rgba(255,253,249,0.9),transparent);
   pointer-events:none;
   z-index:2;
 }
@@ -3686,7 +3686,7 @@ body.night-mode .hb-period{background:rgba(240,235,227,0.06);color:var(--text3)}
 }
 .dash-mood-mini-btn{
   flex:1;min-width:0;
-  background:rgba(255,255,255,0.55);
+  background:rgba(255,253,249,0.55);
   border:1px solid var(--border);
   border-radius:10px;
   padding:6px 0;
@@ -4390,7 +4390,7 @@ textarea:focus-visible,
 .hero-streak-flame{font-size:16px;line-height:1}
 .hero-streak-num{font-family:var(--serif);font-size:18px;font-weight:600;color:var(--accent-dark);line-height:1}
 .hero-streak-label{font-size:12px;color:var(--text2);font-weight:500}
-body.night-mode .hero-streak{background:rgba(240,235,227,0.1);border-color:rgba(155,126,214,0.35)}
+body.night-mode .hero-streak{background:rgba(240,235,227,0.1);border-color:rgba(201,123,110,0.3)}
 
 /* ── Hero: this month's focus banner ── */
 .hero-focus-banner{
@@ -4402,11 +4402,11 @@ body.night-mode .hero-streak{background:rgba(240,235,227,0.1);border-color:rgba(
   cursor:pointer;max-width:100%;
   transition:background 160ms var(--ease);
 }
-.hero-focus-banner:hover{background:rgba(155,135,190,0.18)}
+.hero-focus-banner:hover{background:rgba(201,123,110,0.14)}
 .hero-focus-icon{font-size:15px;line-height:1}
-.hero-focus-label{font-size:12px;font-weight:600;color:var(--purple);text-transform:uppercase;letter-spacing:0.04em;flex-shrink:0}
+.hero-focus-label{font-size:12px;font-weight:600;color:#b0563c;text-transform:uppercase;letter-spacing:0.04em;flex-shrink:0}
 .hero-focus-text{font-size:13px;color:var(--text);font-weight:500;min-width:0}
-body.night-mode .hero-focus-banner{background:rgba(155,135,190,0.18);border-color:rgba(155,135,190,0.4)}
+body.night-mode .hero-focus-banner{background:rgba(201,123,110,0.14);border-color:rgba(201,123,110,0.3)}
 
 /* ── Focus card: single summary progress bar (replaces duplicate bars) ── */
 .focus-progress{
