@@ -203,10 +203,8 @@ function renderPlannerToday(){
   var el=document.getElementById('planner-today');
   if(!el)return;
   var todayKey=localDateKey(new Date());
-  // Part 3 (3.1): habits & training above the fold. Order —
-  // welcome → training card → habits → focus → glance → capture → water → inbox.
-  // Order: welcome → evening sweep → training → schedule → habits → focus → capture → water.
-  el.innerHTML=plannerWelcomeCard()+plannerEveningSweepCard(todayKey)+plannerTrainingCard(todayKey)+plannerScheduleCard(todayKey)+plannerHabitCard()+plannerFocusCard(todayKey)+plannerCaptureCard()+plannerWaterCard();
+  // Order: welcome → evening sweep → training → habits → schedule → focus → water+weight → capture.
+  el.innerHTML=plannerWelcomeCard()+plannerEveningSweepCard(todayKey)+plannerTrainingCard(todayKey)+plannerHabitCard()+plannerScheduleCard(todayKey)+plannerFocusCard(todayKey)+plannerWaterCard()+plannerCaptureCard();
   // Keep the PWA app-icon badge in sync with today's open focus count (3.5).
   if(typeof updateAppBadge==='function')updateAppBadge();
   // Evening sweep: fetch the AI one-liner once the card is in the DOM (§evening).
@@ -267,62 +265,90 @@ function loadEveningSweep(todayKey){
     }).catch(function(){card.style.display='none'});
 }
 
-// Compact time-based welcome row — reuses getTimeContext() from dashboard.js
-// and hardcodes the single user's name "Kai". Deliberately a slim single row,
-// not the Dashboard hero block (R1.2, R1.3, R1.4, R1.5).
+// Welcome masthead — washi-tape decoration, greeting, status chips, quote.
+// Reuses getTimeContext() from dashboard.js and hardcodes user name "Kai".
 function plannerWelcomeCard(){
   var tc=getTimeContext(); // {slot, greeting, class}
-  var dateStr=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  var now=new Date();
+  var dateStr=now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  var todayKey=localDateKey(now);
+
+  // Streak (showUpStreak from dashboard.js)
+  var streak=(typeof showUpStreak==='function')?showUpStreak():0;
+  // Training today?
+  var hasTraining=false;
+  if(typeof todaysTrainingSession==='function'){
+    var ts=todaysTrainingSession(todayKey);
+    hasTraining=!!(ts&&ts.session!=='rest');
+  }
+  // Focus count
+  var focusTasks=(STATE.tasks||[]).filter(function(t){return t&&t.focusDate===todayKey&&!t.done});
+  var focusCount=focusTasks.length;
+
+  // Status chips
+  var chips='<div class="pw-welcome-chips">';
+  if(streak>=2)chips+='<span class="pw-chip pw-chip-streak">\uD83D\uDD25 '+streak+' day streak</span>';
+  if(hasTraining)chips+='<span class="pw-chip pw-chip-training">\uD83C\uDFCB\uFE0F training day</span>';
+  if(focusCount>0)chips+='<span class="pw-chip pw-chip-focus">\uD83C\uDFAF '+focusCount+' to focus on</span>';
+  chips+='</div>';
+
+  // Quote
+  var quotes=CONTEXTUAL_QUOTES&&CONTEXTUAL_QUOTES[tc.slot]?CONTEXTUAL_QUOTES[tc.slot]:['One thing at a time.'];
+  var quote=quotes[Math.floor(now.getMinutes()/15)%quotes.length]||quotes[0];
+
   return ''
-    +'<div class="planner-welcome '+tc.class+'">'
-      +'<span class="planner-welcome-greet">'+tc.greeting+', Kai</span>'
-      +'<span class="planner-welcome-date">'+dateStr+'</span>'
+    +'<div class="card planner-card planner-welcome-card">'
+      +'<span class="pw-washi-tape" aria-hidden="true"></span>'
+      +'<div class="pw-welcome-greet">'+tc.greeting+', Kai \u2728</div>'
+      +'<div class="pw-welcome-date">'+dateStr+' \u2014 a quiet, open day.</div>'
+      +chips
+      +'<div class="pw-welcome-divider"></div>'
+      +'<div class="pw-welcome-quote">\u201C'+escapeHtml(quote)+'\u201D</div>'
     +'</div>';
 }
 
-// Compact water widget — a single filling cup that reflects today's hydration
-// against the daily target. Reads the same STATE.water / STATE.waterSettings the
-// Dashboard uses; the add control writes ONLY through the global logWaterGlass()
-// (never mutating STATE.water directly). Root carries id="planner-water-card" so
-// renderPlannerWater() can re-render just this widget in place (R2.2–R2.5, R2.7).
+// Water + Weight side-by-side row — two mini cards in a grid.
+// Water: filling glass + count + add button.
+// Weight: latest value + weekly change + log button.
 function plannerWaterCard(){
   var today=localDateKey(new Date());
   var glasses=(STATE.water&&STATE.water[today])||0;
   var target=Number((STATE.waterSettings&&STATE.waterSettings.target)||8);
-  var ml=Number((STATE.waterSettings&&STATE.waterSettings.glassMl)||250);
   var pct=Math.min(100,Math.round((glasses/Math.max(1,target))*100));
-  var full=glasses>=target;
-  // One-tap weight log (3.3): a compact row that opens the EXISTING weight
-  // metric-log modal (openModal('logMetric','weight') → saveMetric('weight')),
-  // so weight can be logged from Today without visiting Training → Body.
+
+  // Weight data
   var weights=((STATE.metrics||{}).weight||[]).slice().sort(function(a,b){return String(a.date).localeCompare(String(b.date))});
   var latestW=weights.length?weights[weights.length-1].value:null;
-  var weightRow=''
-    +'<div class="planner-weight-row">'
-      +'<span class="planner-weight-label">⚖️ Weight'+(latestW!=null?' · <b>'+latestW+' kg</b>':'')+'</span>'
-      +'<button class="btn btn-sm btn-ghost" onclick="openModal(\'logMetric\',\'weight\')">Log weight</button>'
-    +'</div>';
+  var weekAgo=localDateKey(new Date(Date.now()-7*86400000));
+  var weekWeight=weights.filter(function(w){return w.date<=weekAgo});
+  var prevW=weekWeight.length?weekWeight[weekWeight.length-1].value:null;
+  var weightChange=null,weightDir='',weightClass='';
+  if(latestW!=null&&prevW!=null){
+    weightChange=Math.round((latestW-prevW)*10)/10;
+    if(weightChange<0){weightDir='\u2193 '+Math.abs(weightChange);weightClass='pw-weight-down';}
+    else if(weightChange>0){weightDir='\u2191 '+weightChange;weightClass='pw-weight-up';}
+    else{weightDir='\u2194 0';weightClass='';}
+  }
+
   return ''
-    +'<div class="card planner-card planner-water" id="planner-water-card">'
-      +'<div class="planner-card-head"><span class="planner-card-title">Water</span>'
-        +'<span class="planner-card-hint">'+(glasses*ml/1000).toFixed(2)+'L</span></div>'
-      +'<div class="planner-water-body">'
-        +'<div class="pw-cup'+(full?' full':'')+'" id="planner-water-cup" aria-hidden="true">'
-          +'<div class="pw-cup-fill" style="height:'+pct+'%"></div>'
-        +'</div>'
-        +'<div class="planner-water-info">'
-          +'<div class="pw-figure"><b>'+glasses+'</b> / '+target+' glasses · '+pct+'%</div>'
-          +'<button class="btn btn-sm btn-accent" onclick="logWaterGlass('+(glasses+1)+')">+ glass</button>'
-        +'</div>'
+    +'<div class="planner-water-weight-row" id="planner-water-card">'
+      +'<div class="card planner-card pw-water-mini">'
+        +'<div class="pw-mini-title">Water</div>'
+        +'<div class="pw-glass-illus" aria-hidden="true"><div class="pw-glass-fill" style="height:'+pct+'%"></div></div>'
+        +'<div class="pw-water-count">'+glasses+' / '+target+'</div>'
+        +'<div class="pw-water-sub">glasses \u00B7 '+pct+'%</div>'
+        +'<button class="pw-water-btn" onclick="logWaterGlass('+(glasses+1)+')">+ glass</button>'
       +'</div>'
-      +weightRow
+      +'<div class="card planner-card pw-weight-mini">'
+        +'<div class="pw-mini-title">\u2696\uFE0F Weight</div>'
+        +(latestW!=null?'<div class="pw-weight-val">'+latestW+' kg</div>':'<div class="pw-weight-val">\u2014</div>')
+        +(weightChange!=null?'<div class="pw-weight-change '+weightClass+'">'+weightDir+' this week</div>':'')
+        +'<button class="pw-weight-btn" onclick="openModal(\'logMetric\',\'weight\')">Log</button>'
+      +'</div>'
     +'</div>';
 }
 
-// Re-render ONLY the water widget in place. Mirrors renderDashWater(): looks up
-// the planner host and the water card, no-ops if either is absent (the planner
-// may not be the active render), then swaps the card's outerHTML so logWaterGlass
-// can sync the cup without redrawing the whole page (R2.6).
+// Re-render ONLY the water widget in place.
 function renderPlannerWater(){
   var el=document.getElementById('planner-today');
   if(!el)return;
@@ -331,11 +357,7 @@ function renderPlannerWater(){
   host.outerHTML=plannerWaterCard();
 }
 
-// Compact habit tracker — lists only today's DUE habits (habitDayStatus 'done'
-// or 'todo'; 'rest'/'missed'/'pre-start' are excluded). Reads STATE.habits, the
-// same source the Dashboard uses. Each row's tick reflects logs[today] and calls
-// plannerToggleHabit(id) to write. Root carries id="planner-habits-card" so that
-// toggle can re-render just this widget in place (R3.2, R3.3, R3.4, R3.7).
+// Habits card — top coral border, hand-drawn underline, tappable rows.
 function plannerHabitCard(){
   var today=localDateKey(new Date());
   var habits=(STATE.habits||[]).filter(function(h){
@@ -344,23 +366,27 @@ function plannerHabitCard(){
   });
   var rows;
   if(!habits.length){
-    rows='<div class="planner-empty-line">No habits due today — enjoy the breather.</div>';
+    rows='<div class="planner-empty-line">No habits due today \u2014 enjoy the breather.</div>';
   } else {
-    rows=habits.map(function(h){
+    rows='<div class="pw-habits-list">';
+    rows+=habits.map(function(h){
       var done=!!(h.logs&&h.logs[today]);
-      return '<div class="pw-habit-row'+(done?' done':'')+'">'
+      return '<div class="pw-habit-row'+(done?' done':'')+'" onclick="plannerToggleHabit(\''+h.id+'\')">'
         +'<div class="pw-habit-check" role="button" tabindex="0" data-tick="pwhab:'+h.id+'"'
-          +' aria-label="Toggle '+escapeHtml(h.name)+'"'
-          +' onclick="plannerToggleHabit(\''+h.id+'\')">'+(done?'✓':'')+'</div>'
+          +' aria-label="Toggle '+escapeHtml(h.name)+'">'+(done?'\u2713':'')+'</div>'
         +'<span class="pw-habit-name">'+(h.icon?escapeHtml(h.icon)+' ':'')+escapeHtml(h.name)+'</span>'
       +'</div>';
     }).join('');
+    rows+='</div>';
   }
   var doneCount=habits.filter(function(h){return h.logs&&h.logs[today]}).length;
+  // Hand-drawn underline SVG
+  var wavySvg='<svg class="pw-wavy-underline" viewBox="0 0 220 6" preserveAspectRatio="none" aria-hidden="true"><path d="M0 3 Q10 0 20 3 T40 3 T60 3 T80 3 T100 3 T120 3 T140 3 T160 3 T180 3 T200 3 T220 3" fill="none" stroke="#c97b6e" stroke-width="1.5" opacity="0.4"/></svg>';
   return ''
-    +'<div class="card planner-card planner-habits card-hero-tier" id="planner-habits-card">'
-      +'<div class="planner-card-head"><span class="planner-card-title"><span class="section-rule-bar"></span>Habits</span>'
-        +'<span class="planner-card-count">'+doneCount+'/'+habits.length+'</span></div>'
+    +'<div class="card planner-card planner-habits-card" id="planner-habits-card">'
+      +'<div class="planner-card-head"><span class="planner-card-title">Habits</span>'
+        +'<span class="pw-habit-count">'+doneCount+' / '+habits.length+'</span></div>'
+      +wavySvg
       +rows
     +'</div>';
 }
@@ -385,15 +411,11 @@ function plannerToggleHabit(hid){
   if(typeof renderDashboard==='function')renderDashboard();
 }
 
-// "Today at a glance" — a single time-ordered timeline mixing scheduled
-// commitments and any tasks due today (with an optional time) (R11.2, R12.4).
-// A "now" marker separates past from upcoming. (Today's training now lives in
-// its own standalone card above the fold — see plannerTrainingCard, 3.2.)
+// Schedule — vertical dashed timeline with colored dots and "now" line.
 function plannerScheduleCard(todayKey){
   var commitments=getTodayCommitments(todayKey);
   var timedTasks=getTodayTimedTasks(todayKey);
 
-  // Build a unified timeline. Commitments sort by start; tasks by dueTime.
   var items=[];
   commitments.forEach(function(c){
     items.push({kind:'commit',id:c.id,text:c.text,time:c.start||'',end:c.end||'',recur:c.recur,done:c.done});
@@ -403,30 +425,37 @@ function plannerScheduleCard(todayKey){
   });
   items.sort(function(a,b){return String(a.time||'99:99').localeCompare(String(b.time||'99:99'))});
 
-  var html='<div class="card planner-card card-hero-tier">';
-  html+='<div class="planner-card-head"><span class="planner-card-title"><span class="section-rule-bar"></span>Schedule</span>'
+  var dotColors=['#8a6545','#c97b6e','#d4a96a','#6b9e7a','#b0563c'];
+
+  var html='<div class="card planner-card planner-schedule-card">';
+  html+='<div class="planner-card-head"><span class="planner-card-title">Schedule</span>'
     +'<button class="btn btn-sm btn-ghost" onclick="openModal(\'addTimeBlock\')" title="Add time block">+ Block</button></div>';
 
   if(items.length){
     var nowHM=(function(){var d=new Date();return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)})();
     var nowShown=false;
-    html+='<div class="planner-commitments">';
-    items.forEach(function(it){
+    html+='<div class="pw-schedule-timeline">';
+    items.forEach(function(it,idx){
       if(!nowShown&&it.time&&it.time>=nowHM){
-        html+='<div class="planner-now-line"><span>now · '+escapeHtml(nowHM)+'</span></div>';
+        html+='<div class="pw-now-line"><span class="pw-now-text">now \u00B7 '+escapeHtml(nowHM)+'</span></div>';
         nowShown=true;
       }
-      var time=(it.time||'')+((it.time&&it.end)?'–'+it.end:'');
+      var time=(it.time||'')+((it.time&&it.end)?'\u2013'+it.end:'');
       var toggle=it.kind==='commit'?'plannerToggleCommitment':'plannerToggleFocusDone';
-      html+='<div class="commit-row'+(it.done?' done':'')+'">'
-        +'<div class="commit-check" onclick="'+toggle+'(\''+it.id+'\')" role="button" tabindex="0" aria-label="Toggle '+escapeHtml(it.text)+'">'+(it.done?'✓':'')+'</div>'
-        +'<div class="commit-body">'
-          +'<span class="commit-text">'+escapeHtml(it.text)+(it.kind==='commit'&&it.recur==='weekly'?' <span class="commit-recur" title="Repeats weekly">↻</span>':'')+'</span>'
-          +(time?'<span class="commit-time">'+escapeHtml(time)+'</span>':(it.kind==='task'?'<span class="commit-time commit-time-soft">task</span>':''))
+      var dotColor=dotColors[idx%dotColors.length];
+      html+='<div class="pw-sched-row'+(it.done?' done':'')+'">'
+        +'<span class="pw-sched-dot" style="background:'+dotColor+'"></span>'
+        +'<div class="pw-sched-body">'
+          +'<div class="pw-sched-check'+(it.done?' done':'')+'" onclick="'+toggle+'(\''+it.id+'\')" role="button" tabindex="0" aria-label="Toggle '+escapeHtml(it.text)+'">'+(it.done?'\u2713':'')+'</div>'
+          +'<span class="pw-sched-text">'+escapeHtml(it.text)+(it.kind==='commit'&&it.recur==='weekly'?' <span class="commit-recur" title="Repeats weekly">\u21BB</span>':'')+'</span>'
+          +(time?'<span class="pw-sched-time">'+escapeHtml(time)+'</span>':(it.kind==='task'?'<span class="pw-sched-time pw-sched-time-task">task</span>':''))
         +'</div>'
-        +'<button class="commit-delete" onclick="deleteTimeBlock(\''+it.id+'\',\''+it.kind+'\')" title="Remove" aria-label="Remove">×</button>'
+        +'<button class="commit-delete" onclick="deleteTimeBlock(\''+it.id+'\',\''+it.kind+'\')" title="Remove" aria-label="Remove">\u00D7</button>'
       +'</div>';
     });
+    if(!nowShown){
+      html+='<div class="pw-now-line"><span class="pw-now-text">now \u00B7 '+nowHM+'</span></div>';
+    }
     html+='</div>';
   }else{
     html+='<div class="planner-empty-line">Nothing time-blocked today. Tap + Block to plan your day.</div>';
@@ -495,13 +524,8 @@ function plannerTrainingLoggedToday(dateKey){
   return null;
 }
 
-// Part 3 (3.2): today's training promoted to a standalone card directly under
-// the welcome row. Session name + exercise count / run description, plus ONE-TAP
-// log buttons that reuse the EXISTING Training handlers — quickLogToday('Gym'|
-// 'Hyrox'|'Run'|'Rest') and openModal('logRun'). If a session is already logged
-// today (STATE.workouts / STATE.metrics.run), the buttons are replaced by a
-// gentle "<session> ✓ logged" confirmation. Styled card-hero-tier + section-rule-bar
-// to match the Bloom glow-up. Reuses todaysTrainingSession() (shared helper).
+// Part 3 (3.2): today's training promoted to a standalone card.
+// Gradient card with watermark emoji, accent bar, "TRAINING DAY" badge.
 function plannerTrainingCard(todayKey){
   if(typeof todaysTrainingSession!=='function')return '';
   var t=todaysTrainingSession(todayKey);
@@ -509,69 +533,64 @@ function plannerTrainingCard(todayKey){
 
   var icon,text,isRest=(t.session==='rest');
   if(isRest){
-    icon='🌿';text=(t.label||'Rest')+(t.sub?' · '+t.sub:'');
+    icon='\uD83C\uDF3F';text=(t.label||'Rest')+(t.sub?' \u00B7 '+t.sub:'');
   }else if(t.isRace){
-    icon='🏁';text=t.label+' · '+(t.desc||'');
+    icon='\uD83C\uDFC1';text=t.label+' \u00B7 '+(t.desc||'');
   }else{
     var def=(typeof workoutDef==='function')?workoutDef(t.session):null;
     if(def){
-      icon=def.emoji||'🏋️';
-      // In-block strength days carry a session desc; otherwise show exercise count.
-      text=t.label+' · '+def.exercises.length+' exercises';
+      icon=def.emoji||'\uD83C\uDFCB\uFE0F';
+      text=t.label+' \u00B7 '+def.exercises.length+' exercises';
     }else{
-      icon=(t.runType==='long')?'🏃':(t.runType==='quality')?'⚡':'🏃';
-      text=t.label+(t.desc?' · '+t.desc:(t.sub?' · '+t.sub:''));
+      icon=(t.runType==='long')?'\uD83C\uDFC3':(t.runType==='quality')?'\u26A1':'\uD83C\uDFC3';
+      text=t.label+(t.desc?' \u00B7 '+t.desc:(t.sub?' \u00B7 '+t.sub:''));
     }
   }
 
-  // Gradient "Training day" chip on active days; rest days stay calm/chip-free.
-  var chip=isRest?'':'<span class="chip">'+(t.isRace?'Race day 🏁':'Training day')+'</span>';
-  // Editable run-days control (§2.3) — only while in-block and on active days.
-  var editBtn=(t.block&&!isRest)?'<button class="planner-train-edit" onclick="openModal(\'editRunDays\')" title="Adjust run days" aria-label="Adjust run days">⋯</button>':'';
+  // Watermark emoji
+  var watermark=isRest?'\uD83C\uDF3F':(t.session==='run'?'\uD83C\uDFC3':'\uD83C\uDFCB\uFE0F');
 
-  var html='<div class="card planner-card planner-training-card card-hero-tier" id="planner-training-card">';
-  html+='<div class="planner-card-head"><span class="planner-card-title"><span class="section-rule-bar"></span>Today\'s training</span>'+chip+editBtn+'</div>';
+  // "TRAINING DAY" badge on active days; rest days stay calm.
+  var badge=isRest?'':'<span class="pw-train-badge">TRAINING DAY</span>';
+  // Editable run-days control
+  var editBtn=(t.block&&!isRest)?'<button class="planner-train-edit" onclick="openModal(\'editRunDays\')" title="Adjust run days" aria-label="Adjust run days">\u22EF</button>':'';
+
+  var html='<div class="card planner-card planner-training-card" id="planner-training-card">';
+  html+='<span class="pw-train-watermark" aria-hidden="true">'+watermark+'</span>';
+  html+='<div class="planner-card-head"><span class="planner-card-title"><span class="pw-train-bar"></span>Today\'s training</span>'+badge+editBtn+'</div>';
   html+='<div class="planner-train-line"><span class="planner-train-icon">'+icon+'</span>'
     +'<span class="planner-train-text">'+escapeHtml(text)+'</span></div>';
 
-  // In-block run session detail: the full session string + pace band.
+  // In-block run session detail
   if(t.block&&!isRest){
     if(t.desc&&t.session==='run'&&!t.isRace)html+='<div class="planner-train-desc">'+escapeHtml(t.desc)+'</div>';
     if(t.detail)html+='<div class="planner-train-pace">'+escapeHtml(t.detail)+'</div>';
-    // Strength day that pairs with an easy run afterwards.
-    if(t.easyRun)html+='<div class="planner-train-desc">then easy run · '+escapeHtml(t.easyRun)+(t.easyDetail?' ('+escapeHtml(t.easyDetail)+')':'')+'</div>';
-    // Fuelling reminder — long-run days, weeks 6–10 only.
-    if(t.fuelText)html+='<div class="planner-train-fuel">🥤 '+escapeHtml(t.fuelText)+'</div>';
-    // Race-day strategy / race-week taper reassurance.
+    if(t.easyRun)html+='<div class="planner-train-desc">then easy run \u00B7 '+escapeHtml(t.easyRun)+(t.easyDetail?' ('+escapeHtml(t.easyDetail)+')':'')+'</div>';
+    if(t.fuelText)html+='<div class="planner-train-fuel">\uD83E\uDD64 '+escapeHtml(t.fuelText)+'</div>';
     if(t.isRace&&t.raceStrategy)html+='<div class="planner-train-desc">'+escapeHtml(t.raceStrategy)+'</div>';
-    else if(t.block.phase==='race week'&&!t.isRace)html+='<div class="planner-train-fuel">race week — keep it light</div>';
-    // Forward-only week context sub-line.
+    else if(t.block.phase==='race week'&&!t.isRace)html+='<div class="planner-train-fuel">race week \u2014 keep it light</div>';
     var ctxBits=['Week '+t.block.n+' of '+t.block.total];
     if(t.block.daysToBirthday!=null&&t.block.daysToBirthday>0)ctxBits.push(t.block.daysToBirthday+' days to your birthday');
     ctxBits.push(t.block.daysToRace+' days to race day');
-    html+='<div class="planner-train-context">'+ctxBits.join(' · ')+'</div>';
+    html+='<div class="planner-train-context">'+ctxBits.join(' \u00B7 ')+'</div>';
   }
 
   var logged=plannerTrainingLoggedToday(todayKey);
   if(logged){
-    // Done state — never the buttons once something's on the board today.
-    html+='<div class="planner-train-done">'+escapeHtml(logged)+' ✓ logged</div>';
+    html+='<div class="planner-train-done">'+escapeHtml(logged)+' \u2713 logged</div>';
   }else{
-    // One-tap log buttons — contextual to the planned session, but always give
-    // quick access to the alternatives (life happens). All reuse existing handlers.
     html+='<div class="planner-train-actions">';
     if(isRest){
-      html+='<button class="btn btn-sm btn-accent" onclick="quickLogToday(\'Rest\')">Log rest 🌿</button>';
+      html+='<button class="btn btn-sm pw-train-log-btn" onclick="quickLogToday(\'Rest\')">Log rest \uD83C\uDF3F</button>';
       html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Gym\')">Gym</button>';
       html+='<button class="btn btn-sm btn-ghost" onclick="openModal(\'logRun\')">Run</button>';
     }else if(t.session==='run'){
-      html+='<button class="btn btn-sm btn-accent" onclick="openModal(\'logRun\')">Log run 🏃</button>';
+      html+='<button class="btn btn-sm pw-train-log-btn" onclick="openModal(\'logRun\')">Log run \uD83C\uDFC3</button>';
       html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Gym\')">Gym</button>';
       html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Rest\')">Rest</button>';
-      if(t.runType)html+='<button class="btn btn-sm btn-ghost" onclick="openModal(\'moveRun\',\''+t.runType+'\')" title="Move this run to another day">Move to…</button>';
+      if(t.runType)html+='<button class="btn btn-sm btn-ghost" onclick="openModal(\'moveRun\',\''+t.runType+'\')" title="Move this run to another day">Move to\u2026</button>';
     }else{
-      // Strength day (pairs with a recovery run).
-      html+='<button class="btn btn-sm btn-accent" onclick="quickLogToday(\'Gym\')">Log gym 💪</button>';
+      html+='<button class="btn btn-sm pw-train-log-btn" onclick="quickLogToday(\'Gym\')">Log gym \uD83D\uDCAA</button>';
       if(t.run)html+='<button class="btn btn-sm btn-ghost" onclick="openModal(\'logRun\')">Recovery run</button>';
       else html+='<button class="btn btn-sm btn-ghost" onclick="openModal(\'logRun\')">Run</button>';
       html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Rest\')">Rest</button>';
@@ -583,14 +602,14 @@ function plannerTrainingCard(todayKey){
   return html;
 }
 
-// "Daily Focus (1–3)" card — focus tasks, chooser, cap + completion states (R10.1–R10.4)
+// "Daily Focus (1–3)" — lined-notebook style with rounded-square checkboxes.
 function plannerFocusCard(todayKey){
   var focus=getTodayFocus(todayKey);
   var doneCount=focus.filter(function(t){return t.done}).length;
 
   var html='<div class="card planner-card planner-focus-card">';
-  html+='<div class="planner-card-head"><span class="planner-card-title">Daily Focus</span>'
-    +(focus.length?'<span class="planner-card-count">'+doneCount+'/'+focus.length+'</span>':'<span class="planner-card-hint">1–3 for today</span>')
+  html+='<div class="planner-card-head"><span class="planner-card-title">Daily focus</span>'
+    +(focus.length?'<span class="planner-card-count">'+doneCount+'/'+focus.length+'</span>':'<span class="pw-focus-hint">just 3 things</span>')
     +'</div>';
 
   if(focus.length){
@@ -598,18 +617,17 @@ function plannerFocusCard(todayKey){
     focus.forEach(function(t){
       var canEdit=(typeof openTaskEditModal==='function');
       html+='<div class="focus-row'+(t.done?' done':'')+'">'
-        +'<div class="focus-check" data-tick="focus:'+t.id+'" onclick="plannerToggleFocusDone(\''+t.id+'\')" role="button" tabindex="0" aria-label="Toggle '+escapeHtml(t.text)+'">'+(t.done?'✓':'')+'</div>'
+        +'<div class="focus-check" data-tick="focus:'+t.id+'" onclick="plannerToggleFocusDone(\''+t.id+'\')" role="button" tabindex="0" aria-label="Toggle '+escapeHtml(t.text)+'">'+(t.done?'\u2713':'')+'</div>'
         +'<span class="focus-text"'+(canEdit?' onclick="openTaskEditModal(\''+t.id+'\')" style="cursor:pointer"':'')+'>'+escapeHtml(t.text)+'</span>'
-        +'<button class="focus-remove" onclick="plannerRemoveFocus(\''+t.id+'\')" title="Remove from today\'s focus" aria-label="Remove from today\'s focus">×</button>'
+        +'<button class="focus-remove" onclick="plannerRemoveFocus(\''+t.id+'\')" title="Remove from today\'s focus" aria-label="Remove from today\'s focus">\u00D7</button>'
       +'</div>';
-      // Nested micro-steps (from "Break it down") — the activation-energy win,
-      // shown right where you execute so the next tiny action is always visible.
+      // Nested micro-steps
       var subs=t.subSteps||[];
       if(subs.length){
         html+='<div class="focus-substeps">';
         subs.forEach(function(s,si){
           html+='<div class="focus-substep'+(s.done?' done':'')+'">'
-            +'<div class="focus-substep-tick" onclick="plannerToggleSubStep(\''+t.id+'\','+si+')" role="button" tabindex="0" aria-label="Toggle step '+escapeHtml(s.text)+'">'+(s.done?'✓':'')+'</div>'
+            +'<div class="focus-substep-tick" onclick="plannerToggleSubStep(\''+t.id+'\','+si+')" role="button" tabindex="0" aria-label="Toggle step '+escapeHtml(s.text)+'">'+(s.done?'\u2713':'')+'</div>'
             +'<span class="focus-substep-text">'+escapeHtml(s.text)+'</span>'
           +'</div>';
         });
@@ -618,18 +636,15 @@ function plannerFocusCard(todayKey){
     });
     html+='</div>';
 
-    // Neutral, specific confirmation when everything is done (R10.3)
     if(doneCount===focus.length){
       html+='<div class="planner-focus-done">All '+focus.length+' focus task'+(focus.length===1?'':'s')+' done today.</div>';
     }
 
-    // Allow adding more (up to 3) via the chooser
     if(focus.length<3){
       if(plannerFocusChooserOpen)html+=plannerFocusChooser(todayKey);
       else html+='<button class="btn btn-ghost btn-sm planner-focus-add" onclick="plannerShowFocusChooser()">+ Add a focus task</button>';
     }
   }else{
-    // Empty state → "Pick today's focus" button opening the chooser (R10.4)
     if(plannerFocusChooserOpen){
       html+=plannerFocusChooser(todayKey);
     }else{
@@ -681,11 +696,11 @@ function plannerChooserRow(t){
     +'</button>';
 }
 
-// Quick-capture inline input (R12.1)
+// Quick-capture — dashed torn-note style card (R12.1)
 function plannerCaptureCard(){
   return '<div class="card planner-card planner-capture-card">'
     +'<div class="planner-capture-row">'
-      +'<input type="text" id="planner-capture-input" class="planner-capture-input" placeholder="Quick add a task or commitment…" onkeydown="if(event.key===\'Enter\')plannerQuickCapture()">'
+      +'<input type="text" id="planner-capture-input" class="planner-capture-input" placeholder="jot something down\u2026" onkeydown="if(event.key===\'Enter\')plannerQuickCapture()">'
       +'<button class="planner-capture-btn" onclick="plannerQuickCapture()">+</button>'
     +'</div>'
   +'</div>';

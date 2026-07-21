@@ -4429,9 +4429,9 @@ body.night-mode .focus-progress{background:rgba(255,255,255,0.1)}
 
 /* Tab panes (mirror .sub-page show/hide) */
 .planner-tab{display:none}
-.planner-tab.active{display:block}
+.planner-tab.active{display:block;padding:0 15px}
 
-/* Card shell — a lighter-padded variant of .card, stacked vertically */
+/* Card shell — journal-design spacing: 14px gap, 16-20px padding */
 .planner-card{margin-bottom:14px}
 .planner-card:last-child{margin-bottom:0}
 .planner-card-head{
@@ -4450,87 +4450,171 @@ body.night-mode .focus-progress{background:rgba(255,255,255,0.1)}
 .planner-card-hint{font-size:11px;color:var(--text3);font-weight:500;flex-shrink:0}
 .planner-empty-line{font-size:13px;color:var(--text3);padding:4px 0}
 
-/* ── Home widgets: compact welcome, water cup, habit rows ── */
-/* Compact planner welcome — slim single row, not a hero */
-.planner-welcome{
-  display:flex;align-items:baseline;justify-content:space-between;gap:10px;
-  padding:8px 4px 4px;margin-bottom:10px;
-}
-.planner-welcome-greet{font-family:var(--serif);font-size:17px;font-weight:500;color:var(--fg)}
-.planner-welcome-date{font-size:12px;color:var(--text3);flex-shrink:0}
+/* ── Home widgets: Welcome, Water+Weight, Habits (Journal design) ── */
 
-/* Planner water — single filling cup */
-.planner-water-body{display:flex;align-items:center;gap:16px}
-.pw-cup{
-  position:relative;width:46px;height:60px;flex-shrink:0;
-  border:2px solid var(--accent);border-top:none;
-  border-radius:6px 6px 14px 14px;overflow:hidden;
-  background:var(--accent-dim);
+/* Welcome masthead card */
+.planner-welcome-card{position:relative;padding:20px 16px 16px;overflow:visible}
+.pw-washi-tape{
+  position:absolute;top:-6px;left:16px;
+  width:78px;height:21px;
+  background:rgba(155,123,138,0.4);
+  border-radius:2px;
+  transform:rotate(-4deg);
+  pointer-events:none;
 }
-.pw-cup-fill{
-  position:absolute;left:0;right:0;bottom:0;      /* bottom-anchored */
-  height:0%;                                       /* set inline: height:<pct>% */
-  background:linear-gradient(180deg,var(--secondary),var(--mint));
-  transition:height .35s ease;
+.pw-welcome-greet{
+  font-family:var(--hand);font-size:34px;font-weight:600;
+  color:#6b3a1f;line-height:1.2;display:block;margin-top:6px;
 }
-.pw-cup.full{box-shadow:0 0 0 2px var(--mint) inset}
-.planner-water-info{display:flex;flex-direction:column;gap:8px}
-.pw-figure{font-size:13px;color:var(--text2)}
-.pw-figure b{color:var(--fg);font-size:16px}
+.pw-welcome-date{
+  font-family:var(--serif);font-size:14px;font-style:italic;
+  color:#8a6545;display:block;margin-top:4px;
+}
+.pw-welcome-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.pw-chip{
+  font-size:12px;font-weight:600;padding:5px 10px;
+  border-radius:999px;white-space:nowrap;
+}
+.pw-chip-streak{background:rgba(107,158,122,0.14);color:#6b9e7a}
+.pw-chip-training{background:rgba(212,132,90,0.12);color:#b0563c}
+.pw-chip-focus{background:rgba(201,123,110,0.12);color:#c97b6e}
+.pw-welcome-divider{border:none;border-top:1px solid var(--border);margin:12px 0}
+.pw-welcome-quote{
+  font-family:var(--serif);font-size:14px;font-style:italic;
+  color:#6b3a1f;line-height:1.5;
+}
 
-/* Compact habit rows */
-.pw-habit-row{display:flex;align-items:center;gap:10px;padding:6px 0}
-.pw-habit-row + .pw-habit-row{border-top:1px dashed rgba(160,110,60,0.14)}
+/* Training card — gradient + watermark */
+.planner-training-card{
+  position:relative;overflow:hidden;
+  background:linear-gradient(140deg,#fdeee4,#fbe2d1) !important;
+  border:1px solid rgba(212,132,90,0.28) !important;
+}
+.pw-train-watermark{
+  position:absolute;top:8px;right:12px;
+  font-size:64px;opacity:0.12;pointer-events:none;line-height:1;
+}
+.pw-train-bar{
+  display:inline-block;width:24px;height:4px;
+  background:#d4845a;border-radius:2px;
+  margin-right:8px;vertical-align:middle;
+}
+.pw-train-badge{
+  font-size:10px;font-weight:700;letter-spacing:0.06em;
+  text-transform:uppercase;
+  background:rgba(212,132,90,0.16);color:#b0563c;
+  padding:4px 10px;border-radius:999px;flex-shrink:0;
+}
+.planner-training-card .planner-card-title{
+  font-family:var(--serif);font-size:16px;color:#b0563c;
+}
+.pw-train-log-btn{
+  background:#b0563c !important;color:#fffdf9 !important;
+  border-radius:999px !important;padding:10px 28px !important;
+  border:none;font-weight:600;
+}
+
+/* Habits card — coral top border, stronger shadow */
+.planner-habits-card{
+  border-top:2.5px solid #c97b6e !important;
+  box-shadow:0 4px 18px rgba(160,82,45,0.1) !important;
+}
+.planner-habits-card .planner-card-title{
+  font-family:var(--serif);font-size:16px;font-weight:600;color:#6b3a1f;
+}
+.pw-habit-count{
+  font-family:var(--serif);font-size:14px;color:#c97b6e;font-weight:500;
+}
+.pw-wavy-underline{
+  display:block;width:100%;height:6px;margin-bottom:6px;
+}
+.pw-habits-list{display:flex;flex-direction:column}
+.pw-habit-row{
+  display:flex;align-items:center;gap:10px;padding:14px 0;
+  cursor:pointer;
+  border-bottom:1px dashed rgba(160,110,60,0.14);
+}
+.pw-habit-row:last-child{border-bottom:none}
 .pw-habit-check{
-  width:22px;height:22px;flex-shrink:0;border-radius:50%;
-  border:2px solid rgba(160,110,60,0.3);display:flex;align-items:center;justify-content:center;
-  font-size:12px;color:var(--accent);cursor:pointer;
-}
-.pw-habit-row.done .pw-habit-check{background:#c97b6e;color:#fff;border-color:transparent}
-.pw-habit-row.done .pw-habit-name{color:var(--text3);text-decoration:line-through}
-.pw-habit-name{font-size:14px;color:var(--fg)}
-
-/* ── Today at a glance: commitment rows (time + tick) ── */
-.planner-commitments{display:flex;flex-direction:column;gap:8px}
-.commit-row{
-  display:flex;align-items:center;gap:12px;
-  padding:10px 12px;
-  background:var(--bg3);border:1px solid var(--border);
-  border-radius:var(--radius-xs);
-  transition:background 160ms var(--ease),opacity 160ms var(--ease);
-}
-.commit-row.done{opacity:0.6}
-.commit-check{
-  width:24px;height:24px;flex-shrink:0;
+  width:23px;height:23px;flex-shrink:0;border-radius:50%;
+  border:2px solid rgba(160,110,60,0.3);
+  background:transparent;
   display:flex;align-items:center;justify-content:center;
-  border:2px solid var(--border);border-radius:50%;
-  background:var(--bg2);cursor:pointer;
-  font-size:13px;font-weight:700;color:var(--white);
-  transition:all 160ms var(--ease);
+  font-size:12px;font-weight:700;color:#fff;
+  transition:all 160ms ease;
 }
-.commit-check:hover{border-color:var(--accent)}
-.commit-row.done .commit-check{background:var(--accent);border-color:var(--accent)}
-.commit-body{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;min-width:0;flex:1}
+.pw-habit-row.done .pw-habit-check{
+  background:#c97b6e;border-color:transparent;
+}
+.pw-habit-name{font-size:14px;color:#2c1a0e}
+.pw-habit-row.done .pw-habit-name{color:#b89870;text-decoration:line-through}
+
+/* ── Schedule card — vertical dashed timeline ── */
+.planner-schedule-card .planner-card-title{
+  font-family:var(--serif);font-size:16px;font-weight:600;color:#6b3a1f;
+}
+.pw-schedule-timeline{
+  position:relative;
+  padding-left:24px;
+  border-left:2px dashed rgba(160,110,60,0.14);
+  margin-left:6px;
+}
+.pw-sched-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 0;position:relative;
+  transition:opacity 160ms ease;
+}
+.pw-sched-row.done{opacity:0.6}
+.pw-sched-dot{
+  position:absolute;left:-29px;top:50%;transform:translateY(-50%);
+  width:8px;height:8px;border-radius:50%;flex-shrink:0;
+}
+.pw-sched-body{
+  display:flex;align-items:center;gap:10px;flex:1;min-width:0;flex-wrap:wrap;
+}
+.pw-sched-check{
+  width:22px;height:22px;flex-shrink:0;border-radius:50%;
+  border:2px solid rgba(160,110,60,0.3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;color:#fff;cursor:pointer;
+  transition:all 160ms ease;
+}
+.pw-sched-check.done{background:#c97b6e;border-color:transparent}
+.pw-sched-text{font-size:14px;font-weight:500;color:var(--fg);min-width:0}
+.pw-sched-row.done .pw-sched-text{text-decoration:line-through;color:#b89870}
+.pw-sched-time{
+  font-size:13px;font-weight:600;color:#8a6545;
+  margin-left:auto;white-space:nowrap;
+}
+.pw-sched-time-task{
+  font-family:var(--serif);font-size:12px;font-style:italic;
+  color:#b89870;font-weight:400;
+}
+.pw-now-line{
+  position:relative;padding:8px 0;
+  display:flex;align-items:center;gap:8px;
+}
+.pw-now-line::before,.pw-now-line::after{
+  content:'';flex:1;height:0;
+  border-top:1px dashed #c97b6e;
+}
+.pw-now-text{
+  font-family:var(--hand);font-size:13px;font-style:italic;
+  color:#c97b6e;white-space:nowrap;
+}
 .commit-delete{
   flex-shrink:0;width:24px;height:24px;
   display:flex;align-items:center;justify-content:center;
   border:none;background:none;color:var(--text3);cursor:pointer;
-  font-size:15px;border-radius:var(--radius-xs);transition:all 160ms var(--ease);
+  font-size:15px;border-radius:6px;transition:all 160ms ease;
 }
-.commit-delete:hover{background:var(--red-dim,rgba(224,96,127,0.12));color:var(--red)}
-.commit-text{font-size:14px;font-weight:500;color:var(--fg)}
-.commit-row.done .commit-text{text-decoration:line-through;color:var(--text3)}
-.commit-time{
-  font-size:11px;font-weight:600;color:var(--text2);
-  background:var(--muted);padding:2px 8px;
-  border-radius:var(--radius-pill);white-space:nowrap;
-}
+.commit-delete:hover{background:rgba(224,96,127,0.12);color:#c97b6e}
 
 /* Today's training line */
 .planner-train-line{
   display:flex;align-items:center;gap:10px;
   margin-top:12px;padding:10px 12px;
-  background:var(--accent-dim);border-radius:var(--radius-xs);
+  border-radius:8px;
 }
 .planner-train-icon{font-size:16px;line-height:1;flex-shrink:0}
 .planner-train-text{font-size:13px;font-weight:500;color:#b0563c}
@@ -4540,8 +4624,8 @@ body.night-mode .focus-progress{background:rgba(255,255,255,0.1)}
 .planner-train-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .planner-train-done{
   margin-top:12px;padding:10px 12px;
-  background:var(--mint-dim);border-radius:var(--radius-xs);
-  font-size:13px;font-weight:600;color:var(--mint-dark,#4f7a5e);
+  background:rgba(107,158,122,0.12);border-radius:8px;
+  font-size:13px;font-weight:600;color:#4f7a5e;
 }
 
 /* ── HM block: training card detail lines (addendum §2.2) ── */
@@ -4549,10 +4633,10 @@ body.night-mode .focus-progress{background:rgba(255,255,255,0.1)}
   margin-left:auto;background:none;border:none;cursor:pointer;
   color:var(--text3);font-size:18px;line-height:1;padding:2px 6px;border-radius:8px;
 }
-.planner-train-edit:hover{color:var(--accent-dark);background:var(--accent-dim)}
+.planner-train-edit:hover{color:#b0563c;background:rgba(212,132,90,0.12)}
 .planner-train-desc{margin-top:8px;font-size:13px;font-weight:500;color:var(--fg)}
 .planner-train-pace{margin-top:3px;font-size:12px;color:var(--text2);font-family:var(--mono,inherit)}
-.planner-train-fuel{margin-top:6px;font-size:12px;color:var(--accent-dark);font-weight:500}
+.planner-train-fuel{margin-top:6px;font-size:12px;color:#b0563c;font-weight:500}
 .planner-train-context{
   margin-top:10px;padding-top:8px;border-top:1px solid var(--border);
   font-size:11px;color:var(--text3);
@@ -4594,13 +4678,68 @@ body.night-mode .focus-progress{background:rgba(255,255,255,0.1)}
   font-family:var(--mono,inherit);
 }
 
-/* ── One-tap weight row on the water card (3.3) ── */
+/* ── One-tap weight row on the water card (3.3) — LEGACY kept for other pages ── */
 .planner-weight-row{
   display:flex;align-items:center;justify-content:space-between;gap:10px;
   margin-top:12px;padding-top:12px;border-top:1px solid var(--border);
 }
 .planner-weight-label{font-size:13px;color:var(--text2)}
 .planner-weight-label b{color:var(--fg)}
+
+/* ── Water + Weight side-by-side row (Journal design) ── */
+.planner-water-weight-row{
+  display:grid;grid-template-columns:1fr 1fr;gap:14px;
+  margin-bottom:14px;
+}
+.planner-water-weight-row .planner-card{margin-bottom:0}
+.pw-water-mini,.pw-weight-mini{
+  display:flex;flex-direction:column;align-items:center;
+  text-align:center;padding:16px 12px;
+}
+.pw-mini-title{
+  font-family:var(--serif);font-size:16px;font-weight:600;
+  color:#6b3a1f;margin-bottom:10px;align-self:flex-start;
+}
+.pw-glass-illus{
+  width:38px;height:48px;
+  border:2px solid #8fb4c9;
+  border-radius:4px 4px 8px 8px;
+  overflow:hidden;position:relative;
+  margin-bottom:8px;
+}
+.pw-glass-fill{
+  position:absolute;left:0;right:0;bottom:0;
+  background:linear-gradient(#8fb4c9,#6e93ae);
+  transition:height 0.35s ease;
+}
+.pw-water-count{
+  font-family:var(--serif);font-size:22px;font-weight:600;
+  color:var(--fg);line-height:1;
+}
+.pw-water-sub{font-size:12px;color:#8a6545;margin-top:4px}
+.pw-water-btn{
+  margin-top:10px;
+  background:#7a8fa6;color:#fffdf9;border:none;
+  border-radius:999px;padding:6px 16px;
+  font-size:12px;font-weight:600;cursor:pointer;
+  transition:all 160ms ease;
+}
+.pw-water-btn:hover{transform:scale(1.03);box-shadow:0 2px 6px rgba(122,143,166,0.3)}
+.pw-weight-val{
+  font-family:var(--serif);font-size:26px;font-weight:600;
+  color:var(--fg);line-height:1;margin-bottom:4px;
+}
+.pw-weight-change{font-size:12px;margin-bottom:8px}
+.pw-weight-down{color:#6b9e7a}
+.pw-weight-up{color:#c97b6e}
+.pw-weight-btn{
+  margin-top:auto;
+  background:transparent;color:#8a6545;border:1.5px solid rgba(160,110,60,0.3);
+  border-radius:999px;padding:6px 16px;
+  font-size:12px;font-weight:600;cursor:pointer;
+  transition:all 160ms ease;
+}
+.pw-weight-btn:hover{border-color:#8a6545;background:rgba(160,110,60,0.06)}
 
 /* ── Set up next week card (3.4) ── */
 .planner-nextweek-sub{font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.4}
@@ -4626,40 +4765,52 @@ body.night-mode .focus-progress{background:rgba(255,255,255,0.1)}
 .nextweek-text{flex:1;min-width:0;font-size:14px;font-weight:500;color:var(--fg)}
 .nextweek-bring{flex-shrink:0}
 
-/* ── Daily Focus card ── */
+/* ── Daily Focus card — lined notebook style ── */
+.planner-focus-card{
+  background:
+    repeating-linear-gradient(transparent, transparent 29px, rgba(160,110,60,0.12) 29px, rgba(160,110,60,0.12) 30px),
+    #fffdf9 !important;
+  border-left:1.5px solid rgba(201,123,110,0.45) !important;
+  padding-left:16px !important;
+}
+.planner-focus-card .planner-card-title{
+  font-family:var(--serif);font-size:16px;font-weight:600;color:#6b3a1f;
+}
+.pw-focus-hint{
+  font-family:var(--hand);font-size:15px;font-style:italic;color:#b89870;
+}
 .planner-focus-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
 .focus-row{
   display:flex;align-items:center;gap:12px;
-  padding:10px 12px;
-  background:var(--bg3);border:1px solid var(--border);
-  border-radius:var(--radius-xs);
-  transition:opacity 160ms var(--ease);
+  padding:10px 0;
+  background:transparent;border:none;
+  transition:opacity 160ms ease;
 }
-.focus-row.done{opacity:0.6}
+.focus-row.done{opacity:0.7}
 .focus-check{
-  width:24px;height:24px;flex-shrink:0;
+  width:21px;height:21px;flex-shrink:0;
   display:flex;align-items:center;justify-content:center;
-  border:2px solid var(--border);border-radius:50%;
-  background:var(--bg2);cursor:pointer;
-  font-size:13px;font-weight:700;color:var(--white);
-  transition:all 160ms var(--ease);
+  border:2px solid rgba(160,110,60,0.3);border-radius:6px;
+  background:transparent;cursor:pointer;
+  font-size:11px;font-weight:700;color:#fff;
+  transition:all 160ms ease;
 }
-.focus-check:hover{border-color:var(--accent)}
-.focus-row.done .focus-check{background:var(--accent);border-color:var(--accent)}
+.focus-check:hover{border-color:#6b9e7a}
+.focus-row.done .focus-check{background:#6b9e7a;border-color:transparent}
 .focus-text{flex:1;min-width:0;font-size:14px;font-weight:500;color:var(--fg)}
-.focus-row.done .focus-text{text-decoration:line-through;color:var(--text3)}
+.focus-row.done .focus-text{text-decoration:line-through;color:#b89870}
 .focus-remove{
   flex-shrink:0;width:26px;height:26px;
   display:flex;align-items:center;justify-content:center;
   border:none;background:transparent;color:var(--text3);
   font-size:18px;line-height:1;cursor:pointer;border-radius:8px;
-  transition:all 160ms var(--ease);
+  transition:all 160ms ease;
 }
-.focus-remove:hover{background:var(--accent-dim);color:var(--accent-dark)}
+.focus-remove:hover{background:rgba(201,123,110,0.12);color:#c97b6e}
 .planner-focus-done{
-  font-size:13px;font-weight:500;color:var(--accent-dark);
-  background:var(--accent-dim);padding:8px 12px;
-  border-radius:var(--radius-xs);margin-bottom:10px;
+  font-size:13px;font-weight:500;color:#6b9e7a;
+  background:rgba(107,158,122,0.1);padding:8px 12px;
+  border-radius:8px;margin-bottom:10px;
 }
 .planner-focus-add,.planner-focus-pick{margin-top:2px}
 
@@ -4708,29 +4859,46 @@ body.night-mode .focus-progress{background:rgba(255,255,255,0.1)}
 }
 .planner-chooser-text{font-size:13px;color:var(--fg);min-width:0}
 
-/* ── Quick capture & inline add rows ── */
+/* ── Quick capture — dashed torn-note card ── */
+.planner-capture-card{
+  border:2px dashed rgba(160,110,60,0.3) !important;
+  background:#fdf6e8 !important;
+  border-radius:14px !important;
+  transform:rotate(-0.5deg);
+  box-shadow:none !important;
+}
 .planner-capture-row,.planner-week-add-row,.planner-intention-row{
   display:flex;gap:8px;align-items:center;
 }
 .planner-week-add-row{margin-top:12px}
 .planner-capture-input,.planner-intention-input{
   flex:1;min-width:0;padding:9px 12px;
+  background:transparent;border:none;
+  border-radius:8px;color:#8a6545;
+  font-family:var(--hand);font-size:19px;outline:none;
+  transition:border-color 160ms ease;
+}
+.planner-capture-card .planner-capture-input{
+  background:transparent;border:none;
+  font-family:var(--hand);font-size:19px;color:#8a6545;
+}
+.planner-intention-input{
   background:var(--bg3);border:1px solid var(--border);
-  border-radius:var(--radius-xs);color:var(--fg);
-  font-family:var(--sans);font-size:13px;outline:none;
-  transition:border-color 160ms var(--ease);
+  font-family:var(--sans);font-size:13px;color:var(--fg);
+  border-radius:8px;
 }
 .planner-capture-input:focus,.planner-intention-input:focus{border-color:var(--accent)}
-.planner-capture-input::placeholder,.planner-intention-input::placeholder{color:var(--text3)}
+.planner-capture-input::placeholder{color:#8a6545;opacity:0.7}
+.planner-intention-input::placeholder{color:var(--text3)}
 .planner-capture-btn{
-  flex-shrink:0;width:36px;height:36px;
+  flex-shrink:0;width:38px;height:38px;
   display:flex;align-items:center;justify-content:center;
-  background:var(--accent);color:var(--white);border:none;
-  border-radius:var(--radius-xs);cursor:pointer;
-  font-size:20px;font-weight:600;line-height:1;
-  transition:all 160ms var(--ease);
+  background:#a0522d;color:#fffdf9;border:none;
+  border-radius:50%;cursor:pointer;
+  font-size:20px;font-weight:700;line-height:1;
+  transition:all 160ms ease;
 }
-.planner-capture-btn:hover{transform:scale(1.05);box-shadow:var(--shadow-glow)}
+.planner-capture-btn:hover{transform:scale(1.05);box-shadow:0 2px 8px rgba(160,82,45,0.2)}
 
 /* ── This-week: intention ── */
 .planner-intention-btn{
@@ -4927,12 +5095,7 @@ svg.ring{display:block}
   content:'✨';position:absolute;bottom:12px;right:18px;
   font-size:24px;opacity:0.6;pointer-events:none;z-index:0;
 }
-/* Planner welcome row — same signature sparkle, kept subtle for a slim row */
-.planner-welcome{position:relative;overflow:hidden}
-.planner-welcome::after{
-  content:'✨';position:absolute;bottom:6px;right:12px;
-  font-size:16px;opacity:0.45;pointer-events:none;
-}
+/* Planner welcome — washi-tape card (new journal design) */
 
 /* (#6) Streak ring — small ring with 🔥 inside, sits inside the streak pill */
 .hero-streak-ring{width:34px;height:34px;display:inline-flex;line-height:0;flex-shrink:0}
