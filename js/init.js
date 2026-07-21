@@ -356,7 +356,7 @@ opts=opts||{};
 // Celebrations scaled down for a calmer, less over-stimulating hit: cap the
 // piece count and duration regardless of what a caller requests, so even the
 // big milestone bursts stay gentle.
-var duration=Math.min(opts.duration||1600,1800);var count=Math.min(opts.count||40,55);var colors=opts.colors||['#9B7ED6','#E75F9C','#B79BE6','#7FA8D8','#7ED6B0','#F0C860','#C99BE6','#F59E0B'];
+var duration=Math.min(opts.duration||1600,1800);var count=Math.min(opts.count||40,55);var colors=opts.colors||['#c97b6e','#d4a96a','#6b9e7a','#9b7b8a','#a0522d'];
 if(!confettiCanvas){confettiCanvas=document.createElement('canvas');confettiCanvas.style.cssText='position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999';document.body.appendChild(confettiCanvas)}
 var cv=confettiCanvas;var ctx=cv.getContext('2d');cv.width=window.innerWidth;cv.height=window.innerHeight;
 var pieces=[];for(var i=0;i<count;i++){pieces.push({x:cv.width*(.2+Math.random()*.6),y:cv.height*-.1-Math.random()*cv.height*.3,w:6+Math.random()*6,h:4+Math.random()*4,color:colors[Math.floor(Math.random()*colors.length)],vx:(Math.random()-.5)*6,vy:2+Math.random()*4,rot:Math.random()*360,vr:(Math.random()-.5)*8,opacity:1})}
@@ -370,7 +370,7 @@ frame()}
 
 function showCelebrationToast(msg,emoji){
 var toast=document.createElement('div');
-toast.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#9B7ED6,#E75F9C);color:#fff;padding:12px 24px;border-radius:14px;font-family:var(--sans);font-size:14px;font-weight:600;z-index:10000;box-shadow:0 8px 32px rgba(155,126,214,0.35);animation:floatIn .3s ease;display:flex;align-items:center;gap:8px';
+toast.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#6b3a1f,#4a2713);color:#fffdf9;padding:12px 24px;border-radius:14px;font-family:var(--sans);font-size:14px;font-weight:600;z-index:10000;box-shadow:0 8px 32px rgba(107,58,31,0.35);animation:floatIn .3s ease;display:flex;align-items:center;gap:8px';
 toast.innerHTML='<span style="font-size:20px">'+(emoji||'\uD83C\uDF89')+'</span> '+msg;
 document.body.appendChild(toast);
 setTimeout(function(){toast.style.transition='opacity .4s,transform .4s';toast.style.opacity='0';toast.style.transform='translateX(-50%) translateY(-10px)';setTimeout(function(){toast.remove()},400)},2800)}

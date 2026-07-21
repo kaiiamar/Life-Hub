@@ -5,7 +5,7 @@
 // supersedes the ?v= query strings on the script/style tags in index.html
 // (those are left in place — harmless). On activate, any cache whose name
 // doesn't match the current version is deleted.
-var VERSION='v26';
+var VERSION='v27';
 var CACHE='lifehub-shell-'+VERSION;
 
 // App shell — precached at install time. Paths are relative to the SW scope
