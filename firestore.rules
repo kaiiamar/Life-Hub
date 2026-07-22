@@ -25,7 +25,7 @@ service cloud.firestore {
     // Locked to Kai's single account.
     match /users/kai {
       allow read, write: if request.auth != null
-        && request.auth.uid == 'REPLACE_WITH_KAI_UID';
+        && request.auth.uid == 'iZyjlqZ6FoQhw3skIM4AJnIhEh03';
     }
 
     // TEMPORARY bootstrap rule — use ONLY to discover your uid, then remove.
