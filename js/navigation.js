@@ -410,44 +410,12 @@ applyTheme();
 
 
 // ── EXPORT / IMPORT ──
+// The persistence module owns schema validation, automatic rollback backups,
+// safe download names, and revision-aware import queuing. These wrappers keep
+// the existing HTML actions stable.
 function exportLifeHubData(){
-  try{
-    var payload={
-      version:1,
-      exportedAt:new Date().toISOString(),
-      state:STATE
-    };
-    var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-    var url=URL.createObjectURL(blob);
-    var a=document.createElement('a');
-    a.href=url;
-    a.download='life-hub-backup-'+localDateKey(new Date())+'.json';
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    if(typeof showCelebrationToast==='function')showCelebrationToast('Backup saved','📥');
-  }catch(e){
-    alert('Export failed: '+e.message);
-  }
+  try{return downloadLifeHubBackup()}
+  catch(e){alert('Export failed: '+e.message)}
 }
 
-function importLifeHubData(){
-  var fileInput=document.getElementById('import-file');
-  if(!fileInput||!fileInput.files||!fileInput.files[0])return;
-  var file=fileInput.files[0];
-  var reader=new FileReader();
-  reader.onload=function(e){
-    try{
-      var parsed=JSON.parse(e.target.result);
-      if(!parsed.state||typeof parsed.state!=='object')throw new Error('Invalid backup file');
-      if(!confirm('This will overwrite all current data with the backup. Continue?'))return;
-      STATE=parsed.state;
-      saveState();
-      closeModal();
-      if(typeof showCelebrationToast==='function')showCelebrationToast('Data imported — refreshing','📤');
-      setTimeout(function(){location.reload()},1000);
-    }catch(err){
-      alert('Import failed: '+err.message);
-    }
-  };
-  reader.readAsText(file);
-}
+function importLifeHubData(){return importLifeHubBackup()}

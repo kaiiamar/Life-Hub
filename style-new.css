@@ -5294,3 +5294,31 @@ body.night-mode .hb-week-day.done{background:var(--grad-accent)}
 .fill{height:7px;border-radius:5px;background:var(--surface-dim);margin-top:10px;overflow:hidden}
 .fill i{display:block;height:100%;border-radius:5px;background:var(--grad-accent);transition:width .5s var(--ease)}
 .fill.mint i{background:var(--grad-green)}
+
+
+/* ── DATA TRUST, SYNC CONFLICTS & UNDO ── */
+.data-trust-banner{
+  position:fixed;left:50%;bottom:18px;z-index:95;transform:translateX(-50%);
+  width:min(680px,calc(100vw - 28px));display:flex;align-items:center;
+  justify-content:space-between;gap:12px;padding:12px 14px;
+  color:var(--fg);background:var(--glass-strong);border:1px solid var(--amber);
+  border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+}
+.data-trust-message{font-size:13px;line-height:1.35}
+.sync-conflict-list{display:flex;flex-direction:column;gap:10px}
+.sync-conflict-item{padding:14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg2)}
+.sync-conflict-item strong{display:block;font-size:14px;text-transform:capitalize}
+.sync-conflict-meta{font-size:12px;color:var(--text2);margin:4px 0 10px}
+.sync-conflict-actions{display:flex;gap:8px;flex-wrap:wrap}
+.undo-toast{
+  position:fixed;right:20px;bottom:20px;z-index:110;display:flex;align-items:center;
+  gap:16px;padding:12px 16px;border-radius:var(--radius-sm);background:#33271f;
+  color:#fffdf9;box-shadow:var(--shadow-lg);font-size:13px;font-weight:600;
+}
+.undo-toast button{border:0;background:none;color:#f1c27d;font:inherit;cursor:pointer;text-decoration:underline}
+@media(max-width:560px){
+  .data-trust-banner{bottom:10px;align-items:flex-start;flex-direction:column}
+  .undo-toast{left:14px;right:14px;bottom:14px;justify-content:space-between}
+  .sync-conflict-actions .btn{flex:1;justify-content:center}
+}

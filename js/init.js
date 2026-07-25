@@ -203,9 +203,10 @@ loadFromCloud(function(){
   if(!STATE.reviews.quarterly)STATE.reviews.quarterly={};
   if(!STATE.roadmapChecklist)STATE.roadmapChecklist={};
   if(!STATE.roadmapDueDates)STATE.roadmapDueDates={};
-  setSyncStatus('saved');setTimeout(function(){setSyncStatus('idle')},2000);
+  finishDataBootstrap();
   try{renderPlanner()}catch(e){console.error('Render error:',e)}
   try{updateAppBadge()}catch(e){}
+  setupReminders();
 });
 startClock();
 
@@ -344,7 +345,8 @@ function setupInAppReminders(){
     })
   },60000)
 }
-setupReminders();
+// Reminder setup starts after persistence bootstrap above, so it never seeds
+// or syncs reminders against stale/default state.
 
 // ============================================================
 // CONFETTI CELEBRATION

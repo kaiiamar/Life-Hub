@@ -3,13 +3,11 @@
 // ============================================================
 var KEY = 'yp26_v3';
 var db = null, auth = null, syncDoc = null, _syncTimeout = null, _firebaseReady = false;
-// Auth + conflict-tracking state. Cloud reads/writes are gated on _authUser so
-// an unauthenticated client can never touch Firestore. _lastCloudUpdatedAt is
-// the updatedAt stamp of the last cloud state this tab wrote or pulled; it lets
-// us detect when another device has written a newer version (see _refreshFromCloud).
+// Authentication is shared by Firestore sync and the protected notification API.
+// Revisioned domain sync, offline queuing and conflicts live in persistence.js.
 var _authUser = null, _lastCloudUpdatedAt = null, _bootCb = null, _bootDone = false;
 
-function setSyncStatus(s){var el=document.getElementById('sync-status');if(!el)return;var m={saving:{text:'Syncing...',color:'var(--amber)'},saved:{text:'Synced \u2713',color:'var(--mint)'},error:{text:'Offline \u2014 saved locally',color:'var(--text3)'},idle:{text:'',color:'transparent'}};var x=m[s]||m.idle;el.textContent=x.text;el.style.color=x.color}
+function setSyncStatus(s){var el=document.getElementById('sync-status');if(!el)return;var m={saving:{text:'Syncing...',color:'var(--amber)'},queued:{text:'Queued offline',color:'var(--amber)'},saved:{text:'Synced \u2713',color:'var(--mint)'},conflict:{text:'Review sync',color:'var(--accent)'},storage:{text:'Storage needs attention',color:'var(--amber)'},error:{text:'Offline \u2014 queued',color:'var(--text3)'},idle:{text:'',color:'transparent'}};var x=m[s]||m.idle;el.textContent=x.text;el.style.color=x.color;el.setAttribute('aria-live','polite')}
 
 try{
   var firebaseConfig={apiKey:"AIzaSyB8SO0TemJ-D-9bktrmRTVjQrY5CIHdlRQ",authDomain:"kai-life-hub.firebaseapp.com",projectId:"kai-life-hub",storageBucket:"kai-life-hub.firebasestorage.app",messagingSenderId:"82635096592",appId:"1:82635096592:web:bccea46147417eb2fe8095"};
@@ -49,30 +47,9 @@ function lifeHubApiFetch(url,options){
   });
 }
 
-// localStorage always saves (device-local, not exposed). Cloud sync only runs
-// when signed in — an unauthenticated client never writes to Firestore.
-function saveState(){try{localStorage.setItem(KEY,JSON.stringify(STATE))}catch(e){}
-  if(!_firebaseReady||!syncDoc||!_authUser)return;
-  clearTimeout(_syncTimeout);setSyncStatus('saving');
-  _syncTimeout=setTimeout(function(){_syncTimeout=null;_cloudWrite()},1500)}
-
-// The actual Firestore write, factored out so a pending debounced save can be
-// flushed immediately when the tab is hidden/closed (see visibility handlers).
-function _cloudWrite(){
-  if(!_firebaseReady||!syncDoc||!_authUser)return;
-  var stamp=new Date().toISOString();
-  return syncDoc.set({state:JSON.stringify(STATE),updatedAt:stamp}).then(function(){
-    _lastCloudUpdatedAt=stamp;setSyncStatus('saved');setTimeout(function(){setSyncStatus('idle')},2000)
-  }).catch(function(e){console.warn('Sync error:',e);setSyncStatus('error')});
-}
-function _flushCloudWrite(){if(_syncTimeout){clearTimeout(_syncTimeout);_syncTimeout=null;_cloudWrite()}}
-
-function loadFromCloud(onDone){if(!_firebaseReady||!syncDoc){onDone();return}
-  _ensureSignedIn(function(user){
-    if(!user){onDone();return}
-    syncDoc.get().then(function(doc){if(doc.exists&&doc.data().state){try{STATE=JSON.parse(doc.data().state);_lastCloudUpdatedAt=doc.data().updatedAt||null;try{localStorage.setItem(KEY,JSON.stringify(STATE))}catch(e){}}catch(e){console.warn('Cloud parse error:',e)}}onDone()}).catch(function(e){console.warn('Cloud load failed:',e);setSyncStatus('error');onDone()})
-  });
-}
+// Persistence is implemented in js/persistence.js, loaded immediately after
+// this file. Keeping authentication and data sync separate makes migrations,
+// conflict handling and offline recovery independently testable.
 
 // ============================================================
 // AUTH GATE (email/password, single account)
@@ -130,46 +107,6 @@ function lhSignIn(){
     if(err)err.textContent=(e&&e.message)?e.message:'Sign-in failed.';
   }).finally(function(){if(btn){btn.disabled=false;btn.textContent='Sign in'}});
 }
-
-// ============================================================
-// CROSS-DEVICE CONFLICT MITIGATION
-// ============================================================
-// State is one last-write-wins JSON blob. To reduce the "stale tab clobbers a
-// newer device" data-loss window: flush any pending write when the tab is
-// hidden, and re-pull from the cloud when the tab regains focus. If the remote
-// copy is newer than what this tab last synced, adopt it and re-render before
-// the user can overwrite it with stale data.
-function _rerenderCurrentPage(){
-  try{
-    var active=document.querySelector('.page.active');
-    if(!active){if(typeof renderPlanner==='function')renderPlanner();return}
-    var page=active.id.replace(/^page-/,'');
-    if(typeof renderPage==='function')renderPage(page);
-    else if(typeof renderPlanner==='function')renderPlanner();
-  }catch(e){console.warn('Re-render after refresh failed:',e)}
-}
-function _refreshFromCloud(){
-  if(!_firebaseReady||!syncDoc||!_authUser)return;
-  syncDoc.get().then(function(doc){
-    if(!doc.exists||!doc.data().state)return;
-    var remoteStamp=doc.data().updatedAt||null;
-    if(remoteStamp&&remoteStamp!==_lastCloudUpdatedAt){
-      try{
-        STATE=JSON.parse(doc.data().state);
-        _lastCloudUpdatedAt=remoteStamp;
-        try{localStorage.setItem(KEY,JSON.stringify(STATE))}catch(e){}
-        _rerenderCurrentPage();
-        setSyncStatus('saved');setTimeout(function(){setSyncStatus('idle')},1500);
-      }catch(e){console.warn('Refresh parse error:',e)}
-    }
-  }).catch(function(e){console.warn('Focus refresh failed:',e)});
-}
-document.addEventListener('visibilitychange',function(){
-  if(document.hidden)_flushCloudWrite();
-  else _refreshFromCloud();
-});
-window.addEventListener('focus',_refreshFromCloud);
-window.addEventListener('pagehide',_flushCloudWrite);
 
 function g(){return Math.random().toString(36).slice(2,9)}
 

@@ -1,39 +1,24 @@
 rules_version = '2';
 
-// Life Hub is a single-user personal app. All data lives in one document:
-// users/kai. These rules deny everything by default and allow read/write to
-// that one document ONLY for Kai's authenticated account.
-//
-// SETUP (do this once in the Firebase console — see notes below):
-//   1. Authentication > Sign-in method > enable "Email/Password".
-//   2. Authentication > Users > "Add user" and create your account
-//      (email + password). This is the only login that will ever exist.
-//   3. Sign in to the app once. It logs your uid to the browser console:
-//      "LifeHub signed in as <email> uid: <THE_UID>".
-//      (You can also copy the User UID from Authentication > Users.)
-//   4. Paste that uid below in place of REPLACE_WITH_KAI_UID.
-//   5. Firestore Database > Rules > paste this file and Publish.
-//
-// Until step 4/5 are done, use the temporary "any signed-in user" rule at the
-// bottom (commented out) so you can sign in and discover your uid. Then switch
-// to the uid-locked rule and re-publish. Do NOT leave the temporary rule in
-// production — any account in this Firebase project could read your data.
-
+// Life Hub is a single-user personal app. The legacy `state` field remains an
+// untouched rollback source while revisioned data is stored under
+// users/kai/domains/{domain}. Only Kai's authenticated account can access
+// either location; every other document is denied by default.
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Locked to Kai's single account.
-    match /users/kai {
-      allow read, write: if request.auth != null
+    function isKai() {
+      return request.auth != null
         && request.auth.uid == 'iZyjlqZ6FoQhw3skIM4AJnIhEh03';
     }
 
-    // TEMPORARY bootstrap rule — use ONLY to discover your uid, then remove.
-    // match /users/kai {
-    //   allow read, write: if request.auth != null;
-    // }
+    match /users/kai {
+      allow read, write: if isKai();
 
-    // Deny everything else.
+      match /domains/{domain} {
+        allow read, write: if isKai();
+      }
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
