@@ -323,7 +323,7 @@ function getReminders(){
     {id:'water',label:'Water check',emoji:'\uD83D\uDCA7',message:'Keep sipping! Stay hydrated.',hour:13,minute:0,enabled:true,condition:'water'},
     {id:'gratitude',label:'Gratitude journal',emoji:'\uD83D\uDE4F',message:'Log your win and gratitude for today',hour:21,minute:0,enabled:true,condition:'gratitude'},
     {id:'sleep',label:'Bedtime reminder',emoji:'\uD83D\uDE34',message:'Time to wind down. 10pm bedtime!',hour:21,minute:30,enabled:true,condition:'none'},
-    {id:'gym',label:'Gym reminder',emoji:'\uD83C\uDFCB\uFE0F',message:'Don\'t skip today \u2014 get it done!',hour:6,minute:0,enabled:false,condition:'none'}
+    {id:'gym',label:'Training option',emoji:'\uD83C\uDFCB\uFE0F',message:'Training is on the plan today. Adjust or log it when useful.',hour:6,minute:0,enabled:false,condition:'none'}
   ];
   return STATE.reminders
 }
@@ -357,7 +357,7 @@ opts=opts||{};
 // Celebrations scaled down for a calmer, less over-stimulating hit: cap the
 // piece count and duration regardless of what a caller requests, so even the
 // big milestone bursts stay gentle.
-var duration=Math.min(opts.duration||1600,1800);var count=Math.min(opts.count||40,55);var colors=opts.colors||['#c97b6e','#d4a96a','#6b9e7a','#9b7b8a','#a0522d'];
+var duration=Math.min(opts.duration||1600,1800);var count=Math.min(opts.count||40,55);var colors=opts.colors||['#3F5A44','#C98A2D','#6E93AE','#B0563C','#EFEAE0'];
 if(!confettiCanvas){confettiCanvas=document.createElement('canvas');confettiCanvas.style.cssText='position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999';document.body.appendChild(confettiCanvas)}
 var cv=confettiCanvas;var ctx=cv.getContext('2d');cv.width=window.innerWidth;cv.height=window.innerHeight;
 var pieces=[];for(var i=0;i<count;i++){pieces.push({x:cv.width*(.2+Math.random()*.6),y:cv.height*-.1-Math.random()*cv.height*.3,w:6+Math.random()*6,h:4+Math.random()*4,color:colors[Math.floor(Math.random()*colors.length)],vx:(Math.random()-.5)*6,vy:2+Math.random()*4,rot:Math.random()*360,vr:(Math.random()-.5)*8,opacity:1})}
@@ -371,7 +371,7 @@ frame()}
 
 function showCelebrationToast(msg,emoji){
 var toast=document.createElement('div');
-toast.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#6b3a1f,#4a2713);color:#fffdf9;padding:12px 24px;border-radius:14px;font-family:var(--sans);font-size:14px;font-weight:600;z-index:10000;box-shadow:0 8px 32px rgba(107,58,31,0.35);animation:floatIn .3s ease;display:flex;align-items:center;gap:8px';
+toast.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#314836;color:#fff;padding:12px 24px;border-radius:14px;font-family:var(--sans);font-size:14px;font-weight:600;z-index:10000;box-shadow:0 8px 32px rgba(63,90,68,0.28);animation:floatIn .3s ease;display:flex;align-items:center;gap:8px';
 toast.innerHTML='<span style="font-size:20px">'+(emoji||'\uD83C\uDF89')+'</span> '+msg;
 document.body.appendChild(toast);
 setTimeout(function(){toast.style.transition='opacity .4s,transform .4s';toast.style.opacity='0';toast.style.transform='translateX(-50%) translateY(-10px)';setTimeout(function(){toast.remove()},400)},2800)}

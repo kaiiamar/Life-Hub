@@ -1,5 +1,26 @@
 // INSIGHTS
 // ============================================================
+// Chart.js resolves CSS colors only when a chart is created. Read the active
+// Field Ledger tokens at render time so light/dark theme changes repaint cleanly.
+function insightChartTheme(){
+  var cs=getComputedStyle(document.body);
+  function token(name,fallback){return (cs.getPropertyValue(name)||fallback).trim()}
+  return {
+    moss:token('--moss','#3F5A44'),
+    mossDark:token('--moss-dark','#314836'),
+    mossDim:token('--moss-dim','rgba(63,90,68,0.10)'),
+    amber:token('--amber','#C98A2D'),
+    amberDim:token('--amber-dim','rgba(201,138,45,0.12)'),
+    clay:token('--clay','#B0563C'),
+    sky:token('--sky','#6E93AE'),
+    skyDim:token('--sky-dim','rgba(110,147,174,0.12)'),
+    text:token('--text2','#626B62'),
+    grid:token('--border2','rgba(63,90,68,0.08)'),
+    card:token('--card','#FFFFFF'),
+    mono:'Spline Sans Mono'
+  };
+}
+
 function renderInsights(){
 var last30=Array.from({length:30},function(_,i){var d=new Date();d.setDate(d.getDate()-i);return localDateKey(d)});
 var todayKey=localDateKey(new Date());
@@ -17,22 +38,21 @@ STATE.habits.forEach(function(h){
   });
 });
 var habitPct=habitTotal>0?Math.round(habitDone/habitTotal*100):0;
-scores.push({label:'Habits',pct:habitPct,color:'var(--accent)',tip:habitPct>=70?'Solid consistency':'Try to hit at least 70%'});
+scores.push({label:'Habits',pct:habitPct,color:'var(--moss)',tip:habitTotal?habitDone+'/'+habitTotal+' check-ins logged':'No habit check-ins yet'});
 // Goals — average progress across all goals
 var goalAvg=STATE.goals.length?Math.round(STATE.goals.reduce(function(s,g){return s+goalPct(g)},0)/STATE.goals.length):0;
-scores.push({label:'Goals',pct:goalAvg,color:'var(--gold)',tip:goalAvg>=50?'Making good progress':'Keep pushing forward'});
-// Gym — sessions this month vs 3x/week target
+scores.push({label:'Goals',pct:goalAvg,color:'var(--amber)',tip:STATE.goals.length?'Average progress across '+STATE.goals.length+' goal'+(STATE.goals.length===1?'':'s'):'No goals added yet'});
+// Gym — sessions this month vs 3x/week reference pace
 var thisMonth=new Date().toISOString().slice(0,7);
-var daysInMonth=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate();
 var dayOfMonth=new Date().getDate();
 var gymTarget=Math.round((dayOfMonth/7)*3);
 var gymCount=(STATE.workouts||[]).filter(function(w){return w.date&&w.date.startsWith(thisMonth)}).length;
 var gymPct=gymTarget>0?Math.min(100,Math.round(gymCount/gymTarget*100)):0;
-scores.push({label:'Gym',pct:gymPct,color:'var(--mauve)',tip:gymCount+'/'+gymTarget+' sessions (3×/week pace)'});
+scores.push({label:'Gym',pct:gymPct,color:'var(--clay)',tip:gymCount+' sessions this month · '+gymTarget+' at 3×/week pace'});
 // Mood — average mood last 30 days (1-5 scale → %)
 var moodDays=last30.filter(function(d){return (STATE.mood||{})[d]&&(STATE.mood||{})[d].mood});
 var moodAvg=moodDays.length?Math.round(moodDays.reduce(function(s,d){return s+Number(STATE.mood[d].mood)},0)/moodDays.length*20):0;
-scores.push({label:'Mood',pct:moodAvg,color:'var(--peach)',tip:moodDays.length?moodDays.length+' days logged':'Log your mood daily for better insights'});
+scores.push({label:'Mood',pct:moodAvg,color:'var(--sky)',tip:moodDays.length?moodDays.length+' days logged':'Mood patterns will appear as you log'});
 // Priorities — % of daily priorities completed last 30 days
 var priDone=0,priTotal=0;
 last30.forEach(function(d){
@@ -40,13 +60,13 @@ last30.forEach(function(d){
   list.forEach(function(p){priTotal++;if(p.done)priDone++});
 });
 var priPct=priTotal>0?Math.round(priDone/priTotal*100):0;
-scores.push({label:'Priorities',pct:priPct,color:'#E8A87C',tip:priTotal>0?priDone+'/'+priTotal+' completed (30d)':'Set daily priorities to track focus'});
+scores.push({label:'Priorities',pct:priPct,color:'var(--moss-dark)',tip:priTotal>0?priDone+'/'+priTotal+' completed (30d)':'Focus patterns will appear as you plan'});
 
-// Overall composite (weighted) — now includes priorities
+// Overall composite (weighted) — a descriptive pulse, never a grade.
 var weights=[0.22,0.16,0.14,0.16,0.16,0.16];
 var overall=Math.round(scores.reduce(function(s,sc,i){return s+sc.pct*weights[i]},0));
-var overallLabel=overall>=80?'Crushing it':overall>=60?'On track':overall>=40?'Room to grow':'Needs attention';
-var overallColor=overall>=80?'var(--mint)':overall>=60?'var(--accent)':overall>=40?'var(--gold)':'var(--peach)';
+var overallLabel=overall>=80?'Well established':overall>=60?'Taking shape':overall>=40?'Building':'Starting point';
+var overallColor=overall>=80?'var(--moss)':overall>=60?'var(--sky)':overall>=40?'var(--amber)':'var(--text2)';
 
 // Render overall ring
 var oRing=document.getElementById('pulse-overall-ring');
@@ -104,8 +124,8 @@ var lastWkPct=lastWkHabit.total>0?Math.round(lastWkHabit.done/lastWkHabit.total*
 if(thisWkHabit.total>0&&lastWkHabit.total>0){
   var delta=thisWkPct-lastWkPct;
   var arrow=delta>0?'↑':delta<0?'↓':'→';
-  var tone=delta>=10?'positive':delta<=-10?'warning':'info';
-  var deltaText=delta===0?'About the same as last week':(delta>0?'+'+delta:delta)+' percentage points '+(delta>0?'better':'worse')+' than last week';
+  var tone=delta>0?'positive':'info';
+  var deltaText=delta===0?'About the same as last week':(delta>0?'+'+delta:delta)+' percentage points from last week';
   cards.push(mkInsightCard('📈','Habits '+arrow+' '+thisWkPct+'%',deltaText,tone));
 }
 
@@ -115,8 +135,8 @@ var lastWkWo=(STATE.workouts||[]).filter(function(w){return lastWkDays.indexOf(w
 if(thisWkWo+lastWkWo>0){
   var woDelta=thisWkWo-lastWkWo;
   var woArrow=woDelta>0?'↑':woDelta<0?'↓':'→';
-  var woTone=woDelta>0?'positive':woDelta<0?'warning':'info';
-  var woText=woDelta===0?'Same as last week':(woDelta>0?'+'+woDelta:woDelta)+' compared to last week';
+  var woTone=woDelta>0?'positive':'info';
+  var woText=woDelta===0?'Same as last week':(woDelta>0?'+'+woDelta:woDelta)+' compared with last week';
   cards.push(mkInsightCard('🏋️','Sessions '+woArrow+' '+thisWkWo,woText,woTone));
 }
 
@@ -129,7 +149,7 @@ if(thisWkMood.length>0&&lastWkMood.length>0){
   var moodDelta=Math.round((thisAvg-lastAvg)*10)/10;
   if(Math.abs(moodDelta)>=0.5){
     var moodArrow=moodDelta>0?'↑':'↓';
-    var moodTone=moodDelta>0?'positive':'warning';
+    var moodTone=moodDelta>0?'positive':'info';
     cards.push(mkInsightCard('🌈','Mood '+moodArrow+' '+thisAvg.toFixed(1),(moodDelta>0?'+'+moodDelta:moodDelta)+' from last week\'s '+lastAvg.toFixed(1),moodTone));
   }
 }
@@ -141,22 +161,27 @@ var habitScores=STATE.habits.map(function(h){
   var denom=Math.max(1,eligibleDays.length);
   return {name:h.name,pct:Math.round(done/denom*100),daysTracked:eligibleDays.length};
 }).sort(function(a,b){return b.pct-a.pct});
-if(habitScores.length){var best=habitScores[0];var worst=habitScores[habitScores.length-1];cards.push(mkInsightCard('🏆','Strongest habit',best.name+' — '+best.pct+'% in the last 30 days','positive'));if(worst.pct<40)cards.push(mkInsightCard('⚠️','Needs attention',worst.name+' is only '+worst.pct+'% this month. What small change could help?','warning'))}
-var atRisk=STATE.goals.filter(function(g){var p=goalPct(g);var dl=Math.ceil((new Date(g.deadline)-new Date())/86400000);return p<30&&dl<90&&dl>0});
-if(atRisk.length)cards.push(mkInsightCard('🚨','Goals at risk',atRisk.map(function(g){return g.name}).join(', ')+' — under 90 days with under 30% progress.','danger'));
-var onTrack=STATE.goals.filter(function(g){return goalPct(g)>=70});
-if(onTrack.length)cards.push(mkInsightCard('✅','Goals on track',onTrack.map(function(g){return g.name}).join(', '),'positive'));
+if(habitScores.length){
+  var best=habitScores[0];
+  var quietest=habitScores[habitScores.length-1];
+  cards.push(mkInsightCard('🌿','Most consistent habit',best.name+' · '+best.pct+'% in the last 30 days','positive'));
+  if(quietest.pct<40)cards.push(mkInsightCard('🪴','A habit to support',quietest.name+' · '+quietest.pct+'% this month. A smaller version may fit more easily.','info'));
+}
+var goalsToRevisit=STATE.goals.filter(function(g){var p=goalPct(g);var dl=Math.ceil((new Date(g.deadline)-new Date())/86400000);return p<30&&dl<90&&dl>0});
+if(goalsToRevisit.length)cards.push(mkInsightCard('🗓️','Goals to revisit',goalsToRevisit.map(function(g){return g.name}).join(', ')+' · target dates are within 90 days.','info'));
+var establishedGoals=STATE.goals.filter(function(g){return goalPct(g)>=70});
+if(establishedGoals.length)cards.push(mkInsightCard('✅','Goals taking shape',establishedGoals.map(function(g){return g.name}).join(', '),'positive'));
 var totalDebt=(STATE.debts||[]).reduce(function(s,d){return s+Number(d.balance)},0);
 var inc=(STATE.income||[]).reduce(function(s,i){return s+Number(i.amount)},0);
 var exp=(STATE.expenses||[]).reduce(function(s,e){return s+Number(e.amount)},0);
 var leftover=inc-exp;
 if(leftover>0&&totalDebt>0)cards.push(mkInsightCard('💳','Debt-free timeline','At '+fmtMoney(leftover)+'/month leftover, you could clear all debt in ~'+Math.ceil(totalDebt/leftover)+' months.','info'));
-if(leftover<0)cards.push(mkInsightCard('⚠️','Overspending','Expenses exceed income by '+fmtMoney(Math.abs(leftover))+'/month. Review your budget.','danger'));
+if(leftover<0)cards.push(mkInsightCard('🧮','Budget gap','Expenses are '+fmtMoney(Math.abs(leftover))+'/month above income. Review the plan when useful.','info'));
 var thisWeekWo=(STATE.workouts||[]).filter(function(w){return w.date>=weekKey(new Date())}).length;
-if(thisWeekWo===0)cards.push(mkInsightCard('🏋️','No gym sessions yet this week','You still have time — go smash it!','warning'));
-else if(thisWeekWo>=3)cards.push(mkInsightCard('💪','Strong gym week!',thisWeekWo+' sessions this week. Consistency is key!','positive'));
+if(thisWeekWo===0)cards.push(mkInsightCard('🏋️','Training log is open','No sessions logged this week yet.','info'));
+else if(thisWeekWo>=3)cards.push(mkInsightCard('💪','Training this week',thisWeekWo+' sessions logged.','positive'));
 var grid=document.getElementById('insights-grid');
-if(grid)grid.innerHTML=cards.length?cards.join(''):'<div class="card" style="text-align:center;padding:40px;grid-column:1/-1"><div style="font-size:36px;margin-bottom:12px">🌿</div><div style="font-size:14px;color:var(--text2)">Start logging to unlock insights!</div></div>';
+if(grid)grid.innerHTML=cards.length?cards.join(''):'<div class="card" style="text-align:center;padding:40px;grid-column:1/-1"><div style="font-size:36px;margin-bottom:12px">🌿</div><div style="font-size:14px;color:var(--text2)">Patterns will appear as you log.</div></div>';
 
 renderDebtCalc();renderCountdowns();renderInsightReviewTrends();renderMoodCorrelations();renderInsightsNarrative()}
 
@@ -173,17 +198,19 @@ if(summaryEl)summaryEl.innerHTML='<div style="font-size:13px;color:var(--text3);
 if(snapEl)snapEl.innerHTML='<div style="font-size:13px;color:var(--text3);text-align:center;padding:20px 0">No reviews yet</div>';
 return}
 
+var theme=insightChartTheme();
 var labels=keys.map(function(k){var p=k.split('-');return new Date(Number(p[0]),Number(p[1])-1).toLocaleDateString('en-GB',{month:'short'})});
-var datasets=RATING_CATS.map(function(cat){var colors={overall:'#9B7ED6',health:'#6b9e7a',finance:'#c9973a',career:'#5f9ea0',mindset:'#8b5cf6',social:'#ec4899'};return {label:cat.label,data:keys.map(function(k){return reviews[k].ratings?reviews[k].ratings[cat.id]||0:0}),borderColor:colors[cat.id]||'var(--accent)',backgroundColor:'transparent',tension:0.3,pointRadius:4,borderWidth:2}});
+var colors={overall:theme.moss,health:theme.mossDark,finance:theme.amber,career:theme.sky,mindset:theme.clay,social:theme.text};
+var datasets=RATING_CATS.map(function(cat){return {label:cat.label,data:keys.map(function(k){return reviews[k].ratings?reviews[k].ratings[cat.id]||0:0}),borderColor:colors[cat.id]||theme.moss,backgroundColor:'transparent',tension:0.3,pointRadius:4,pointBackgroundColor:colors[cat.id]||theme.moss,pointBorderColor:theme.card,pointBorderWidth:1.5,borderWidth:2}});
 
 if(window._reviewChart){window._reviewChart.destroy()}
 if(chartEl&&typeof Chart==='undefined')ensureChartJs(renderInsightReviewTrends);
-if(chartEl&&typeof Chart!=='undefined')window._reviewChart=new Chart(chartEl,{type:'line',data:{labels:labels,datasets:datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10},color:'#8F86A3'}}},scales:{x:{ticks:{color:'#8F86A3',font:{size:10}}},y:{min:0,max:10,ticks:{color:'#8F86A3',font:{size:10},stepSize:2}}}}});
+if(chartEl&&typeof Chart!=='undefined')window._reviewChart=new Chart(chartEl,{type:'line',data:{labels:labels,datasets:datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10,family:theme.mono},color:theme.text}}},scales:{x:{ticks:{color:theme.text,font:{size:10,family:theme.mono}},grid:{color:theme.grid}},y:{min:0,max:10,ticks:{color:theme.text,font:{size:10,family:theme.mono},stepSize:2},grid:{color:theme.grid}}}}});
 
 var latest=reviews[keys[keys.length-1]];
-if(summaryEl&&keys.length>=2){var prev=reviews[keys[keys.length-2]];var latestAvg=0,prevAvg=0;if(latest.ratings){var lv=Object.values(latest.ratings);latestAvg=lv.reduce(function(s,v){return s+v},0)/lv.length}if(prev.ratings){var pv=Object.values(prev.ratings);prevAvg=pv.reduce(function(s,v){return s+v},0)/pv.length}var diff=Math.round((latestAvg-prevAvg)*10)/10;var arrow=diff>0?'↑':diff<0?'↓':'→';var col=diff>0?'var(--mint)':diff<0?'var(--peach)':'var(--text3)';summaryEl.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center"><span style="color:'+col+';font-weight:600">'+arrow+' '+(diff>0?'+':'')+diff+'</span> vs previous month</div>'}
+if(summaryEl&&keys.length>=2){var prev=reviews[keys[keys.length-2]];var latestAvg=0,prevAvg=0;if(latest.ratings){var lv=Object.values(latest.ratings);latestAvg=lv.reduce(function(s,v){return s+v},0)/lv.length}if(prev.ratings){var pv=Object.values(prev.ratings);prevAvg=pv.reduce(function(s,v){return s+v},0)/pv.length}var diff=Math.round((latestAvg-prevAvg)*10)/10;var arrow=diff>0?'↑':diff<0?'↓':'→';var col=diff>0?'var(--moss)':diff<0?'var(--sky)':'var(--text3)';summaryEl.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center"><span style="font-family:var(--mono);color:'+col+';font-weight:600">'+arrow+' '+(diff>0?'+':'')+diff+'</span> vs previous month</div>'}
 
-if(snapEl&&latest){var avgR=0;if(latest.ratings){var vals=Object.values(latest.ratings);avgR=vals.length?Math.round(vals.reduce(function(s,v){return s+v},0)/vals.length*10)/10:0}var rCol=avgR>=7?'var(--mint)':avgR>=5?'var(--gold)':'var(--peach)';snapEl.innerHTML='<div style="text-align:center;padding:8px 0"><div style="font-family:var(--serif);font-size:36px;font-weight:700;color:'+rCol+'">'+avgR+'<span style="font-size:14px;color:var(--text3)">/10</span></div><div style="font-size:11px;color:var(--text3);margin-bottom:12px">Average rating</div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">'+RATING_CATS.map(function(cat){var v=latest.ratings?latest.ratings[cat.id]:0;var c=v>=7?'var(--mint)':v>=5?'var(--gold)':'var(--peach)';return '<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:8px 4px;text-align:center"><div style="font-size:9px;color:var(--text3)">'+cat.emoji+'</div><div style="font-size:16px;font-weight:700;color:'+c+'">'+v+'</div><div style="font-size:9px;color:var(--text3)">'+cat.label+'</div></div>'}).join('')+'</div>'+(latest.wins?'<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px"><div style="font-size:10px;font-weight:600;color:var(--accent);margin-bottom:3px">🏆 Wins</div><div style="font-size:12px;color:var(--text2);line-height:1.5;white-space:pre-line;max-height:80px;overflow:hidden">'+latest.wins+'</div></div>':'')+'<div style="margin-top:10px;text-align:center"><button onclick="nav(\'review\')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-weight:600;font-size:12px;font-family:var(--sans)">View all reviews →</button></div>'}}
+if(snapEl&&latest){var avgR=0;if(latest.ratings){var vals=Object.values(latest.ratings);avgR=vals.length?Math.round(vals.reduce(function(s,v){return s+v},0)/vals.length*10)/10:0}var rCol=avgR>=7?'var(--moss)':avgR>=5?'var(--amber)':'var(--sky)';snapEl.innerHTML='<div style="text-align:center;padding:8px 0"><div style="font-family:var(--mono);font-size:36px;font-weight:700;color:'+rCol+'">'+avgR+'<span style="font-size:14px;color:var(--text3)">/10</span></div><div style="font-size:11px;color:var(--text3);margin-bottom:12px">Average rating</div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">'+RATING_CATS.map(function(cat){var v=latest.ratings?latest.ratings[cat.id]:0;var c=v>=7?'var(--moss)':v>=5?'var(--amber)':'var(--sky)';return '<div style="background:var(--bg3);border-radius:var(--radius-sm);padding:8px 4px;text-align:center"><div style="font-size:9px;color:var(--text3)">'+cat.emoji+'</div><div style="font-family:var(--mono);font-size:16px;font-weight:700;color:'+c+'">'+v+'</div><div style="font-size:9px;color:var(--text3)">'+cat.label+'</div></div>'}).join('')+'</div>'+(latest.wins?'<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px"><div style="font-size:10px;font-weight:600;color:var(--moss);margin-bottom:3px">🏆 Wins</div><div style="font-size:12px;color:var(--text2);line-height:1.5;white-space:pre-line;max-height:80px;overflow:hidden">'+latest.wins+'</div></div>':'')+'<div style="margin-top:10px;text-align:center"><button onclick="nav(\'review\')" style="background:none;border:none;color:var(--moss);cursor:pointer;font-weight:600;font-size:12px;font-family:var(--sans)">View all reviews →</button></div>'}}
 
 function renderInsightHabitChart(last30){
 var weeks=[[],[],[],[]];
@@ -195,7 +222,10 @@ var ctx=document.getElementById('insightHabitChart');
 if(!ctx)return;
 if(typeof Chart==='undefined'){ensureChartJs(function(){renderInsightHabitChart(last30)});return}
 if(ctx._insChart)ctx._insChart.destroy();
-ctx._insChart=new Chart(ctx,{type:'bar',data:{labels:labels,datasets:[{data:data,backgroundColor:data.map(function(v){return v>=70?'rgba(107,158,122,0.6)':v>=40?'rgba(201,151,58,0.6)':'rgba(192,57,43,0.4)'}),borderColor:data.map(function(v){return v>=70?'#6b9e7a':v>=40?'#c9973a':'#c0392b'}),borderWidth:1.5,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8F86A3',font:{size:11}}},y:{max:100,ticks:{color:'#8F86A3',font:{size:10},callback:function(v){return v+'%'}}}}}})}
+var theme=insightChartTheme();
+var fills=data.map(function(v){return v>=70?theme.mossDim:v>=40?theme.amberDim:theme.skyDim});
+var strokes=data.map(function(v){return v>=70?theme.moss:v>=40?theme.amber:theme.sky});
+ctx._insChart=new Chart(ctx,{type:'bar',data:{labels:labels,datasets:[{data:data,backgroundColor:fills,borderColor:strokes,borderWidth:1.5,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:theme.text,font:{size:11,family:theme.mono}},grid:{display:false}},y:{max:100,ticks:{color:theme.text,font:{size:10,family:theme.mono},callback:function(v){return v+'%'}},grid:{color:theme.grid}}}}})}
 
 function renderInsightMoodChart(){
 var days=Array.from({length:14},function(_,i){var d=new Date();d.setDate(d.getDate()-13+i);return localDateKey(d)});
@@ -205,15 +235,16 @@ var ctx=document.getElementById('insightMoodChart');
 if(!ctx)return;
 if(typeof Chart==='undefined'){ensureChartJs(renderInsightMoodChart);return}
 if(ctx._insChart)ctx._insChart.destroy();
-ctx._insChart=new Chart(ctx,{type:'line',data:{labels:days.map(function(d){return new Date(d).getDate()+'/'+(new Date(d).getMonth()+1)}),datasets:[{label:'Mood',data:moodData,borderColor:'#9B7ED6',backgroundColor:'rgba(155,126,214,0.12)',tension:.4,pointRadius:4,pointBackgroundColor:'#9B7ED6',spanGaps:true},{label:'Energy',data:energyData,borderColor:'#7FA8D8',backgroundColor:'rgba(127,168,216,0.12)',tension:.4,pointRadius:4,pointBackgroundColor:'#7FA8D8',spanGaps:true,borderDash:[4,3]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8F86A3',font:{size:11},boxWidth:12,padding:12}}},scales:{x:{ticks:{color:'#8F86A3',font:{size:10}}},y:{min:1,max:5,ticks:{color:'#8F86A3',font:{size:10},stepSize:1,callback:function(v){var em=['','😞','😐','🙂','😊','🤩'];return em[v]||v}}}}}})}
+var theme=insightChartTheme();
+ctx._insChart=new Chart(ctx,{type:'line',data:{labels:days.map(function(d){return new Date(d).getDate()+'/'+(new Date(d).getMonth()+1)}),datasets:[{label:'Mood',data:moodData,borderColor:theme.moss,backgroundColor:theme.mossDim,tension:.4,pointRadius:4,pointBackgroundColor:theme.moss,pointBorderColor:theme.card,pointBorderWidth:1.5,spanGaps:true},{label:'Energy',data:energyData,borderColor:theme.sky,backgroundColor:theme.skyDim,tension:.4,pointRadius:4,pointBackgroundColor:theme.sky,pointBorderColor:theme.card,pointBorderWidth:1.5,spanGaps:true,borderDash:[4,3]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:theme.text,font:{size:11,family:theme.mono},boxWidth:12,padding:12}}},scales:{x:{ticks:{color:theme.text,font:{size:10,family:theme.mono}},grid:{color:theme.grid}},y:{min:1,max:5,ticks:{color:theme.text,font:{size:10,family:theme.mono},stepSize:1,callback:function(v){var em=['','😞','😐','🙂','😊','🤩'];return em[v]||v}},grid:{color:theme.grid}}}}})}
 
 
-function mkInsightCard(emoji,title,body,type){var colors={positive:{bg:'#f0f7f1',border:'#b8d8b8',col:'#2d6a35'},warning:{bg:'#fdf6e8',border:'#e8c87a',col:'#8a6000'},danger:{bg:'#fdf0ee',border:'#e8b0a8',col:'#8a2a1e'},info:{bg:'#f0f4f8',border:'#b8cce0',col:'#2a4a6a'}};var c=colors[type]||colors.info;return '<div style="background:'+c.bg+';border:1.5px solid '+c.border+';border-radius:var(--radius);padding:16px 20px;transition:transform .15s,box-shadow .15s;cursor:default" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 4px 16px rgba(0,0,0,0.08)\'" onmouseout="this.style.transform=\'none\';this.style.boxShadow=\'none\'"><div style="display:flex;align-items:flex-start;gap:12px"><span style="font-size:22px;flex-shrink:0">'+emoji+'</span><div><div style="font-size:14px;font-weight:600;color:'+c.col+';margin-bottom:4px">'+title+'</div><div style="font-size:13px;color:var(--text2);line-height:1.5">'+body+'</div></div></div></div>'}
+function mkInsightCard(emoji,title,body,type){var colors={positive:{bg:'var(--moss-dim)',border:'var(--moss)',col:'var(--moss-dark)'},warning:{bg:'var(--amber-dim)',border:'var(--amber)',col:'var(--amber)'},danger:{bg:'var(--clay-dim)',border:'var(--clay)',col:'var(--clay)'},info:{bg:'var(--sky-dim)',border:'var(--sky)',col:'var(--text)'}};var c=colors[type]||colors.info;return '<div style="background:'+c.bg+';border:1px solid '+c.border+';border-radius:var(--radius);padding:16px 20px;cursor:default"><div style="display:flex;align-items:flex-start;gap:12px"><span style="font-size:22px;flex-shrink:0">'+emoji+'</span><div><div style="font-size:14px;font-weight:600;color:'+c.col+';margin-bottom:4px">'+title+'</div><div style="font-size:13px;color:var(--text2);line-height:1.5">'+body+'</div></div></div></div>'}
 function renderDebtCalc(){
 var el=document.getElementById('debt-calc-auto');if(!el)return;
 var debts=(STATE.debts||[]).filter(function(d){return Number(d.balance)>0});
 var totalPaid=(STATE.debtPayments||[]).reduce(function(s,p){return s+Number(p.amount)},0);
-if(!debts.length){el.innerHTML='<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">🎉</div><div style="font-size:14px;font-weight:600;color:var(--mint)">Debt free!</div>'+(totalPaid>0?'<div style="font-size:12px;color:var(--text3);margin-top:4px">'+fmtMoney(totalPaid)+' paid off total</div>':'')+'</div>';return}
+if(!debts.length){el.innerHTML='<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">🎉</div><div style="font-size:14px;font-weight:600;color:var(--moss)">Debt free!</div>'+(totalPaid>0?'<div style="font-family:var(--mono);font-size:12px;color:var(--text3);margin-top:4px">'+fmtMoney(totalPaid)+' paid off total</div>':'')+'</div>';return}
 var totalDebt=debts.reduce(function(s,d){return s+Number(d.balance)},0);
 var grandTotal=totalDebt+totalPaid;
 var paidPct=grandTotal>0?Math.round(totalPaid/grandTotal*100):0;
@@ -223,23 +254,23 @@ var payment=totalTarget>0?totalTarget:Math.max(0,surplus);
 var months=payment>0?Math.ceil(totalDebt/payment):0;
 var freeDate=new Date();freeDate.setMonth(freeDate.getMonth()+months);
 var freeDateStr=months>0?freeDate.toLocaleDateString('en-GB',{month:'short',year:'numeric'}):'—';
-/* Compact insight layout */
 var h='<div style="display:flex;align-items:center;gap:16px;margin-bottom:12px"><div style="text-align:center;flex-shrink:0">';
 var r=36,circ=2*Math.PI*r;
-h+='<div style="position:relative;width:80px;height:80px"><svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="'+r+'" fill="none" stroke="var(--bg4)" stroke-width="6"/><circle cx="40" cy="40" r="'+r+'" fill="none" stroke="var(--mint)" stroke-width="6" stroke-linecap="round" stroke-dasharray="'+circ+'" stroke-dashoffset="'+(circ-circ*Math.min(paidPct,100)/100)+'" transform="rotate(-90 40 40)" style="transition:stroke-dashoffset .6s"/></svg><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="font-family:var(--serif);font-size:14px;font-weight:700;color:var(--text)">'+paidPct+'%</div><div style="font-size:8px;color:var(--text3)">paid</div></div></div></div>';
-h+='<div style="flex:1"><div style="font-size:20px;font-family:var(--serif);font-weight:600;color:var(--red)">'+fmtMoney(totalDebt)+'</div><div style="font-size:11px;color:var(--text3)">remaining across '+debts.length+' debt'+(debts.length>1?'s':'')+'</div>';
-if(totalPaid>0)h+='<div style="font-size:11px;color:var(--mint);font-weight:600;margin-top:2px">'+fmtMoney(totalPaid)+' paid off</div>';
+h+='<div style="position:relative;width:80px;height:80px"><svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="'+r+'" fill="none" stroke="var(--bg4)" stroke-width="6"/><circle cx="40" cy="40" r="'+r+'" fill="none" stroke="var(--moss)" stroke-width="6" stroke-linecap="round" stroke-dasharray="'+circ+'" stroke-dashoffset="'+(circ-circ*Math.min(paidPct,100)/100)+'" transform="rotate(-90 40 40)" style="transition:stroke-dashoffset .6s"/></svg><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--text)">'+paidPct+'%</div><div style="font-size:8px;color:var(--text3)">paid</div></div></div></div>';
+h+='<div style="flex:1"><div style="font-size:20px;font-family:var(--mono);font-weight:600;color:var(--ink)">'+fmtMoney(totalDebt)+'</div><div style="font-size:11px;color:var(--text3)">remaining across '+debts.length+' debt'+(debts.length>1?'s':'')+'</div>';
+if(totalPaid>0)h+='<div style="font-family:var(--mono);font-size:11px;color:var(--moss);font-weight:600;margin-top:2px">'+fmtMoney(totalPaid)+' paid off</div>';
 h+='</div></div>';
-/* Progress bar */
-h+='<div style="height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;margin-bottom:10px"><div style="height:100%;width:'+paidPct+'%;background:var(--mint);border-radius:4px;transition:width .4s"></div></div>';
-/* Debt-free estimate */
-if(payment>0){h+='<div style="background:linear-gradient(135deg,#f0fdf4,#e8f5e9);border:1px solid #b8d8b8;border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:#2d6a35;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Debt-free by</div><div style="font-family:var(--serif);font-size:18px;font-weight:600;color:#2d6a35">'+freeDateStr+'</div><div style="font-size:10px;color:var(--text2)">~'+months+' months at '+fmtMoney(payment)+'/mo</div></div>';}
+h+='<div style="height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;margin-bottom:10px"><div style="height:100%;width:'+paidPct+'%;background:var(--moss);border-radius:4px;transition:width .4s"></div></div>';
+if(payment>0){h+='<div style="background:var(--moss-dim);border:1px solid var(--moss);border-radius:var(--radius-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--moss-dark);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Debt-free by</div><div style="font-family:var(--mono);font-size:18px;font-weight:600;color:var(--moss-dark)">'+freeDateStr+'</div><div style="font-size:10px;color:var(--text2)">~'+months+' months at '+fmtMoney(payment)+'/mo</div></div>';}
 else{h+='<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px 0">Set monthly targets in <button class="btn btn-sm btn-ghost" onclick="nav(\'finance\')" style="font-size:11px;padding:2px 6px">Finance → Debts</button> to see your timeline</div>';}
 el.innerHTML=h}
 function renderDebtPayoffPlanner(){}
 function renderDebtPaymentHistory(){}
 function setDebtMonthlyTarget(debtId,val){var debt=(STATE.debts||[]).find(function(d){return d.id===debtId});if(!debt)return;debt.monthlyTarget=Number(val)||0;saveState()}
-function renderCountdowns(){var el=document.getElementById('countdown-grid');if(!el)return;var goals=STATE.goals.filter(function(g){return g.deadline}).map(function(g){var totalDays=Math.ceil((new Date(g.deadline)-new Date(g.deadline.slice(0,4)+'-01-01'))/86400000+180);var daysLeft=Math.ceil((new Date(g.deadline)-new Date())/86400000);var elapsed=Math.max(0,totalDays-daysLeft);var pct=totalDays>0?Math.min(100,Math.round(elapsed/totalDays*100)):0;return {name:g.name,days:daysLeft,deadline:g.deadline,pct:pct}}).filter(function(g){return g.days>0}).sort(function(a,b){return a.days-b.days});el.innerHTML=goals.length?'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">'+goals.slice(0,8).map(function(g){var urgency=g.days<30?'#c0392b':g.days<90?'#c9973a':'#6b9e7a';var r=28,c=2*Math.PI*r,offset=c-(g.pct/100)*c;return '<div style="background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:14px;text-align:center;transition:transform .15s;cursor:default" onmouseover="this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.transform=\'none\'"><div style="position:relative;width:64px;height:64px;margin:0 auto 8px"><svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="'+r+'" fill="none" stroke="var(--bg4)" stroke-width="4"/><circle cx="32" cy="32" r="'+r+'" fill="none" stroke="'+urgency+'" stroke-width="4" stroke-linecap="round" stroke-dasharray="'+c+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 32 32)" style="transition:stroke-dashoffset .6s ease"/></svg><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:18px;font-weight:600;color:'+urgency+'">'+g.days+'</div></div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">days left</div><div style="font-size:11px;font-weight:600;line-height:1.3">'+g.name+'</div><div style="font-size:10px;color:var(--text3);margin-top:3px">'+fmtDate(g.deadline)+'</div></div>'}).join('')+'</div>':'<div style="font-size:13px;color:var(--text3);padding:12px 0">Set deadlines on your goals to see countdowns</div>'}
+function renderCountdowns(){
+var el=document.getElementById('countdown-grid');if(!el)return;
+var goals=STATE.goals.filter(function(g){return g.deadline}).map(function(g){var totalDays=Math.ceil((new Date(g.deadline)-new Date(g.deadline.slice(0,4)+'-01-01'))/86400000+180);var daysLeft=Math.ceil((new Date(g.deadline)-new Date())/86400000);var elapsed=Math.max(0,totalDays-daysLeft);var pct=totalDays>0?Math.min(100,Math.round(elapsed/totalDays*100)):0;return {name:g.name,days:daysLeft,deadline:g.deadline,pct:pct}}).filter(function(g){return g.days>0}).sort(function(a,b){return a.days-b.days});
+el.innerHTML=goals.length?'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">'+goals.slice(0,8).map(function(g){var timing=g.days<30?'var(--amber)':g.days<90?'var(--sky)':'var(--moss)';var r=28,c=2*Math.PI*r,offset=c-(g.pct/100)*c;return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;text-align:center"><div style="position:relative;width:64px;height:64px;margin:0 auto 8px"><svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="'+r+'" fill="none" stroke="var(--bg4)" stroke-width="4"/><circle cx="32" cy="32" r="'+r+'" fill="none" stroke="'+timing+'" stroke-width="4" stroke-linecap="round" stroke-dasharray="'+c+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 32 32)" style="transition:stroke-dashoffset .6s ease"/></svg><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:18px;font-weight:600;color:'+timing+'">'+g.days+'</div></div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">days left</div><div style="font-size:11px;font-weight:600;line-height:1.3">'+g.name+'</div><div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:3px">'+fmtDate(g.deadline)+'</div></div>'}).join('')+'</div>':'<div style="font-size:13px;color:var(--text3);padding:12px 0">Set deadlines on your goals to see countdowns</div>'}
 
 
 

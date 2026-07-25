@@ -90,7 +90,7 @@ function _showSignIn(){
     +'<input id="lh-signin-email" type="email" autocomplete="username" placeholder="Email" style="width:100%;box-sizing:border-box;padding:11px 13px;margin-bottom:10px;border:1.5px solid var(--border,#e5ddd0);border-radius:10px;font-size:14px;background:var(--bg,#fff);color:inherit">'
     +'<input id="lh-signin-pw" type="password" autocomplete="current-password" placeholder="Password" onkeydown="if(event.key===\'Enter\')lhSignIn()" style="width:100%;box-sizing:border-box;padding:11px 13px;margin-bottom:12px;border:1.5px solid var(--border,#e5ddd0);border-radius:10px;font-size:14px;background:var(--bg,#fff);color:inherit">'
     +'<div id="lh-signin-err" style="color:#e05252;font-size:12px;min-height:16px;margin-bottom:8px"></div>'
-    +'<button id="lh-signin-btn" onclick="lhSignIn()" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#a0522d,#6b3a1f);color:#fffdf9;font-size:14px;font-weight:600;cursor:pointer">Sign in</button>'
+    +'<button id="lh-signin-btn" onclick="lhSignIn()" style="width:100%;padding:12px;border:none;border-radius:10px;background:var(--moss,#3F5A44);color:#fff;font-size:14px;font-weight:600;cursor:pointer">Sign in</button>'
     +'</div>';
   document.body.appendChild(o);
 }

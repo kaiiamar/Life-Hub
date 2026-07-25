@@ -30,7 +30,7 @@ function icon(name,size){
 function sparklineSVG(values,color){
   var vals=(values||[]).filter(function(v){return typeof v==='number'&&isFinite(v)});
   if(vals.length<2)return '';  // gracefully omit with too few points
-  color=color||'var(--accent)';
+  color=color||'var(--moss)';
   var min=Math.min.apply(null,vals),max=Math.max.apply(null,vals);
   var range=(max-min)||1;
   var w=100,h=24,pad=3;
@@ -46,14 +46,14 @@ function sparklineSVG(values,color){
 }
 function ringSVG(pct,color,size,centerText){
   pct=Math.max(0,Math.min(100,Number(pct)||0));
-  color=color||'var(--accent)';
+  color=color||'var(--moss)';
   size=size||34;
   var r=(size-6)/2,cx=size/2,c=2*Math.PI*r,off=c-(pct/100)*c;
   return '<svg class="ring" width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" aria-hidden="true">'
-    +'<circle cx="'+cx+'" cy="'+cx+'" r="'+r+'" fill="none" stroke="rgba(155,126,214,0.18)" stroke-width="3.5"/>'
+    +'<circle cx="'+cx+'" cy="'+cx+'" r="'+r+'" fill="none" stroke="var(--moss-dim)" stroke-width="3.5"/>'
     +'<circle cx="'+cx+'" cy="'+cx+'" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="3.5" '
     +'stroke-linecap="round" stroke-dasharray="'+c+'" stroke-dashoffset="'+off+'" transform="rotate(-90 '+cx+' '+cx+')"/>'
-    +(centerText?'<text x="'+cx+'" y="'+(cx+3)+'" text-anchor="middle" font-size="9" font-family="Baloo 2" fill="'+color+'">'+centerText+'</text>':'')
+    +(centerText?'<text x="'+cx+'" y="'+(cx+3)+'" text-anchor="middle" font-size="9" font-family="Spline Sans Mono" fill="'+color+'">'+centerText+'</text>':'')
     +'</svg>';
 }
 
@@ -104,7 +104,7 @@ function renderDashStreak(){
   // streak value/logic is unchanged.
   var ringPct=Math.min(100,Math.round(s/30*100));
   var flame=(typeof ringSVG==='function')
-    ? '<span class="hero-streak-ring">'+ringSVG(ringPct,'var(--accent2)',34,'🔥')+'</span>'
+    ? '<span class="hero-streak-ring">'+ringSVG(ringPct,'var(--amber)',34,'🔥')+'</span>'
     : '<span class="hero-streak-flame">🔥</span>';
   el.innerHTML=flame+'<span class="hero-streak-num">'+s+'</span>'
     +'<span class="hero-streak-label">day'+(s===1?'':'s')+' showing up</span>';
@@ -274,7 +274,7 @@ function checkAllDoneToday(){
 
   celebrateOnce('all-done-today',function(){
     setTimeout(function(){
-      fireConfetti({count:160,duration:3200,colors:['#a0522d','#c9973a','#d4845a','#6b9e7a','#c97b6e','#f59e0b','#E8A87C']});
+      fireConfetti({count:160,duration:3200,colors:['#3F5A44','#C98A2D','#6E93AE','#B0563C','#EFEAE0']});
       showCelebrationToast('Day complete. Everything ticked.','🌟');
     },350);
   });
@@ -284,7 +284,7 @@ function quickToggleHabit(hid,day){var h=STATE.habits.find(function(x){return x.
 function toggleDashPriority(idx){var wk=weekKey(new Date());if(!STATE.weeklyPlans)STATE.weeklyPlans={};if(!STATE.weeklyPlans[wk])STATE.weeklyPlans[wk]={priorities:[]};if(!STATE.weeklyPlans[wk].prioritiesDone)STATE.weeklyPlans[wk].prioritiesDone={};STATE.weeklyPlans[wk].prioritiesDone[idx]=!STATE.weeklyPlans[wk].prioritiesDone[idx];saveState();renderDashboard()}
 
 // GOALS (simplified)
-function renderGoals(){var catColors={Finance:'#7a8fa6',Fitness:'#9b7b8a',Career:'#d4845a',Personal:'#6b9e7a'};var all=STATE.goals||[];var doneCount=all.filter(function(g){return g.done}).length;var total=all.length;var pct=total>0?Math.round(doneCount/total*100):0;var sumEl=document.getElementById('goals-summary');if(sumEl&&total>0){var sh='<div style="display:flex;gap:12px;flex-wrap:wrap">';
+function renderGoals(){var catColors={Finance:'#6E93AE',Fitness:'#B0563C',Career:'#C98A2D',Personal:'#3F5A44'};var all=STATE.goals||[];var doneCount=all.filter(function(g){return g.done}).length;var total=all.length;var pct=total>0?Math.round(doneCount/total*100):0;var sumEl=document.getElementById('goals-summary');if(sumEl&&total>0){var sh='<div style="display:flex;gap:12px;flex-wrap:wrap">';
 /* Overall progress card */
 sh+='<div class="card" style="flex:1;min-width:200px;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="font-size:13px;font-weight:500;color:var(--text2)">'+doneCount+' of '+total+' goals completed</div><div style="flex:1;min-width:120px;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--mint);border-radius:3px;transition:width .4s"></div></div><span style="font-size:13px;font-weight:600;color:var(--mint)">'+pct+'%</span></div>';
 /* Category breakdown */

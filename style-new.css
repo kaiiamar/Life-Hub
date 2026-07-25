@@ -1,83 +1,86 @@
 /* ══════════════════════════════════════════════
-   LIFE HUB — PREMIUM SAAS UI
-   Glass · Clay · Bento · Soft gradients · Depth
+   LIFE HUB — FIELD LEDGER
+   Warm paper · data ink · field green · honest depth
 ══════════════════════════════════════════════ */
 
 :root {
-  /* Core palette — Journal (warm paper) */
-  --bg:#f7f0e8;
-  --fg:#2c1a0e;
-  --muted:#f2e8d8;
-  --accent:#c97b6e;
-  --accent-dim:rgba(201,123,110,0.12);
-  --accent-dark:#b0563c;
-  --accent2:#d4a96a;
-  --blue:#7a8fa6;
-  --blue-dim:rgba(122,143,166,0.12);
-  --white:#fffdf9;
-  --purple:#9b7b8a;
-  --purple-dim:rgba(155,123,138,0.12);
-  --green:#6b9e7a;
-  --green-dim:rgba(107,158,122,0.12);
-  --gold:#d4a96a;
-  --gold-dim:rgba(212,169,106,0.12);
-  --panel:#fffdf9;
+  /* Canonical Field Ledger palette */
+  --bg:#F6F3EC;
+  --ink:#1F241F;
+  --moss:#3F5A44;
+  --moss-dark:#314836;
+  --moss-dim:rgba(63,90,68,0.10);
+  --amber:#C98A2D;
+  --amber-dim:rgba(201,138,45,0.12);
+  --clay:#B0563C;
+  --clay-dim:rgba(176,86,60,0.12);
+  --sky:#6E93AE;
+  --sky-dim:rgba(110,147,174,0.12);
+  --paper2:#EFEAE0;
+  --card:#FFFFFF;
+  --bg-dark:#14170F;
+  --card-dark:#1D211A;
+  --danger:#A34343;
+  --danger-dim:rgba(163,67,67,0.12);
+
+  /* Backward-compatible aliases used throughout the app */
+  --fg:var(--ink);--muted:var(--paper2);--accent:var(--moss);
+  --accent-dim:var(--moss-dim);--accent-dark:var(--moss-dark);--accent2:var(--amber);
+  --blue:var(--sky);--blue-dim:var(--sky-dim);--blue-dim2:rgba(110,147,174,0.06);
+  --white:var(--card);--panel:var(--card);
+  --purple:#718092;--purple-dim:rgba(113,128,146,0.12);
+  --green:var(--moss);--green-dim:var(--moss-dim);
+  --gold:var(--amber);--gold-dim:var(--amber-dim);
 
   /* Semantic aliases */
-  --primary:var(--accent);--primary-dim:var(--accent-dim);--primary-dark:var(--accent-dark);
-  --secondary:var(--blue);--secondary-dim:var(--blue-dim);
-  --on-surface:var(--fg);--on-surface-variant:#8a6545;
-  --neutral:#8a6545;--outline:rgba(160,110,60,0.15);--outline-variant:rgba(160,110,60,0.08);
-  --surface:var(--bg);--surface-bright:var(--white);--surface-dim:#f2e8d8;--surface-container:#f7f0e8;
-  --mint:var(--green);--mint-dim:var(--green-dim);
-  --amber:var(--gold);--amber-dim:var(--gold-dim);
-  --red:#c0392b;--red-dim:rgba(192,57,43,0.12);
-  --teal:var(--blue);--teal-dim:var(--blue-dim);
+  --primary:var(--moss);--primary-dim:var(--moss-dim);--primary-dark:var(--moss-dark);
+  --secondary:var(--sky);--secondary-dim:var(--sky-dim);
+  --on-surface:var(--ink);--on-surface-variant:#626B62;
+  --neutral:#626B62;--outline:rgba(63,90,68,0.16);--outline-variant:rgba(63,90,68,0.08);
+  --surface:var(--bg);--surface-bright:var(--card);--surface-dim:var(--paper2);--surface-container:var(--bg);
+  --mint:var(--moss);--mint-dim:var(--moss-dim);
+  --red:var(--danger);--red-dim:var(--danger-dim);
+  --teal:var(--sky);--teal-dim:var(--sky-dim);
   --mauve:var(--purple);--mauve-dim:var(--purple-dim);
-  --peach:#d4845a;--peach-dim:rgba(212,132,90,0.12);
-  --blue-dim2:rgba(122,143,166,0.06);
-  --rose:var(--accent);--rose-dim:var(--accent-dim);
-  --warm-brown:#6b3a1f;--tan:var(--gold);--tan-dim:var(--gold-dim);
-  --uni:var(--purple);
-  --bg2:#fffdf9;--bg3:#f2e8d8;--bg4:rgba(160,110,60,0.08);
-  --border:rgba(160,110,60,0.15);--border2:rgba(160,110,60,0.08);
-  --text:var(--fg);--text2:#8a6545;--text3:#b89870;
-  --cream:#fdf6e8;
-  --postit:rgba(160,82,45,0.04);
-  --sage:var(--green);--sage-dim:var(--green-dim);
+  --peach:var(--amber);--peach-dim:var(--amber-dim);
+  --rose:var(--moss);--rose-dim:var(--moss-dim);
+  --warm-brown:var(--ink);--tan:var(--amber);--tan-dim:var(--amber-dim);
+  --uni:var(--sky);
+  --bg2:var(--card);--bg3:var(--paper2);--bg4:rgba(63,90,68,0.08);
+  --border:rgba(63,90,68,0.16);--border2:rgba(63,90,68,0.08);
+  --text:var(--ink);--text2:#626B62;--text3:#8B938A;
+  --cream:#F5EEDC;--postit:rgba(201,138,45,0.06);
+  --sage:var(--moss);--sage-dim:var(--moss-dim);
 
-  /* Glass system */
-  --glass:rgba(255,253,249,0.65);
-  --glass-strong:rgba(255,253,249,0.82);
-  --glass-border:rgba(160,110,60,0.12);
-  --glass-border-strong:rgba(160,110,60,0.18);
+  /* Translucent chrome; content cards remain solid paper */
+  --glass:rgba(255,255,255,0.72);--glass-strong:rgba(255,255,255,0.90);
+  --glass-border:rgba(63,90,68,0.12);--glass-border-strong:rgba(63,90,68,0.20);
 
-  /* Gradients */
-  --grad-hero:linear-gradient(135deg,#fdeee4 0%,#f7e0d0 45%,#c97b6e 100%);
-  --grad-hero-soft:linear-gradient(135deg,rgba(201,123,110,0.18) 0%,rgba(212,169,106,0.14) 45%,rgba(107,158,122,0.12) 100%);
-  --grad-accent:linear-gradient(135deg,#c97b6e,#b0563c);
-  --grad-blue:linear-gradient(135deg,#9bb5c9,#7a8fa6);
-  --grad-purple:linear-gradient(135deg,#b89ba8,#9b7b8a);
-  --grad-green:linear-gradient(135deg,#8fb8a0,#6b9e7a);
-  --grad-gold:linear-gradient(135deg,#e6c88a,#d4a96a);
+  /* Restrained gradients */
+  --grad-hero:linear-gradient(135deg,rgba(63,90,68,0.14),rgba(201,138,45,0.10));
+  --grad-hero-soft:linear-gradient(135deg,rgba(63,90,68,0.12),rgba(110,147,174,0.08));
+  --grad-accent:linear-gradient(135deg,#4F6B53,#3F5A44);
+  --grad-blue:linear-gradient(135deg,#86A8BE,#6E93AE);
+  --grad-purple:linear-gradient(135deg,#8394A5,#718092);
+  --grad-green:linear-gradient(135deg,#55745A,#3F5A44);
+  --grad-gold:linear-gradient(135deg,#D9A34F,#C98A2D);
 
-  /* Radii */
   --radius:16px;--radius-sm:12px;--radius-xs:8px;--radius-pill:999px;
 
-  /* Fonts */
-  --sans:'Source Sans 3',system-ui,-apple-system,sans-serif;
-  --serif:'Lora',Georgia,serif;
-  --mono:'Source Sans 3',monospace;
+  /* Display type is intentionally rare; metrics always use mono */
+  --sans:'DM Sans',system-ui,-apple-system,sans-serif;
+  --serif:'Fraunces',Georgia,serif;
+  --mono:'Spline Sans Mono',ui-monospace,SFMono-Regular,monospace;
   --hand:'Caveat',cursive;
 
-  /* Shadows — sienna-tinted depth */
-  --shadow-xs:0 1px 2px rgba(160,82,45,0.04);
-  --shadow-sm:0 2px 12px rgba(160,82,45,0.06);
-  --shadow:0 4px 16px rgba(160,82,45,0.08);
-  --shadow-md:0 8px 24px rgba(160,82,45,0.10);
-  --shadow-lg:0 16px 40px rgba(160,82,45,0.12);
-  --shadow-hover:0 4px 16px rgba(160,82,45,0.10);
-  --shadow-glow:0 10px 40px rgba(160,82,45,0.15);
+  /* Neutral depth with a subtle green undertone */
+  --shadow-xs:0 1px 2px rgba(31,36,31,0.04);
+  --shadow-sm:0 2px 10px rgba(31,36,31,0.06);
+  --shadow:0 4px 16px rgba(31,36,31,0.08);
+  --shadow-md:0 8px 24px rgba(31,36,31,0.10);
+  --shadow-lg:0 16px 40px rgba(31,36,31,0.14);
+  --shadow-hover:0 6px 18px rgba(31,36,31,0.10);
+  --shadow-glow:0 10px 36px rgba(63,90,68,0.16);
 
   --ease:cubic-bezier(0.23,1,0.32,1);
   --ease-spring:cubic-bezier(0.34,1.56,0.64,1);
@@ -93,47 +96,39 @@ body{
   -webkit-font-smoothing:antialiased;
   position:relative;
 }
-/* Ambient background blobs */
+/* One restrained field-green wash; paper grain is layered separately below. */
 body::before{
   content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
-  background:
-    radial-gradient(ellipse 700px 500px at 15% 10%,rgba(201,123,110,0.10),transparent 60%),
-    radial-gradient(ellipse 600px 500px at 85% 20%,rgba(212,169,106,0.10),transparent 60%),
-    radial-gradient(ellipse 500px 400px at 50% 90%,rgba(107,158,122,0.08),transparent 60%);
+  background:radial-gradient(ellipse 780px 520px at 12% 4%,rgba(63,90,68,0.09),transparent 64%);
   background-attachment:fixed;
 }
 input,textarea,select,button{font-family:var(--sans)}
 button{cursor:pointer}
-h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-0.02em}
-.stat-big{font-family:var(--serif);font-weight:500;letter-spacing:-0.03em}
+h1{font-family:var(--serif);font-weight:600;letter-spacing:-0.025em}
+h2,h3{font-family:var(--sans);font-weight:600;letter-spacing:-0.015em}
+.stat-big{font-family:var(--mono);font-weight:600;letter-spacing:-0.02em}
 
-/* ── CARD (base surface) ── */
+/* ── CARD (standard ledger surface) ── */
 .card{
-  background:var(--white);
+  background:var(--card);
   border:1px solid var(--border);
   border-radius:var(--radius);
   padding:22px;
-  box-shadow:0 2px 12px rgba(160,82,45,0.06);
-  transition:transform 300ms var(--ease),box-shadow 300ms var(--ease),border-color 300ms var(--ease);
+  box-shadow:var(--shadow-sm);
+  transition:transform 180ms var(--ease),box-shadow 180ms var(--ease),border-color 180ms var(--ease);
   position:relative;
   overflow:hidden;
 }
-.card::before{
-  content:'';position:absolute;inset:0;
-  background:linear-gradient(135deg,rgba(255,253,249,0.4),transparent 40%);
-  pointer-events:none;opacity:0.6;
-}
+.card::before{content:none}
 .card:hover{
-  transform:translateY(-3px);
-  box-shadow:0 4px 16px rgba(160,82,45,0.1);
-  border-color:var(--glass-border-strong);
+  transform:translateY(-1px);
+  box-shadow:var(--shadow);
+  border-color:var(--outline);
 }
-.card:active{transform:translateY(-1px);box-shadow:0 2px 12px rgba(160,82,45,0.06)}
+.card:active{transform:none;box-shadow:var(--shadow-sm)}
 .card-sm{
-  background:var(--glass);
-  backdrop-filter:blur(16px) saturate(1.3);
-  -webkit-backdrop-filter:blur(16px) saturate(1.3);
-  border:1px solid var(--glass-border);
+  background:var(--card);
+  border:1px solid var(--border);
   border-radius:var(--radius-sm);
   padding:14px 16px;
   box-shadow:var(--shadow-xs);
@@ -304,51 +299,13 @@ h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-0.02em}
 /* ── HERO (premium top section) ── */
 .hero{
   position:relative;
-  border-radius:28px;
+  border-radius:24px;
   padding:36px 40px 40px;
   margin-bottom:22px;
-  background:linear-gradient(120deg,#fdeee4 0%,#f7e0d0 25%,#c97b6e 50%,#d4a96a 75%,#fdeee4 100%);
-  background-size:300% 300%;
-  animation:gradientMove 15s ease infinite;
-  border:1px solid rgba(255,255,255,0.5);
+  background:linear-gradient(135deg,rgba(255,255,255,0.72),rgba(239,234,224,0.82));
+  border:1px solid var(--border);
   overflow:hidden;
-  box-shadow:var(--shadow);
-}
-@keyframes gradientMove{
-  0%,100%{background-position:0% 50%}
-  50%{background-position:100% 50%}
-}
-/* Floating ambient blobs inside hero */
-.hero .blob{
-  position:absolute;border-radius:50%;pointer-events:none;
-  filter:blur(60px);opacity:0.55;
-}
-.hero .blob-1{
-  top:-20%;right:-10%;width:300px;height:300px;
-  background:radial-gradient(circle,rgba(212,169,106,0.4),transparent 70%);
-  animation:float1 12s ease-in-out infinite;
-}
-.hero .blob-2{
-  bottom:-30%;left:-5%;width:260px;height:260px;
-  background:radial-gradient(circle,rgba(201,123,110,0.35),transparent 70%);
-  animation:float2 14s ease-in-out infinite;
-}
-.hero .blob-3{
-  top:40%;right:25%;width:180px;height:180px;
-  background:radial-gradient(circle,rgba(107,158,122,0.35),transparent 70%);
-  animation:float3 10s ease-in-out infinite;
-}
-@keyframes float1{
-  0%,100%{transform:translate(0,0) scale(1)}
-  50%{transform:translate(-30px,20px) scale(1.1)}
-}
-@keyframes float2{
-  0%,100%{transform:translate(0,0) scale(1)}
-  50%{transform:translate(40px,-20px) scale(0.9)}
-}
-@keyframes float3{
-  0%,100%{transform:translate(0,0) scale(1)}
-  50%{transform:translate(-20px,30px) scale(1.15)}
+  box-shadow:var(--shadow-sm);
 }
 .hero-inner{position:relative;z-index:1;transition:transform 400ms var(--ease)}
 .hero-eyebrow{
@@ -1468,47 +1425,36 @@ h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-0.02em}
    NIGHT MODE — auto-applied after 9pm
 ────────────────────────────────────────── */
 body.night-mode{
-  --bg:#1a120a;
-  --fg:#f5efe4;
-  --muted:#2a1f16;
-  --white:#2a1f16;
-  --panel:#2a1f16;
-  --accent:#d4845a;
-  --accent-dim:rgba(212,132,90,0.14);
-  --accent-dark:#c97b6e;
-  --chrome:#c9a87a;
-  --purple:#b89ba8;
-  --purple-dim:rgba(155,123,138,0.14);
-  --blue:#9bb5c9;
-  --blue-dim:rgba(122,143,166,0.12);
-  --green:#8fb8a0;
-  --green-dim:rgba(107,158,122,0.14);
-  --gold:#e6c88a;
-  --gold-dim:rgba(212,169,106,0.14);
-  --text:var(--fg);
-  --text2:#c9a87a;
-  --text3:#8a6545;
-  --bg2:#2a1f16;
-  --bg3:#3a2a1e;
-  --bg4:rgba(160,110,60,0.12);
-  --border:rgba(160,110,60,0.2);
-  --border2:rgba(160,110,60,0.1);
-  --cream:#2a1f16;
-  --surface-bright:#2a1f16;
-  --surface-container:#1a120a;
-  --glass:rgba(42,31,22,0.65);
-  --glass-strong:rgba(42,31,22,0.82);
-  --glass-border:rgba(160,110,60,0.15);
-  --glass-border-strong:rgba(160,110,60,0.2);
-  --shadow-warm:0 8px 32px rgba(0,0,0,0.3),0 2px 8px rgba(0,0,0,0.2);
-  --shadow-warm-hover:0 16px 48px rgba(0,0,0,0.4),0 4px 12px rgba(0,0,0,0.25);
-  --grad-accent:linear-gradient(135deg,#d4845a,#b0563c);
+  --bg:var(--bg-dark);
+  --ink:#E7E9E2;--fg:var(--ink);
+  --moss:#8DAA91;--moss-dark:#B8C9BA;--moss-dim:rgba(141,170,145,0.14);
+  --amber:#D7A64F;--amber-dim:rgba(215,166,79,0.14);
+  --clay:#D0785D;--clay-dim:rgba(208,120,93,0.14);
+  --sky:#8EB0C4;--sky-dim:rgba(142,176,196,0.14);
+  --paper2:#24291F;--card:var(--card-dark);
+  --danger:#D27B7B;--danger-dim:rgba(210,123,123,0.14);
+  --accent:var(--moss);--accent-dim:var(--moss-dim);--accent-dark:var(--moss-dark);--accent2:var(--amber);
+  --white:var(--card);--panel:var(--card);--muted:var(--paper2);
+  --blue:var(--sky);--blue-dim:var(--sky-dim);
+  --green:var(--moss);--green-dim:var(--moss-dim);
+  --gold:var(--amber);--gold-dim:var(--amber-dim);
+  --purple:#9AA8B5;--purple-dim:rgba(154,168,181,0.14);
+  --mint:var(--moss);--mint-dim:var(--moss-dim);
+  --red:var(--danger);--red-dim:var(--danger-dim);
+  --text:var(--ink);--text2:#BAC1B3;--text3:#858D80;
+  --bg2:var(--card);--bg3:var(--paper2);--bg4:rgba(141,170,145,0.10);
+  --border:rgba(185,202,187,0.16);--border2:rgba(185,202,187,0.08);
+  --cream:var(--paper2);--surface-bright:var(--card);--surface-dim:var(--paper2);--surface-container:var(--bg);
+  --glass:rgba(29,33,26,0.76);--glass-strong:rgba(29,33,26,0.92);
+  --glass-border:rgba(185,202,187,0.13);--glass-border-strong:rgba(185,202,187,0.20);
+  --grad-accent:linear-gradient(135deg,#9CB59F,#78927C);
+  --grad-green:linear-gradient(135deg,#9CB59F,#78927C);
+  --grad-gold:linear-gradient(135deg,#E0B665,#C99537);
+  --shadow-warm:0 8px 32px rgba(0,0,0,0.30),0 2px 8px rgba(0,0,0,0.20);
+  --shadow-warm-hover:0 16px 48px rgba(0,0,0,0.38),0 4px 12px rgba(0,0,0,0.24);
 }
 body.night-mode::before{
-  background:
-    radial-gradient(ellipse 700px 500px at 15% 10%,rgba(212,132,90,0.10),transparent 60%),
-    radial-gradient(ellipse 600px 500px at 85% 20%,rgba(160,110,60,0.08),transparent 60%),
-    radial-gradient(ellipse 500px 400px at 50% 90%,rgba(107,158,122,0.06),transparent 60%);
+  background:radial-gradient(ellipse 780px 520px at 12% 4%,rgba(141,170,145,0.08),transparent 64%);
 }
 body.night-mode .topnav{
   background:rgba(26,18,10,0.78);
@@ -1796,19 +1742,18 @@ body.night-mode .feature-card::before{
 /* ── REVIEW PAGE — monthly ritual ── */
 .review-hero{
   position:relative;
-  border-radius:28px;
+  border-radius:24px;
   padding:36px 40px 32px;
   margin-bottom:24px;
-  background:linear-gradient(135deg,rgba(244,199,169,0.5) 0%,rgba(155,126,214,0.4) 50%,rgba(197,181,217,0.35) 100%);
-  background-size:200% 200%;
-  animation:gradientMove 18s ease infinite;
-  border:1px solid rgba(255,255,255,0.6);
+  background:linear-gradient(135deg,rgba(255,255,255,0.78),rgba(201,138,45,0.10));
+  border:1px solid var(--border);
   overflow:hidden;
-  box-shadow:var(--shadow);
+  box-shadow:var(--shadow-sm);
 }
-.review-hero-blob{position:absolute;border-radius:50%;filter:blur(60px);opacity:0.5;pointer-events:none}
-.review-hero-blob-1{top:-30%;right:-10%;width:320px;height:320px;background:radial-gradient(circle,rgba(255,255,255,0.7),transparent 70%);animation:float1 14s ease-in-out infinite}
-.review-hero-blob-2{bottom:-40%;left:-10%;width:280px;height:280px;background:radial-gradient(circle,rgba(155,135,190,0.5),transparent 70%);animation:float2 16s ease-in-out infinite}
+.review-hero::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(circle at 88% 10%,rgba(63,90,68,0.12),transparent 42%);
+}
 .review-hero-inner{position:relative;z-index:1}
 .review-eyebrow{
   font-size:11px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;
@@ -5181,16 +5126,18 @@ body.night-mode .focus-substep-tick{background:rgba(255,255,255,0.06)}
    BLOOM — Part 4 additions
 ══════════════════════════════════════════════ */
 
-/* Page-header emoji tiles (replaced the giphy GIFs) */
+/* Offline page-header tiles — consistent Field Ledger landmarks */
 .page-emoji-tile{
-  width:72px;height:72px;flex-shrink:0;
+  width:100px;height:100px;flex-shrink:0;
   display:flex;align-items:center;justify-content:center;
-  font-size:34px;line-height:1;
-  background:#f2e8d8;
+  font-size:44px;line-height:1;
+  background:var(--paper2);
   border-radius:18px;
-  border:1px solid rgba(160,110,60,0.15);
+  border:1px solid var(--border);
+  border-left:3px solid var(--moss);
+  box-shadow:var(--shadow-xs);
 }
-body.night-mode .page-emoji-tile{background:rgba(240,235,227,0.06)}
+body.night-mode .page-emoji-tile{background:var(--paper2)}
 
 /* Data-journal numbers — metrics render in the rounded mono face */
 .stat-big,.stat-val,.stat-num,.hero-streak-num,
@@ -5213,7 +5160,7 @@ body.night-mode .page-emoji-tile{background:rgba(240,235,227,0.06)}
   }
   .hb-week-day.just-ticked,.task-check.just-ticked,
   .pw-habit-check.just-ticked,.focus-check.just-ticked{
-    animation:bloomTickPop 200ms var(--ease-spring);
+    animation:bloomTickPop 180ms var(--ease-spring);
   }
 }
 
@@ -5235,20 +5182,13 @@ body.night-mode::after{opacity:0.05}
 svg.spark{display:block;width:100%;height:24px;margin-top:6px}
 svg.ring{display:block}
 
-/* (#5) Gradient hero decoration — soft light blob + ✨ sparkle, layered ON TOP
-   of the existing time-of-day background (never replacing it). Purely additive:
-   the crisp highlight blob sits behind hero-inner (z-index:1); the sparkle sits
-   in the empty bottom-right corner. */
+/* Dashboard hero — one restrained moss radial, no decorative sparkle. */
 .hero::before{
-  content:'';position:absolute;top:-50px;right:-30px;
-  width:150px;height:150px;border-radius:50%;
-  background:rgba(255,255,255,0.35);filter:blur(6px);
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(circle at 88% 8%,rgba(63,90,68,0.14),transparent 44%);
   pointer-events:none;z-index:0;
 }
-.hero::after{
-  content:'✨';position:absolute;bottom:12px;right:18px;
-  font-size:24px;opacity:0.6;pointer-events:none;z-index:0;
-}
+.hero::after{content:none}
 /* Planner welcome — washi-tape card (new journal design) */
 
 /* (#6) Streak ring — small ring with 🔥 inside, sits inside the streak pill */
@@ -5266,21 +5206,23 @@ svg.ring{display:block}
 }
 body.night-mode .hb-week-day.done{background:var(--grad-accent)}
 
-/* (#7) Hero-tier card — white card with a gradient-accent border (preview .hero-tier) */
+/* Hero tier — solid paper, stronger depth, moss rule. */
 .card-hero-tier{
-  background:linear-gradient(var(--white),var(--white)) padding-box,var(--grad-accent) border-box;
-  border:2px solid transparent;
-  box-shadow:0 6px 20px rgba(155,126,214,0.12);
+  background:var(--card);
+  border:1px solid var(--border);
+  border-top:2px solid var(--moss);
+  box-shadow:var(--shadow-md);
 }
-.card-hero-tier::before{opacity:0.35}
+.card-hero-tier::before{content:none}
 
-/* (#7) Quiet card — dim surface, no shadow (preview .quiet) */
+/* Quiet tier — recessed paper with no elevation or hover lift. */
 .card-quiet{
-  background:var(--surface-dim);
+  background:var(--paper2);
   box-shadow:none;
   border:1px solid var(--border);
 }
-.card-quiet::before{opacity:0}
+.card-quiet::before{content:none}
+.card.card-quiet:hover{transform:none;box-shadow:none;border-color:var(--border)}
 
 /* (#7) Section rule — small gradient bar before a label (preview .clbl .bar) */
 .section-rule{display:flex;align-items:center;gap:7px}
@@ -5329,3 +5271,156 @@ body.night-mode .hb-week-day.done{background:var(--grad-accent)}
   .undo-toast{left:14px;right:14px;bottom:14px;justify-content:space-between}
   .sync-conflict-actions .btn{flex:1;justify-content:center}
 }
+
+/* ═══════════════════════════════════════════════════════════
+   FIELD LEDGER — final semantic presentation layer
+═══════════════════════════════════════════════════════════ */
+body::before,body::after{z-index:0}
+.app{position:relative;z-index:1}
+
+/* Solid moss is the default action language; clay is training-only. */
+.topnav-link{color:var(--text2)}
+.topnav-link.active,.page-tab.active,.filter-btn.active{
+  background:var(--moss);color:#fff;border-color:transparent;
+  box-shadow:0 2px 7px rgba(63,90,68,0.24);
+}
+.page-tabs{background:var(--paper2);border-color:var(--border)}
+.page-tab{color:var(--text2)}
+.btn{background:var(--card);backdrop-filter:none;-webkit-backdrop-filter:none}
+.btn-accent{background:var(--moss);color:#fff;box-shadow:0 4px 14px rgba(63,90,68,0.20)}
+.btn-accent:hover{background:var(--moss-dark);box-shadow:0 6px 18px rgba(63,90,68,0.24)}
+.chip{background:var(--grad-accent);color:#fff}
+
+/* Display type is reserved for major headings; cards use the UI face. */
+.page-header h1,.hero h1,.review-hero-title{font-family:var(--serif);font-weight:600}
+.planner-card-title,.card-label,.pw-mini-title,
+.planner-training-card .planner-card-title,
+.planner-habits-card .planner-card-title,
+.planner-schedule-card .planner-card-title,
+.planner-focus-card .planner-card-title{font-family:var(--sans);color:var(--ink)}
+
+/* Today hero tier: solid paper, moss rule, and stronger depth. */
+.planner-training-card,.planner-habits-card{
+  background:var(--card) !important;
+  border:1px solid var(--border) !important;
+  border-top:2px solid var(--moss) !important;
+  box-shadow:var(--shadow-md) !important;
+}
+.pw-train-bar{background:var(--clay)}
+.pw-train-badge{background:var(--clay-dim);color:var(--clay)}
+.pw-train-log-btn{background:var(--clay) !important;color:#fff !important}
+.planner-training-card .planner-card-title{color:var(--ink)}
+.planner-habits-card .planner-card-title{color:var(--ink)}
+.pw-wavy-underline path{stroke:var(--moss)}
+
+/* Data ink: key values and times share one tabular mono rhythm. */
+.stat-big,.stat-val,.stat-num,.hero-streak-num,
+.fin-nw-val,.fin-nw-piece-val,.fin-math-step-val,.fin-sg-current,
+.debt-row-bal-val,.sk-streak-num,.hb-consistency-pct,.hb-streak-num,
+.dash-w-count,.dash-w-current,.pulse-overall-num,.countdown-num,
+.metric-value,.big-num,.pw-water-count,.pw-weight-val,.pw-sched-time,
+.pw-habit-count,.pw-consistency-pct,.thermo-pct{
+  font-family:var(--mono);font-variant-numeric:tabular-nums;
+  font-feature-settings:"tnum" 1;
+}
+
+/* Moss-ink completion states; motion remains reduced-motion aware. */
+.dot.done,.pw-habit-row.done .pw-habit-check,
+.focus-row.done .focus-check,.task-check.done,.hb-week-day.done{
+  background:var(--moss);border-color:var(--moss);color:#fff;
+  box-shadow:0 2px 7px rgba(63,90,68,0.22);
+}
+body.night-mode .dot.done{background:var(--moss);color:#fff}
+.hb-today-btn.done,.hb-today-btn.done:hover{background:var(--moss)}
+.pw-habit-name,.focus-text,.pw-priority-text{color:var(--ink)}
+.pw-habit-row.done .pw-habit-name,.focus-row.done .focus-text{color:var(--text3)}
+
+/* Compact inline data visuals for Today's daily metrics. */
+.pw-water-progress{width:100%;height:5px;margin:9px 0 2px;background:var(--paper2);border-radius:999px;overflow:hidden}
+.pw-water-progress span{display:block;height:100%;background:var(--sky);border-radius:inherit;transition:width 350ms var(--ease)}
+.pw-weight-mini svg.spark{width:100%;max-width:150px;margin:5px auto 8px}
+.pw-water-btn{background:var(--sky);color:#fff}
+.pw-water-sub,.pw-weight-change{color:var(--text2)}
+.pw-weight-down{color:var(--moss)}
+.pw-weight-up{color:var(--amber)}
+
+/* Calm hero surfaces in both themes. */
+.hero-eyebrow,.hero-sub{color:var(--text2)}
+.hero h1 em{color:var(--moss)}
+.hero-quote{background:rgba(255,255,255,0.58);border-color:var(--border);color:var(--text2);backdrop-filter:none;-webkit-backdrop-filter:none}
+.review-eyebrow{color:var(--text2)}
+body.night-mode .hero,body.night-mode .review-hero{background:linear-gradient(135deg,var(--card),var(--paper2));border-color:var(--border)}
+body.night-mode .hero-quote{background:rgba(20,23,15,0.34);color:var(--text2)}
+
+/* Headers stay generous on desktop and compact on small screens. */
+@media(max-width:600px){
+  .page-emoji-tile{width:64px;height:64px;font-size:32px;border-radius:14px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .hero-inner{transition:none !important;transform:none !important}
+  .card,.btn,.page-tab,.topnav-link{transition:none !important}
+}
+
+/* Final legacy-selector cleanup: keep stable layouts, replace old Journal ink. */
+.planner-welcome-card{background:var(--card);border-color:var(--border);box-shadow:var(--shadow-sm)}
+.pw-washi-tape{background:var(--amber-dim);border:1px solid rgba(201,138,45,0.18)}
+.pw-welcome-greet{color:var(--moss-dark)}
+.pw-welcome-date,.pw-welcome-quote{color:var(--text2)}
+.pw-chip-streak{background:var(--moss-dim);color:var(--moss)}
+.pw-chip-training{background:var(--clay-dim);color:var(--clay)}
+.pw-chip-focus{background:var(--sky-dim);color:var(--sky)}
+
+.habit-card{border-top-color:var(--moss);box-shadow:var(--shadow-sm)}
+.habit-card:hover{box-shadow:var(--shadow)}
+.hb-streak-icon.hot{filter:drop-shadow(0 0 4px rgba(201,138,45,0.28))}
+.hb-strip-cell.done,body.night-mode .hb-strip-cell.done,.hb-period.done{
+  background:var(--moss);box-shadow:0 2px 6px rgba(63,90,68,0.20)
+}
+.hb-strip-cell.today{border-color:var(--moss);background:var(--moss-dim)}
+.hb-foot-num,.sk-streak-num{font-family:var(--mono);color:var(--moss)}
+
+.focus-card::before,.focus-card::after,.feature-card::before{content:none}
+.stat-card,.workout-card,.review-prompt{
+  background:var(--card);backdrop-filter:none;-webkit-backdrop-filter:none;
+  border-color:var(--border)
+}
+.stat-card::before{content:none}
+.stat-card:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
+
+.pw-habit-count,.pw-now-text{color:var(--moss)}
+.pw-habit-row,.pw-schedule-timeline{border-color:var(--border)}
+.pw-habit-check,.pw-sched-check,.pw-inbox-check{border-color:var(--border)}
+.pw-sched-check.done,.pw-inbox-task-card.done .pw-inbox-check{background:var(--moss);border-color:var(--moss)}
+.pw-sched-row.done .pw-sched-text,.pw-inbox-task-card.done .pw-inbox-text{color:var(--text3)}
+.pw-now-line::before,.pw-now-line::after{border-color:var(--moss)}
+.pw-sched-time,.pw-inbox-title{color:var(--ink)}
+.pw-inbox-helper,.pw-inbox-empty-text{color:var(--text2)}
+.pw-inbox-pill{background:var(--moss-dim);color:var(--moss)}
+.pw-inbox-text{color:var(--ink)}
+.pw-weight-btn{color:var(--moss);border-color:var(--moss)}
+.pw-weight-btn:hover{color:#fff;border-color:var(--moss);background:var(--moss)}
+
+#lh-signin-btn{background:var(--moss) !important;color:#fff !important}
+#lh-signin-btn:hover{background:var(--moss-dark) !important}
+.field input:focus,.field select:focus,.field textarea:focus,
+.review-textarea:focus,.topnav-search:focus-within,.search-bar:focus-within,
+.wp-reflect-textarea:focus{
+  border-color:var(--moss);box-shadow:0 0 0 3px var(--moss-dim)
+}
+
+body.night-mode .planner-welcome-card,body.night-mode .stat-card,
+body.night-mode .workout-card,body.night-mode .review-prompt{background:var(--card)}
+
+/* Ensure inline-era headings and metrics cannot retain the old brown/serif ink. */
+.page-header h1,.page-header p,.review-hero-title{color:var(--ink)}
+.page-header p{color:var(--text2)}
+#pulse-overall-num,#training-week-count{font-family:var(--mono) !important;font-variant-numeric:tabular-nums}
+
+body.night-mode .topnav{background:rgba(20,23,15,0.86);border-bottom-color:var(--border)}
+body.night-mode .topnav-search{background:rgba(141,170,145,0.08);border-color:var(--border)}
+body.night-mode .topnav-search:focus-within{background:rgba(141,170,145,0.12)}
+body.night-mode .focus-card{background:var(--card)}
+body.night-mode .dot{background:var(--paper2);border-color:var(--border);color:var(--text2)}
+body.night-mode .dot.done{background:var(--moss);border-color:var(--moss);color:#14170F}
+body.night-mode .dot.today{background:var(--moss-dim);border-color:var(--moss);color:var(--moss)}

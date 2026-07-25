@@ -271,8 +271,12 @@ function renderNetWorthTrend(){
 
   // Bloom palette — read the live accent so light/dark themes stay in sync.
   var _fcs=getComputedStyle(document.body);
-  var _facc=(_fcs.getPropertyValue('--accent')||'#9B7ED6').trim();
-  var _ftick=(_fcs.getPropertyValue('--text2')||'#8F86A3').trim();
+  var _facc=(_fcs.getPropertyValue('--moss')||'#3F5A44').trim();
+  var _fdim=(_fcs.getPropertyValue('--moss-dim')||'rgba(63,90,68,0.10)').trim();
+  var _fgrid=(_fcs.getPropertyValue('--border2')||'rgba(63,90,68,0.08)').trim();
+  var _fcard=(_fcs.getPropertyValue('--card')||'#FFFFFF').trim();
+  var _ftick=(_fcs.getPropertyValue('--text2')||'#626B62').trim();
+  var _ffont='Spline Sans Mono';
   finCharts['nwTrend']=new Chart(ctx,{
     type:'line',
     data:{
@@ -280,17 +284,17 @@ function renderNetWorthTrend(){
       datasets:[{
         data:data,
         borderColor:_facc,
-        backgroundColor:'rgba(155,126,214,0.12)',
+        backgroundColor:_fdim,
         tension:0.35,fill:true,
-        pointRadius:4,pointBackgroundColor:_facc,pointBorderColor:'#fff',pointBorderWidth:2
+        pointRadius:4,pointBackgroundColor:_facc,pointBorderColor:_fcard,pointBorderWidth:2
       }]
     },
     options:{
       responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return fmtMoney(c.parsed.y)}}}},
       scales:{
-        y:{ticks:{callback:function(v){return '£'+(v/1000).toFixed(1)+'k'},color:_ftick,font:{size:10}},grid:{color:'rgba(0,0,0,0.05)'}},
-        x:{ticks:{color:_ftick,font:{size:10}},grid:{display:false}}
+        y:{ticks:{callback:function(v){return '£'+(v/1000).toFixed(1)+'k'},color:_ftick,font:{size:10,family:_ffont}},grid:{color:_fgrid}},
+        x:{ticks:{color:_ftick,font:{size:10,family:_ffont}},grid:{display:false}}
       }
     }
   });
@@ -301,7 +305,7 @@ function renderFinanceOverview(){
   renderFinancePlan();
 }
 function renderBudget(){var income=STATE.income||[];var totalInc=income.reduce(function(s,i){return s+Number(i.amount)},0);var iEl=document.getElementById('income-list');if(iEl)iEl.innerHTML=income.length?income.map(function(i){return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)"><span style="font-size:16px">'+(i.icon||'&#128176;')+'</span><span style="flex:1;font-size:13px;font-weight:500">'+i.name+'</span><span style="font-size:14px;font-weight:600;color:var(--mint)">'+fmtMoney(i.amount)+'</span><button class="btn btn-sm btn-ghost" onclick="openModal(\'editIncome\',\''+i.id+'\')">&#9998;</button><button class="btn btn-sm btn-danger" onclick="deleteIncome(\''+i.id+'\')">&#215;</button></div>'}).join(''):'<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">No income added yet</div>';var iTotalEl=document.getElementById('income-total');if(iTotalEl)iTotalEl.innerHTML='SUM <strong>'+fmtMoney(totalInc)+'</strong>/month';var expenses=STATE.expenses||[];var totalExp=expenses.reduce(function(s,e){return s+Number(e.amount)},0);var eEl=document.getElementById('expenses-list');if(eEl)eEl.innerHTML=expenses.length?expenses.map(function(e){return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)"><span style="font-size:16px">'+(e.icon||'&#128184;')+'</span><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">'+e.name+'</div>'+(e.note?'<div style="font-size:11px;color:var(--text3)">'+e.note+'</div>':'')+'</div><span style="font-size:14px;font-weight:600;color:var(--red)">'+fmtMoney(e.amount)+'</span><button class="btn btn-sm btn-ghost" onclick="openModal(\'editExpense\',\''+e.id+'\')">&#9998;</button><button class="btn btn-sm btn-danger" onclick="deleteExpense(\''+e.id+'\')">&#215;</button></div>'}).join(''):'<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">No expenses yet</div>';var eTotalEl=document.getElementById('expenses-total');if(eTotalEl)eTotalEl.innerHTML='SUM <strong>'+fmtMoney(totalExp)+'</strong>/month'}
-function renderAccounts(){var accounts=STATE.accounts||[];var savings=accounts.filter(function(a){return a.type==='savings'});var investments=accounts.filter(function(a){return a.type==='investment'});var mkCard=function(a){return '<div class="card" style="margin-bottom:10px;border-left:4px solid '+(a.color||'#a0522d')+'"><div style="display:flex;align-items:center;gap:12px"><span style="font-size:26px">'+(a.icon||'&#127968;')+'</span><div style="flex:1"><div style="font-size:14px;font-weight:600">'+a.name+'</div><div style="font-size:11px;color:var(--text3)">'+(a.institution||'')+(a.note?' &#183; '+a.note:'')+'</div></div><div style="text-align:right"><div style="font-size:20px;font-family:var(--serif);font-weight:600;color:var(--accent)">'+fmtMoney(a.balance)+'</div>'+(a.target?'<div style="font-size:11px;color:var(--text3)">'+Math.min(100,Math.round(a.balance/a.target*100))+'% of goal</div>':'')+'</div><div style="display:flex;flex-direction:column;gap:4px"><button class="btn btn-sm btn-ghost" onclick="openModal(\'editAccount\',\''+a.id+'\')">&#9998;</button><button class="btn btn-sm btn-danger" onclick="deleteAccount(\''+a.id+'\')">&#215;</button></div></div>'+(a.target?'<div class="pbar-wrap" style="margin-top:8px"><div class="pbar" style="width:'+Math.min(100,Math.round(a.balance/a.target*100))+'%;background:'+(a.color||'var(--accent)')+'"></div></div>':'')+'</div>'};var bEl=document.getElementById('bank-accounts-list');if(bEl)bEl.innerHTML=savings.length?savings.map(mkCard).join(''):'<div style="font-size:13px;color:var(--text3);padding:12px 0">No savings accounts yet</div>';var iEl=document.getElementById('investments-list');if(iEl)iEl.innerHTML=investments.length?investments.map(mkCard).join(''):'<div style="font-size:13px;color:var(--text3);padding:12px 0">No investments yet</div>'}
+function renderAccounts(){var accounts=STATE.accounts||[];var savings=accounts.filter(function(a){return a.type==='savings'});var investments=accounts.filter(function(a){return a.type==='investment'});var mkCard=function(a){return '<div class="card" style="margin-bottom:10px;border-left:4px solid '+(a.type==='investment'?'var(--amber)':'var(--moss)')+'"><div style="display:flex;align-items:center;gap:12px"><span style="font-size:26px">'+(a.icon||'&#127968;')+'</span><div style="flex:1"><div style="font-size:14px;font-weight:600">'+a.name+'</div><div style="font-size:11px;color:var(--text3)">'+(a.institution||'')+(a.note?' &#183; '+a.note:'')+'</div></div><div style="text-align:right"><div style="font-size:20px;font-family:var(--mono);font-weight:600;color:var(--accent)">'+fmtMoney(a.balance)+'</div>'+(a.target?'<div style="font-size:11px;color:var(--text3)">'+Math.min(100,Math.round(a.balance/a.target*100))+'% of goal</div>':'')+'</div><div style="display:flex;flex-direction:column;gap:4px"><button class="btn btn-sm btn-ghost" onclick="openModal(\'editAccount\',\''+a.id+'\')">&#9998;</button><button class="btn btn-sm btn-danger" onclick="deleteAccount(\''+a.id+'\')">&#215;</button></div></div>'+(a.target?'<div class="pbar-wrap" style="margin-top:8px"><div class="pbar" style="width:'+Math.min(100,Math.round(a.balance/a.target*100))+'%;background:'+(a.type==='investment'?'var(--amber)':'var(--moss)')+'"></div></div>':'')+'</div>'};var bEl=document.getElementById('bank-accounts-list');if(bEl)bEl.innerHTML=savings.length?savings.map(mkCard).join(''):'<div style="font-size:13px;color:var(--text3);padding:12px 0">No savings accounts yet</div>';var iEl=document.getElementById('investments-list');if(iEl)iEl.innerHTML=investments.length?investments.map(mkCard).join(''):'<div style="font-size:13px;color:var(--text3);padding:12px 0">No investments yet</div>'}
 var fcDebtsExpanded={};
 function toggleDebtExpand(id){fcDebtsExpanded[id]=!fcDebtsExpanded[id];renderDebts()}
 function renderDebts(){
@@ -383,9 +387,9 @@ function renderDebtPlan(){
   h+='<button class="btn btn-sm btn-accent" onclick="openModal(\'addPlannedPayment\')">+ Add</button></div>';
   if(planned.length){
     h+='<div style="display:flex;gap:12px;margin-bottom:12px">';
-    h+='<div style="flex:1;text-align:center"><div style="font-family:var(--serif);font-size:20px;font-weight:600;color:var(--accent)">'+fmtMoney(plannedTotal)+'</div><div style="font-size:10px;color:var(--text3)">planned</div></div>';
-    h+='<div style="flex:1;text-align:center"><div style="font-family:var(--serif);font-size:20px;font-weight:600;color:var(--mint)">'+fmtMoney(paidTotal)+'</div><div style="font-size:10px;color:var(--text3)">paid</div></div>';
-    h+='<div style="flex:1;text-align:center"><div style="font-family:var(--serif);font-size:20px;font-weight:600;color:'+(plannedTotal-paidTotal>0?'var(--red)':'var(--mint)')+'">'+fmtMoney(Math.max(0,plannedTotal-paidTotal))+'</div><div style="font-size:10px;color:var(--text3)">left</div></div></div>';
+    h+='<div style="flex:1;text-align:center"><div style="font-family:var(--mono);font-size:20px;font-weight:600;color:var(--accent)">'+fmtMoney(plannedTotal)+'</div><div style="font-size:10px;color:var(--text3)">planned</div></div>';
+    h+='<div style="flex:1;text-align:center"><div style="font-family:var(--mono);font-size:20px;font-weight:600;color:var(--mint)">'+fmtMoney(paidTotal)+'</div><div style="font-size:10px;color:var(--text3)">paid</div></div>';
+    h+='<div style="flex:1;text-align:center"><div style="font-family:var(--mono);font-size:20px;font-weight:600;color:'+(plannedTotal-paidTotal>0?'var(--red)':'var(--mint)')+'">'+fmtMoney(Math.max(0,plannedTotal-paidTotal))+'</div><div style="font-size:10px;color:var(--text3)">left</div></div></div>';
     var pct=Math.round(paidTotal/plannedTotal*100);
     h+='<div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;margin-bottom:14px"><div style="height:100%;width:'+pct+'%;background:'+(pct>=100?'var(--mint)':'var(--accent)')+';border-radius:3px;transition:width .4s"></div></div>';
     planned.sort(function(a,b){return (a.paid?1:0)-(b.paid?1:0)||(a.date||'').localeCompare(b.date||'')});

@@ -197,7 +197,7 @@ function renderPlannerInbox(){
 
   var html='';
   // Header
-  html+='<div class="card planner-card pw-inbox-header-card">';
+  html+='<div class="card planner-card pw-inbox-header-card card-quiet">';
   html+='<div class="pw-inbox-head"><span class="pw-inbox-title">Inbox</span>'
     +(openCount?'<span class="pw-inbox-pill">'+openCount+' to sort</span>':'')+'</div>';
   html+='<div class="pw-inbox-helper">Empty your head here \u2014 sort it out later.</div>';
@@ -207,11 +207,11 @@ function renderPlannerInbox(){
   html+=plannerCaptureCard();
 
   if(!openCount){
-    html+='<div class="card planner-card pw-inbox-empty"><span class="pw-inbox-empty-icon">\uD83D\uDCE5</span><span class="pw-inbox-empty-text">All clear. Nothing to sort.</span></div>';
+    html+='<div class="card planner-card pw-inbox-empty card-quiet"><span class="pw-inbox-empty-icon">\uD83D\uDCE5</span><span class="pw-inbox-empty-text">All clear. Nothing to sort.</span></div>';
   }else{
     // Task cards — each is a separate card
     inbox.forEach(function(t){
-      html+='<div class="card planner-card pw-inbox-task-card">'
+      html+='<div class="card planner-card pw-inbox-task-card card-quiet">'
         +'<div class="pw-inbox-task-row">'
           +'<div class="pw-inbox-check" onclick="plannerToggleFocusDone(\''+t.id+'\')" role="button" tabindex="0" aria-label="Complete '+escapeHtml(t.text)+'"></div>'
           +'<span class="pw-inbox-text">'+escapeHtml(t.text)+'</span>'
@@ -362,6 +362,7 @@ function plannerWaterCard(){
   var weekAgo=localDateKey(new Date(Date.now()-7*86400000));
   var weekWeight=weights.filter(function(w){return w.date<=weekAgo});
   var prevW=weekWeight.length?weekWeight[weekWeight.length-1].value:null;
+  var weightSpark=(typeof sparklineSVG==='function')?sparklineSVG(weights.slice(-7).map(function(w){return Number(w.value)}),'var(--moss)'):'';
   var weightChange=null,weightDir='',weightClass='';
   if(latestW!=null&&prevW!=null){
     weightChange=Math.round((latestW-prevW)*10)/10;
@@ -377,11 +378,13 @@ function plannerWaterCard(){
         +'<div class="pw-glass-illus" aria-hidden="true"><div class="pw-glass-fill" style="height:'+pct+'%"></div></div>'
         +'<div class="pw-water-count">'+glasses+' / '+target+'</div>'
         +'<div class="pw-water-sub">glasses \u00B7 '+pct+'%</div>'
+        +'<div class="pw-water-progress" aria-hidden="true"><span style="width:'+pct+'%"></span></div>'
         +'<button class="pw-water-btn" onclick="logWaterGlass('+(glasses+1)+')">+ glass</button>'
       +'</div>'
       +'<div class="card planner-card pw-weight-mini">'
         +'<div class="pw-mini-title">\u2696\uFE0F Weight</div>'
         +(latestW!=null?'<div class="pw-weight-val">'+latestW+' kg</div>':'<div class="pw-weight-val">\u2014</div>')
+        +weightSpark
         +(weightChange!=null?'<div class="pw-weight-change '+weightClass+'">'+weightDir+' this week</div>':'')
         +'<button class="pw-weight-btn" onclick="openModal(\'logMetric\',\'weight\')">Log</button>'
       +'</div>'
@@ -421,7 +424,7 @@ function plannerHabitCard(){
   }
   var doneCount=habits.filter(function(h){return h.logs&&h.logs[today]}).length;
   // Hand-drawn underline SVG
-  var wavySvg='<svg class="pw-wavy-underline" viewBox="0 0 220 6" preserveAspectRatio="none" aria-hidden="true"><path d="M0 3 Q10 0 20 3 T40 3 T60 3 T80 3 T100 3 T120 3 T140 3 T160 3 T180 3 T200 3 T220 3" fill="none" stroke="#c97b6e" stroke-width="1.5" opacity="0.4"/></svg>';
+  var wavySvg='<svg class="pw-wavy-underline" viewBox="0 0 220 6" preserveAspectRatio="none" aria-hidden="true"><path d="M0 3 Q10 0 20 3 T40 3 T60 3 T80 3 T100 3 T120 3 T140 3 T160 3 T180 3 T200 3 T220 3" fill="none" stroke="var(--moss)" stroke-width="1.5" opacity="0.4"/></svg>';
   return ''
     +'<div class="card planner-card planner-habits-card" id="planner-habits-card">'
       +'<div class="planner-card-head"><span class="planner-card-title">Habits</span>'
@@ -465,7 +468,7 @@ function plannerScheduleCard(todayKey){
   });
   items.sort(function(a,b){return String(a.time||'99:99').localeCompare(String(b.time||'99:99'))});
 
-  var dotColors=['#8a6545','#c97b6e','#d4a96a','#6b9e7a','#b0563c'];
+  var dotColors=['var(--moss)','var(--sky)','var(--amber)','var(--clay)','var(--text2)'];
 
   var html='<div class="card planner-card planner-schedule-card">';
   html+='<div class="planner-card-head"><span class="planner-card-title">Schedule</span>'
@@ -1090,7 +1093,7 @@ function plannerNextWeekCard(wkKey){
   var nextText=weeklyIntentionText(nextWk);
   var carryover=getWeekTasks(wkKey).filter(function(t){return t&&!t.done});
 
-  var html='<div class="card planner-card planner-nextweek-card card-hero-tier">';
+  var html='<div class="card planner-card planner-nextweek-card">';
   html+='<div class="planner-card-head"><span class="planner-card-title"><span class="section-rule-bar"></span>Set up next week</span></div>';
   html+='<div class="planner-nextweek-sub">A calm head start — jot an intention and bring along anything you\'d still like to do.</div>';
 

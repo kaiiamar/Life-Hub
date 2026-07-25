@@ -364,24 +364,36 @@ window.addEventListener('scroll',function(){
   else topnav.classList.remove('scrolled');
 },{passive:true});
 
-// ── HERO PARALLAX ──
+// ── HERO DEPTH ──
 document.addEventListener('mousemove',function(e){
+  if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
   var inner=document.getElementById('hero-inner');
   var hero=document.getElementById('hero');
   if(!inner||!hero)return;
   var rect=hero.getBoundingClientRect();
   if(rect.bottom<0||rect.top>window.innerHeight)return;
-  var x=(e.clientX/window.innerWidth-0.5)*8;
-  var y=(e.clientY/window.innerHeight-0.5)*5;
+  var x=(e.clientX/window.innerWidth-0.5)*4;
+  var y=(e.clientY/window.innerHeight-0.5)*3;
   inner.style.transform='translate('+x+'px,'+y+'px)';
-  // Move blobs too
-  var blobs=hero.querySelectorAll('.blob');
-  blobs.forEach(function(b,i){
-    var mult=(i+1)*0.6;
-    b.style.transform='translate('+(-x*mult)+'px,'+(-y*mult)+'px)';
-  });
 });
 
+
+// Repaint canvas charts after a theme change because Chart.js snapshots CSS
+// colors at render time. Guard every renderer so the early bootstrap call is safe.
+function refreshThemeCharts(){
+  setTimeout(function(){
+    var bodyTab=document.getElementById('workout-body');
+    if(bodyTab&&bodyTab.classList.contains('active')&&typeof renderTrainingBody==='function')renderTrainingBody();
+    var financePage=document.getElementById('page-finance');
+    if(financePage&&financePage.classList.contains('active')&&typeof renderFinance==='function'){
+      var active=financePage.querySelector('.sub-page.active');
+      renderFinance(active&&active.id==='finance-progress'?'progress':'plan');
+    }
+    var dashboardPage=document.getElementById('page-dashboard');
+    var insightsTab=document.getElementById('dash-tab-insights');
+    if(dashboardPage&&dashboardPage.classList.contains('active')&&insightsTab&&insightsTab.classList.contains('active')&&typeof renderInsights==='function')renderInsights();
+  },0);
+}
 
 // ── THEME TOGGLE ──
 function applyTheme(){
@@ -396,6 +408,7 @@ function applyTheme(){
   }
   var icon=document.getElementById('theme-toggle-icon');
   if(icon)icon.textContent=document.body.classList.contains('night-mode')?'☀️':'🌙';
+  refreshThemeCharts();
 }
 
 function toggleTheme(){

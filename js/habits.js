@@ -4,10 +4,10 @@
 var habitFilter='all';
 
 var HABIT_CAT_META={
-  fit:{label:'Fitness',color:'#9b87be',emoji:'💪'},
-  fin:{label:'Finance',color:'#D4845A',emoji:'💸'},
-  car:{label:'Career',color:'#C9973A',emoji:'💼'},
-  per:{label:'Personal',color:'#6B9E7A',emoji:'🌿'}
+  fit:{label:'Fitness',color:'#B0563C',emoji:'💪'},
+  fin:{label:'Finance',color:'#C98A2D',emoji:'💸'},
+  car:{label:'Career',color:'#6E93AE',emoji:'💼'},
+  per:{label:'Personal',color:'#3F5A44',emoji:'🌿'}
 };
 
 var HABIT_ANCHORS={
@@ -128,9 +128,9 @@ function habitConsistency(h){
 
 // Tone label + color for a consistency %
 function consistencyTone(pct){
-  if(pct>=80)return {label:'Strong',color:'var(--mint)'};
-  if(pct>=50)return {label:'Building',color:'var(--gold)'};
-  return {label:'Focus',color:'var(--accent-dark)'};
+  if(pct>=80)return {label:'Established',color:'var(--moss)'};
+  if(pct>=50)return {label:'Building',color:'var(--amber)'};
+  return {label:'Starting',color:'var(--sky)'};
 }
 
 function renderHabits(){
@@ -231,7 +231,7 @@ function renderHabitCard(h,todayKey){
   html+='</div>';
   // Bloom glow-up (#4): consistency ring next to each habit — --accent for daily
   // habits, --gold for everything else. Centre shows ✓ once done today.
-  var ringColor=(f==='daily')?'var(--accent)':'var(--gold)';
+  var ringColor=(f==='daily')?'var(--moss)':'var(--amber)';
   var ringCenter=todayStatus==='done'?'✓':'';
   if(typeof ringSVG==='function'){
     html+='<div class="hb-ring" title="'+consistency.pct+'% consistency">'+ringSVG(consistency.pct,ringColor,34,ringCenter)+'</div>';

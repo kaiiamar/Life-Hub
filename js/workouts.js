@@ -422,7 +422,7 @@ function renderTrainingBody(){
   // Bloom glow-up (#2): a 7-point sparkline of the last 7 logged weights beneath
   // the current-weight number, in --accent. Omitted gracefully when <2 points.
   var last7=weights.slice(-7).map(function(w){return w.value});
-  var weightSpark=(typeof sparklineSVG==='function')?sparklineSVG(last7,'var(--accent)'):'';
+  var weightSpark=(typeof sparklineSVG==='function')?sparklineSVG(last7,'var(--moss)'):'';
   el.innerHTML=
     '<div class="stat-card"><div class="stat-orb blue">⚖️</div><div class="card-label">Current</div><div class="stat-big">'+latest.value+'<span style="font-size:16px;color:var(--text2)"> kg</span></div>'+weightSpark+'<div class="stat-sub">'+fmtDate(latest.date)+'</div></div>'
     +'<div class="stat-card"><div class="stat-orb '+(delta<=0?'green':'accent')+'">📉</div><div class="card-label">Change</div><div class="stat-big">'+(delta>=0?'+':'')+delta.toFixed(1)+'<span style="font-size:16px;color:var(--text2)"> kg</span></div><div class="stat-sub">since start</div></div>'
@@ -442,8 +442,11 @@ function renderTrainingBody(){
   if(ctx&&typeof Chart!=='undefined'){
     if(ctx._ch)ctx._ch.destroy();
     var _cs=getComputedStyle(document.body);
-    var _acc=(_cs.getPropertyValue('--accent')||'#9B7ED6').trim();
-    var _tick=(_cs.getPropertyValue('--text2')||'#8F86A3').trim();
+    var _acc=(_cs.getPropertyValue('--moss')||'#3F5A44').trim();
+    var _mossDim=(_cs.getPropertyValue('--moss-dim')||'rgba(63,90,68,0.10)').trim();
+    var _skyDim=(_cs.getPropertyValue('--sky-dim')||'rgba(110,147,174,0.12)').trim();
+    var _tick=(_cs.getPropertyValue('--text2')||'#626B62').trim();
+    var _chartFont='Spline Sans Mono';
     var _labels=weights.map(function(w){return fmtDate(w.date)});
     var _vals=weights.map(function(w){return w.value});
     var _avg=_vals.map(function(_,i){var seg=_vals.slice(Math.max(0,i-6),i+1);return Math.round(seg.reduce(function(a,b){return a+b},0)/seg.length*10)/10;});
@@ -453,11 +456,11 @@ function renderTrainingBody(){
     var _bHigh=weights.map(function(w){return Math.round((_bandC(w.date)+_bHalf)*10)/10;});
     var _bLow=weights.map(function(w){return Math.round((_bandC(w.date)-_bHalf)*10)/10;});
     ctx._ch=new Chart(ctx,{type:'line',data:{labels:_labels,datasets:[
-      {label:'Steady range',data:_bHigh,borderColor:'transparent',backgroundColor:'rgba(155,126,214,0.10)',pointRadius:0,fill:'+1',tension:0.3},
+      {label:'Steady range',data:_bHigh,borderColor:'transparent',backgroundColor:_mossDim,pointRadius:0,fill:'+1',tension:0.3},
       {label:'_bandlow',data:_bLow,borderColor:'transparent',backgroundColor:'transparent',pointRadius:0,fill:false,tension:0.3},
-      {label:'Daily',data:_vals,borderColor:'rgba(155,126,214,0.28)',backgroundColor:'transparent',pointRadius:2,pointBackgroundColor:'rgba(155,126,214,0.4)',borderWidth:1,tension:0.3},
+      {label:'Daily',data:_vals,borderColor:_skyDim,backgroundColor:'transparent',pointRadius:2,pointBackgroundColor:_skyDim,borderWidth:1,tension:0.3},
       {label:'7-day avg',data:_avg,borderColor:_acc,backgroundColor:'transparent',pointRadius:0,borderWidth:2.5,tension:0.3}
-    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{filter:function(it){return it.text!=='_bandlow'},color:_tick,font:{size:10},boxWidth:10,padding:10}}},scales:{x:{ticks:{color:_tick,font:{size:10}}},y:{ticks:{color:_tick,font:{size:10},callback:function(v){return v+'kg'}}}}}});
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{filter:function(it){return it.text!=='_bandlow'},color:_tick,font:{size:10,family:_chartFont},boxWidth:10,padding:10}}},scales:{x:{ticks:{color:_tick,font:{size:10,family:_chartFont}}},y:{ticks:{color:_tick,font:{size:10,family:_chartFont},callback:function(v){return v+'kg'}}}}}});
   }
 }
 
