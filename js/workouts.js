@@ -461,18 +461,31 @@ function renderTrainingBody(){
   }
 }
 
-// Quick log today — one tap
+// Quick log today — one tap. Repeated taps reuse the existing same-type
+// record instead of creating duplicate sessions for the same date.
 function quickLogToday(type){
   var today=localDateKey(new Date());
-  if(type==='Rest'){
-    if(!STATE.workouts)STATE.workouts=[];
-    STATE.workouts.push({id:g(),date:today,type:'Rest',name:'Rest day',note:''});
-  }else if(type==='Run'){
+  if(type==='Run'){
     openModal('logRun');return;
+  }
+  if(!STATE.workouts)STATE.workouts=[];
+  var existing=STATE.workouts.find(function(w){
+    if(!w||w.date!==today)return false;
+    return String(w.type||w.name||'').toLowerCase()===String(type).toLowerCase();
+  });
+  if(existing){
+    renderWorkout();
+    if(typeof renderPlanner==='function')renderPlanner();
+    if(typeof showCelebrationToast==='function')showCelebrationToast(type+' is already logged today','✓');
+    return existing;
+  }
+
+  if(type==='Rest'){
+    STATE.workouts.push({id:g(),date:today,type:'Rest',name:'Rest day',note:''});
   }else{
-    if(!STATE.workouts)STATE.workouts=[];
     STATE.workouts.push({id:g(),date:today,type:type,name:type,note:''});
     autoTickHabit('gym',today);
+    if(type==='Hyrox')autoTickHabit('hyrox',today);
   }
   saveState();renderWorkout();
   // Keep the Planner "Today's training" card (3.2) in sync when it's on-screen.
@@ -486,6 +499,7 @@ function quickLogToday(type){
   }else{
     showCelebrationToast(type+' logged','💪');
   }
+  return STATE.workouts[STATE.workouts.length-1];
 }
 
 function sessionCard(w){

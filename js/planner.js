@@ -83,11 +83,34 @@ function removeFocusTask(taskId){
   return true;
 }
 
-// Set the single weekly intention for the current week (R9.1)
-function setWeeklyIntention(text){
-  STATE.weeklyIntention={weekKey:weekKey(new Date()),text:(text||'').trim()};
+// Weekly intentions are keyed so setting up next week never overwrites the
+// current week's intention. The legacy single object remains a read fallback
+// and is updated with the latest edit for compatibility with older clients.
+function weeklyIntentionText(wkKey){
+  var keyed=STATE.weeklyIntentions&&STATE.weeklyIntentions[wkKey];
+  if(typeof keyed==='string')return keyed;
+  if(keyed&&typeof keyed.text==='string')return keyed.text;
+  var legacy=STATE.weeklyIntention;
+  return (legacy&&legacy.weekKey===wkKey&&typeof legacy.text==='string')?legacy.text:'';
+}
+function setWeeklyIntention(text,wkKey){
+  var key=wkKey||weekKey(new Date());
+  var clean=(text||'').trim();
+  if(!STATE.weeklyIntentions||typeof STATE.weeklyIntentions!=='object'||Array.isArray(STATE.weeklyIntentions))STATE.weeklyIntentions={};
+  var legacy=STATE.weeklyIntention;
+  if(legacy&&legacy.weekKey&&typeof legacy.text==='string'&&!STATE.weeklyIntentions[legacy.weekKey]){
+    STATE.weeklyIntentions[legacy.weekKey]={weekKey:legacy.weekKey,text:legacy.text};
+  }
+  if(clean){
+    var entry={weekKey:key,text:clean};
+    STATE.weeklyIntentions[key]=entry;
+    STATE.weeklyIntention=entry;
+  }else{
+    delete STATE.weeklyIntentions[key];
+    if(STATE.weeklyIntention&&STATE.weeklyIntention.weekKey===key)STATE.weeklyIntention=null;
+  }
   saveState();
-  return STATE.weeklyIntention;
+  return clean?STATE.weeklyIntentions[key]:null;
 }
 
 // Create a time-blocked Scheduled_Commitment (R11.1). Pass recur:'weekly' for a
@@ -218,8 +241,10 @@ function renderPlannerToday(){
   var el=document.getElementById('planner-today');
   if(!el)return;
   var todayKey=localDateKey(new Date());
-  // Order: welcome → evening sweep → training → habits → schedule → focus → water+weight → capture.
-  el.innerHTML=plannerWelcomeCard()+plannerEveningSweepCard(todayKey)+plannerTrainingCard(todayKey)+plannerHabitCard()+plannerScheduleCard(todayKey)+plannerFocusCard(todayKey)+plannerWaterCard()+plannerCaptureCard();
+  // Order: welcome → training → habits → focus → schedule → capture → water → inbox.
+  // The evening reflection stays near the end so it never interrupts the two
+  // first-action cards, while Inbox remains the final, quiet sorting surface.
+  el.innerHTML=plannerWelcomeCard()+plannerTrainingCard(todayKey)+plannerHabitCard()+plannerFocusCard(todayKey)+plannerScheduleCard(todayKey)+plannerCaptureCard()+plannerWaterCard()+plannerEveningSweepCard(todayKey)+plannerInboxCard();
   // Keep the PWA app-icon badge in sync with today's open focus count (3.5).
   if(typeof updateAppBadge==='function')updateAppBadge();
   // Evening sweep: fetch the AI one-liner once the card is in the DOM (§evening).
@@ -526,17 +551,35 @@ function plannerInboxCard(){
 }
 
 // Detect whether a training session has already been logged for `dateKey`.
-// A strength/gym/rest session lands in STATE.workouts; a run lands in
-// STATE.metrics.run. Returns a short label for the done state, or null.
-function plannerTrainingLoggedToday(dateKey){
-  var w=(STATE.workouts||[]).filter(function(x){return x&&x.date===dateKey});
-  if(w.length){
-    var first=w[0];
-    return first.type||first.name||'Session';
+// Prefer the kind planned for today, then use a fixed activity order so the
+// label is deterministic even when more than one session exists that day.
+function plannerTrainingLoggedToday(dateKey,planned){
+  var labels=[];
+  (STATE.workouts||[]).forEach(function(w){
+    if(!w||w.date!==dateKey)return;
+    var label=w.type||w.name||'Session';
+    if(labels.indexOf(label)===-1)labels.push(label);
+  });
+  var hasRun=((STATE.metrics||{}).run||[]).some(function(r){return r&&r.date===dateKey});
+  if(hasRun&&labels.indexOf('Run')===-1)labels.push('Run');
+  if(!labels.length)return null;
+
+  var preferred=null;
+  if(planned){
+    if(planned.session==='run'&&hasRun)preferred='Run';
+    else if(planned.session==='rest')preferred=labels.find(function(label){return /^rest/i.test(label)});
+    else if(/hyrox/i.test(planned.label||''))preferred=labels.find(function(label){return /hyrox/i.test(label)});
+    else preferred=labels.find(function(label){return !/^rest$/i.test(label)&&!/^rest day$/i.test(label)&&label!=='Run'});
   }
-  var runs=((STATE.metrics||{}).run||[]).filter(function(r){return r&&r.date===dateKey});
-  if(runs.length)return 'Run';
-  return null;
+  if(preferred)return preferred;
+
+  var order={hyrox:1,gym:2,upper:3,lower:4,strength:5,run:6,session:7,rest:9,'rest day':9};
+  labels.sort(function(a,b){
+    var ak=String(a).toLowerCase(),bk=String(b).toLowerCase();
+    var ap=order[ak]||8,bp=order[bk]||8;
+    return ap-bp||ak.localeCompare(bk);
+  });
+  return labels[0];
 }
 
 // Part 3 (3.2): today's training promoted to a standalone card.
@@ -590,7 +633,7 @@ function plannerTrainingCard(todayKey){
     html+='<div class="planner-train-context">'+ctxBits.join(' \u00B7 ')+'</div>';
   }
 
-  var logged=plannerTrainingLoggedToday(todayKey);
+  var logged=plannerTrainingLoggedToday(todayKey,t);
   if(logged){
     html+='<div class="planner-train-done">'+escapeHtml(logged)+' \u2713 logged</div>';
   }else{
@@ -598,14 +641,17 @@ function plannerTrainingCard(todayKey){
     if(isRest){
       html+='<button class="btn btn-sm pw-train-log-btn" onclick="quickLogToday(\'Rest\')">Log rest \uD83C\uDF3F</button>';
       html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Gym\')">Gym</button>';
+      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Hyrox\')">Hyrox</button>';
       html+='<button class="btn btn-sm btn-ghost" onclick="openModal(\'logRun\')">Run</button>';
     }else if(t.session==='run'){
       html+='<button class="btn btn-sm pw-train-log-btn" onclick="openModal(\'logRun\')">Log run \uD83C\uDFC3</button>';
       html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Gym\')">Gym</button>';
+      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Hyrox\')">Hyrox</button>';
       html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Rest\')">Rest</button>';
       if(t.runType)html+='<button class="btn btn-sm btn-ghost" onclick="openModal(\'moveRun\',\''+t.runType+'\')" title="Move this run to another day">Move to\u2026</button>';
     }else{
       html+='<button class="btn btn-sm pw-train-log-btn" onclick="quickLogToday(\'Gym\')">Log gym \uD83D\uDCAA</button>';
+      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Hyrox\')">Hyrox</button>';
       if(t.run)html+='<button class="btn btn-sm btn-ghost" onclick="openModal(\'logRun\')">Recovery run</button>';
       else html+='<button class="btn btn-sm btn-ghost" onclick="openModal(\'logRun\')">Run</button>';
       html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Rest\')">Rest</button>';
@@ -1041,8 +1087,7 @@ function plannerNextWeekCard(wkKey){
   // Only from Saturday (getDay()===6) — the final day of the current week.
   if(new Date().getDay()!==6)return '';
   var nextWk=nextWeekKey();
-  var intention=STATE.weeklyIntention;
-  var nextText=(intention&&intention.weekKey===nextWk)?(intention.text||''):'';
+  var nextText=weeklyIntentionText(nextWk);
   var carryover=getWeekTasks(wkKey).filter(function(t){return t&&!t.done});
 
   var html='<div class="card planner-card planner-nextweek-card card-hero-tier">';
@@ -1058,18 +1103,19 @@ function plannerNextWeekCard(wkKey){
     html+='<div class="planner-intention-current">Set for next week.</div>';
   }
 
-  // (b) Carry-forward unfinished tasks
+  // (b) Select any unfinished priorities, then move them together in one
+  // reversible action. Nothing changes until the batch button is pressed.
   if(carryover.length){
     html+='<div class="planner-nextweek-carry-label">Bring these along?</div>';
-    html+='<div class="planner-nextweek-list">';
+    html+='<div class="planner-nextweek-list" id="planner-nextweek-list">';
     carryover.forEach(function(t){
-      html+='<div class="nextweek-row">'
-        +'<div class="nextweek-check" onclick="plannerCarryForward(\''+t.id+'\')" role="button" tabindex="0" aria-label="Bring '+escapeHtml(t.text)+' to next week"></div>'
+      html+='<label class="nextweek-row">'
+        +'<input type="checkbox" class="nextweek-check-input" value="'+escapeHtml(t.id)+'" aria-label="Bring '+escapeHtml(t.text)+' to next week">'
         +'<span class="nextweek-text">'+escapeHtml(t.text)+'</span>'
-        +'<button class="btn btn-ghost btn-sm nextweek-bring" onclick="plannerCarryForward(\''+t.id+'\')" title="Bring to next week">Bring along →</button>'
-      +'</div>';
+      +'</label>';
     });
     html+='</div>';
+    html+='<div class="planner-nextweek-batch"><button class="btn btn-sm pw-train-log-btn" onclick="plannerCarryForward()">Bring selected along →</button></div>';
   }else{
     html+='<div class="planner-empty-line">Nothing left hanging — a clean slate for next week.</div>';
   }
@@ -1078,29 +1124,36 @@ function plannerNextWeekCard(wkKey){
   return html;
 }
 
-// Save next week's intention (stored like weeklyIntention, keyed to next week).
+// Save next week's intention without replacing the current week's entry.
 function plannerSaveNextIntention(){
   var inp=document.getElementById('planner-next-intention-input');
   if(!inp)return;
-  STATE.weeklyIntention={weekKey:nextWeekKey(),text:(inp.value||'').trim()};
-  saveState();
+  setWeeklyIntention(inp.value||'',nextWeekKey());
   renderPlanner();
 }
 
-// Bring an unfinished task along to next week by re-tagging its weekPriority.
-function plannerCarryForward(taskId){
-  var t=(STATE.tasks||[]).find(function(x){return x.id===taskId});
-  if(!t)return;
-  t.weekPriority=nextWeekKey();
+// Move selected unfinished priorities together. Capture one snapshot before any
+// mutation so the whole batch can be undone as a single action.
+function plannerCarryForward(){
+  var selected=Array.prototype.slice.call(document.querySelectorAll('#planner-nextweek-list .nextweek-check-input:checked'));
+  var ids=selected.map(function(input){return input.value});
+  if(!ids.length){
+    if(typeof showCelebrationToast==='function')showCelebrationToast('Choose anything you’d like to bring along','🌱');
+    return;
+  }
+  var nextWk=nextWeekKey();
+  var tasks=(STATE.tasks||[]).filter(function(t){return t&&ids.indexOf(t.id)!==-1&&!t.done});
+  if(!tasks.length)return;
+  if(typeof captureUndoSnapshot==='function')captureUndoSnapshot(tasks.length===1?'Task brought along':'Tasks brought along');
+  tasks.forEach(function(t){t.weekPriority=nextWk});
   saveState();
   renderPlanner();
-  if(typeof showCelebrationToast==='function')showCelebrationToast('Brought along to next week','🌱');
+  if(typeof showCelebrationToast==='function')showCelebrationToast(tasks.length===1?'Brought along to next week':tasks.length+' brought along to next week','🌱');
 }
 
 // Weekly intention — one line, prefilled when set for the current week (R9.1)
 function plannerIntentionCard(wkKey){
-  var intention=STATE.weeklyIntention;
-  var current=(intention&&intention.weekKey===wkKey)?(intention.text||''):'';
+  var current=weeklyIntentionText(wkKey);
   var html='<div class="card planner-card planner-intention-card">';
   html+='<div class="planner-card-head"><span class="planner-card-title">This week\'s intention</span></div>';
   html+='<div class="planner-intention-row">'

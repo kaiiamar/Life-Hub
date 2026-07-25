@@ -3,10 +3,13 @@
 // ============================================================
 // Bump VERSION whenever the shell asset list changes. The versioned cache
 // supersedes the ?v= query strings on the script/style tags in index.html
-// (those are left in place — harmless). On activate, any cache whose name
-// doesn't match the current version is deleted.
-var VERSION='v32';
-var CACHE='lifehub-shell-'+VERSION;
+// (those are left in place — harmless). On activate, only stale Life Hub
+// shell/runtime caches are deleted; unrelated origin caches are preserved.
+var VERSION='v34';
+var SHELL_PREFIX='lifehub-shell-';
+var RUNTIME_PREFIX='lifehub-runtime-';
+var CACHE=SHELL_PREFIX+VERSION;
+var RUNTIME_CACHE=RUNTIME_PREFIX+VERSION;
 
 // App shell — precached at install time. Paths are relative to the SW scope
 // (/Life-Hub/), so they resolve to the deployed URLs. The ?v= query strings on
@@ -38,20 +41,27 @@ var SHELL=[
 // Resolve shell entries to absolute pathnames for fast fetch-time matching.
 var SHELL_PATHS=SHELL.map(function(p){return new URL(p,self.location).pathname});
 
-// Precache the app shell. cache.addAll fetches each entry fresh.
+// Precache entries independently so one temporary asset failure does not
+// discard an otherwise usable offline shell.
 self.addEventListener('install',function(e){
   e.waitUntil(
-    caches.open(CACHE).then(function(cache){return cache.addAll(SHELL)})
-      .then(function(){return self.skipWaiting()})
+    caches.open(CACHE).then(function(cache){
+      return Promise.all(SHELL.map(function(asset){
+        return cache.add(asset).catch(function(err){
+          console.warn('Shell asset was not cached:',asset,err);
+        });
+      }));
+    }).then(function(){return self.skipWaiting()})
   );
 });
 
-// Drop stale caches from previous versions, then take control.
+// Drop only stale Life Hub caches, leaving unrelated origin caches alone.
 self.addEventListener('activate',function(e){
   e.waitUntil(
     caches.keys().then(function(keys){
       return Promise.all(keys.map(function(k){
-        if(k!==CACHE)return caches.delete(k);
+        var owned=k.indexOf(SHELL_PREFIX)===0||k.indexOf(RUNTIME_PREFIX)===0;
+        if(owned&&k!==CACHE&&k!==RUNTIME_CACHE)return caches.delete(k);
       }));
     }).then(function(){return self.clients.claim()})
   );
@@ -75,25 +85,42 @@ self.addEventListener('fetch',function(e){
 
   if(isShellAsset(url)){
     e.respondWith(
-      caches.match(req,{ignoreSearch:true}).then(function(cached){
-        return cached||fetch(req).then(function(res){
-          if(res&&res.ok){
-            var copy=res.clone();
-            caches.open(CACHE).then(function(cache){cache.put(req,copy)});
-          }
-          return res;
-        }).catch(function(){
-          // Last resort for navigations — fall back to the cached shell.
-          return caches.match('index.html',{ignoreSearch:true});
+      caches.open(CACHE).then(function(cache){
+        return cache.match(req,{ignoreSearch:true}).then(function(cached){
+          if(cached)return cached;
+          return fetch(req).then(function(res){
+            if(!res||!res.ok)return res;
+            return cache.put(req,res.clone()).then(function(){return res},function(){return res});
+          }).catch(function(){
+            // Last resort for navigations — fall back to the cached shell.
+            return cache.match('index.html',{ignoreSearch:true});
+          });
         });
       })
     );
     return;
   }
 
-  // Network-first for everything else same-origin.
+  // Network-first for everything else same-origin, storing successful
+  // responses in a dedicated runtime cache for reliable offline fallback.
   e.respondWith(
-    fetch(req).catch(function(){return caches.match(req,{ignoreSearch:true})})
+    fetch(req).then(function(res){
+      if(!res||!res.ok)return res;
+      var copy=res.clone();
+      return caches.open(RUNTIME_CACHE).then(function(cache){
+        return cache.put(req,copy);
+      }).then(function(){return res},function(){return res});
+    }).catch(function(){
+      return caches.open(RUNTIME_CACHE).then(function(cache){
+        return cache.match(req,{ignoreSearch:true});
+      }).then(function(cached){
+        if(cached)return cached;
+        if(req.mode==='navigate'){
+          return caches.open(CACHE).then(function(cache){return cache.match('index.html',{ignoreSearch:true})});
+        }
+        return Response.error();
+      });
+    })
   );
 });
 

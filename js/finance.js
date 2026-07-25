@@ -427,7 +427,7 @@ el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,mi
       var deadlineDate=new Date(sg.deadline+'T12:00:00');
       var aheadBehind=(eta-deadlineDate)/(30*86400000);
       if(aheadBehind<-1)paceInfo+=' <span class="fin-sg-ahead">('+Math.abs(Math.round(aheadBehind))+' mo ahead)</span>';
-      else if(aheadBehind>1)paceInfo+=' <span class="fin-sg-behind">('+Math.round(aheadBehind)+' mo behind)</span>';
+      else if(aheadBehind>1)paceInfo+=' <span class="fin-sg-after">(estimated '+Math.round(aheadBehind)+' mo after target)</span>';
     }
     paceInfo+='</div>';
   }else if(sg.deadline&&remaining>0){

@@ -123,9 +123,9 @@ function goalPct(g){
   }
   return 0;
 }
-function pbarColor(p){return p>=80?'#6b9e7a':p>=50?'#c9973a':'#c0392b'}
+function pbarColor(p){return p>=80?'#6b9e7a':p>=50?'#c9973a':'var(--accent)'}
 function daysLeft(dl){return Math.ceil((new Date(dl)-new Date())/86400000)}
-function statusBadge(g){var p=goalPct(g);var dl=daysLeft(g.deadline);if(p>=100)return '<span class="badge badge-done">Done</span>';if(dl<0)return '<span class="badge badge-risk">Overdue</span>';if(dl<30&&p<70)return '<span class="badge badge-risk">At risk</span>';if(p>0)return '<span class="badge badge-track">On track</span>';return '<span class="badge badge-pend">Not started</span>'}
+function statusBadge(g){var p=goalPct(g);var dl=daysLeft(g.deadline);if(p>=100)return '<span class="badge badge-done">Done</span>';if(dl<0)return '<span class="badge">Past target date</span>';if(dl<30&&p<70)return '<span class="badge">Target approaching</span>';if(p>0)return '<span class="badge badge-track">On track</span>';return '<span class="badge badge-pend">Not started</span>'}
 // Frequency-aware habit helpers
 // freq: 'daily' | '3x/week' | 'weekly' | 'bi-monthly' | 'monthly'
 function habitTargetPerWeek(h){

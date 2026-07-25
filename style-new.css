@@ -3036,7 +3036,7 @@ body.night-mode .sk-night-day{background:rgba(240,235,227,0.06)}
   line-height:1.4;
 }
 .fin-sg-ahead{color:var(--mint);font-weight:600}
-.fin-sg-behind{color:var(--red);font-weight:600}
+.fin-sg-after{color:var(--text2);font-weight:600}
 .fin-sg-nopace{font-style:italic;color:var(--text3)}
 
 body.night-mode .fin-math-step-bold{background:var(--panel)}
@@ -4754,18 +4754,25 @@ body.night-mode .focus-progress{background:rgba(255,255,255,0.1)}
   display:flex;align-items:center;gap:12px;
   padding:10px 12px;
   background:var(--bg3);border:1px solid var(--border);
-  border-radius:var(--radius-xs);
+  border-radius:var(--radius-xs);cursor:pointer;
+  transition:border-color 160ms var(--ease),background 160ms var(--ease);
 }
-.nextweek-check{
-  width:22px;height:22px;flex-shrink:0;
-  display:flex;align-items:center;justify-content:center;
-  border:2px solid var(--border);border-radius:50%;
+.nextweek-row:hover{border-color:var(--accent)}
+.nextweek-row:has(.nextweek-check-input:checked){background:var(--accent-dim);border-color:var(--accent)}
+.nextweek-check-input{
+  appearance:none;-webkit-appearance:none;
+  width:22px;height:22px;flex-shrink:0;margin:0;
+  display:grid;place-items:center;
+  border:2px solid var(--border);border-radius:6px;
   background:var(--bg2);cursor:pointer;
   transition:all 160ms var(--ease);
 }
-.nextweek-check:hover{border-color:var(--accent)}
+.nextweek-check-input::after{content:'✓';font-size:14px;font-weight:700;color:#fff;transform:scale(0);transition:transform 140ms var(--ease)}
+.nextweek-check-input:checked{border-color:var(--accent);background:var(--accent)}
+.nextweek-check-input:checked::after{transform:scale(1)}
+.nextweek-check-input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .nextweek-text{flex:1;min-width:0;font-size:14px;font-weight:500;color:var(--fg)}
-.nextweek-bring{flex-shrink:0}
+.planner-nextweek-batch{display:flex;justify-content:flex-end;margin-top:10px}
 
 /* ── Daily Focus card — lined notebook style ── */
 .planner-focus-card{

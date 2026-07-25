@@ -164,6 +164,7 @@ var DEFAULT_STATE = {
   reminders:[],
   water:{},
   commitments:[],
+  weeklyIntentions:{},
   weeklyIntention:null
 };
 
