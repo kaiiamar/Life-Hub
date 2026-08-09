@@ -98,11 +98,11 @@ function renderMonthlyReview(){
     if(el)el.value=saved[k]||'';
   });
 
-  // Auto stats (Step 1)
-  renderAutoStats(key);
-
-  // Smart prompts based on data comparison
-  renderSmartPrompts(key,saved);
+  // Auto stats and smart prompts read one shared set of figures, so a prompt can
+  // never quote a number the tiles disagree with (Requirement 3.3).
+  var stats=monthlyReviewStats(key);
+  renderAutoStats(key,stats);
+  renderSmartPrompts(key,saved,stats);
 
   // Past reviews
   renderPastMonthlyReviews();
@@ -112,9 +112,38 @@ function renderMonthlyReview(){
   renderReviewTrends();
 }
 
-function renderAutoStats(key){
+// The measured figures behind one month's review, computed once so the auto-stat
+// tiles and the smart prompts quote the same numbers instead of each running its
+// own loop. Task completion comes from taskCompletionStats over the days of the
+// reviewed month — the Unified_Task_Store, counted by `doneAt`. The retired
+// STATE.dailyPriorities is never read: the tasks migration emptied it, which is
+// why the Tasks tile used to report 0/0 on live data.
+// Requirements 3.1, 3.2, 3.3.
+function monthlyReviewStats(key){
+  var parts=String(key||'').split('-');
+  var year=Number(parts[0]),month=Number(parts[1]);
+  var days=[];
+  if(year&&month){
+    var daysInMonth=new Date(year,month,0).getDate();
+    for(var i=1;i<=daysInMonth;i++)days.push(year+'-'+String(month).padStart(2,'0')+'-'+String(i).padStart(2,'0'));
+  }
+  var habTotal=0,habDone=0;
+  (STATE.habits||[]).forEach(function(h){days.forEach(function(dk){habTotal++;if(h.logs&&h.logs[dk])habDone++})});
+  var label=days.length?getMonthLabel(key):'';
+  return {
+    key:key,year:year,month:month,days:days,
+    monthLabel:label,
+    monthName:label?label.split(' ')[0]:'',
+    habTotal:habTotal,habDone:habDone,
+    habPct:habTotal>0?Math.round(habDone/habTotal*100):0,
+    tasks:taskCompletionStats(days)
+  };
+}
+
+function renderAutoStats(key,stats){
   var el=document.getElementById('monthly-auto-stats');
   if(!el)return;
+  stats=stats||monthlyReviewStats(key);
   var parts=key.split('-');
   var year=Number(parts[0]),month=Number(parts[1]);
   // Workouts — all non-run sessions
@@ -123,20 +152,8 @@ function renderAutoStats(key){
   // Runs
   var runs=((STATE.metrics||{}).run||[]).filter(function(r){return r.date&&r.date.startsWith(key)});
   var runKm=runs.reduce(function(s,r){return s+Number(r.distance||0)},0);
-  // Habits
-  var daysInMonth=new Date(year,month,0).getDate();
-  var monthDayKeys=[];
-  for(var i=1;i<=daysInMonth;i++){monthDayKeys.push(year+'-'+String(month).padStart(2,'0')+'-'+String(i).padStart(2,'0'))}
-  var habTotal=0,habDone=0;
-  (STATE.habits||[]).forEach(function(h){monthDayKeys.forEach(function(dk){habTotal++;if(h.logs&&h.logs[dk])habDone++})});
-  var habPct=habTotal>0?Math.round(habDone/habTotal*100):0;
-  // Tasks
-  var taskTotal=0,taskDone=0;
-  monthDayKeys.forEach(function(dk){
-    var list=((STATE.dailyPriorities||{})[dk])||[];
-    list.forEach(function(t){taskTotal++;if(t.done)taskDone++});
-  });
-  var taskPct=taskTotal>0?Math.round(taskDone/taskTotal*100):0;
+  // Habits and tasks come from the shared figures.
+  var habTotal=stats.habTotal,habPct=stats.habPct;
   // Money saved this month
   var saved=((STATE.metrics||{}).moneySaved||[]).filter(function(m){return m.date&&m.date.startsWith(key)});
   var savedTotal=saved.reduce(function(s,m){return s+Number(m.amount||0)},0);
@@ -163,7 +180,9 @@ function renderAutoStats(key){
     statBlock('💪','Workouts',gym,'gym sessions','var(--accent)')
     +statBlock('🏃','Runs',runKm.toFixed(1),'km · '+runs.length+' runs','var(--blue)')
     +statBlock('✅','Habits',habPct+'%','of '+habTotal+' tracked','var(--green)')
-    +statBlock('📝','Tasks',taskDone+'/'+taskTotal,taskPct+'% done','var(--gold)')
+    // A count and the month it belongs to, not a ratio: the denominator was a
+    // Guilt_Metric that only grew with capture (Requirements 3.4, 13.1).
+    +statBlock('📝','Tasks',stats.tasks.completed+' completed','in '+stats.monthName,'var(--gold)')
     +statBlock('🗓️','Roadmap',rmDone+'/'+rmItems,rmItems>0?rmPct+'% ticked':'no items this month','var(--purple)')
     +statBlock('💸','Saved','£'+savedTotal.toLocaleString(),saved.length+' deposits','var(--mint)')
     +statBlock('💳','Debt paid','£'+debtReduced.toLocaleString(),debtPayments.length+' payments','#D97B6C')
@@ -171,7 +190,7 @@ function renderAutoStats(key){
 }
 
 function statBlock(icon,label,big,sub,color){
-  return '<div class="review-auto-stat" style="--stat-color:'+color+'">'
+  return '<div class="review-auto-stat" data-stat="'+label+'" style="--stat-color:'+color+'">'
     +'<div class="review-auto-icon">'+icon+'</div>'
     +'<div class="review-auto-body">'
       +'<div class="review-auto-label">'+label+'</div>'
@@ -180,9 +199,14 @@ function statBlock(icon,label,big,sub,color){
     +'</div></div>';
 }
 
-function renderSmartPrompts(key,saved){
+// `stats` is the object the auto-stat tiles were built from, so every figure a
+// prompt quotes is the same figure already on screen (Requirement 3.3). It stays
+// optional so a direct call still works, in which case the figures are recomputed
+// from the same single definition.
+function renderSmartPrompts(key,saved,stats){
   var el=document.getElementById('smart-prompts');
   if(!el)return;
+  stats=stats||monthlyReviewStats(key);
   var prompts=[];
 
   // Find previous month review
@@ -190,27 +214,31 @@ function renderSmartPrompts(key,saved){
   var prevDate=new Date(Number(parts[0]),Number(parts[1])-2,1);
   var prevKey=prevDate.getFullYear()+'-'+String(prevDate.getMonth()+1).padStart(2,'0');
   var prev=(STATE.reviews&&STATE.reviews.monthly&&STATE.reviews.monthly[prevKey]);
+  var prevMonthName=getMonthLabel(prevKey).split(' ')[0];
 
   if(prev&&prev.ratings&&saved.ratings){
     RATING_CATS.forEach(function(cat){
       var now=saved.ratings[cat.id]||0;
       var old=prev.ratings[cat.id]||0;
       if(old>=6&&now<=old-3){
-        prompts.push({color:'var(--red)',icon:'⚠️',text:cat.label+' dropped from '+old+' to '+now+' — what happened?'});
+        // A decrease is stated as the two ratings and the period they belong to,
+        // in the Neutral_Palette — no red, no alarm (Requirement 13.4).
+        prompts.push({color:'var(--clay)',icon:'💭',text:cat.label+': '+old+' in '+prevMonthName+', '+now+' in '+stats.monthName+' — what was different?'});
       }else if(now>=8&&old<=5){
-        prompts.push({color:'var(--mint)',icon:'🎉',text:cat.label+' jumped from '+old+' to '+now+' — what shifted?'});
+        prompts.push({color:'var(--mint)',icon:'🎉',text:cat.label+': '+old+' in '+prevMonthName+', '+now+' in '+stats.monthName+' — what shifted?'});
       }
     });
   }
 
-  // Habit-based prompt
-  var monthDays=[];
-  var year=Number(parts[0]),month=Number(parts[1]);
-  var diM=new Date(year,month,0).getDate();
-  for(var i=1;i<=diM;i++)monthDays.push(year+'-'+String(month).padStart(2,'0')+'-'+String(i).padStart(2,'0'));
-  var habTotal=0,habDone=0;
-  (STATE.habits||[]).forEach(function(h){monthDays.forEach(function(dk){habTotal++;if(h.logs&&h.logs[dk])habDone++})});
-  var habPct=habTotal>0?Math.round(habDone/habTotal*100):0;
+  // Task-based prompt, straight off the figure in the Tasks tile.
+  if(stats.tasks.completed>0){
+    prompts.push({color:'var(--mint)',icon:'📝',text:'You completed '+stats.tasks.completed+' '+(stats.tasks.completed===1?'task':'tasks')+' in '+stats.monthName+' — which one mattered most?'});
+  }else{
+    prompts.push({color:'var(--clay)',icon:'📝',text:'No tasks were marked complete in '+stats.monthName+' — what would make one feel doable?'});
+  }
+
+  // Habit-based prompt, off the same figures as the Habits tile.
+  var habTotal=stats.habTotal,habPct=stats.habPct;
   if(habPct>=80){
     prompts.push({color:'var(--green)',icon:'✨',text:'You hit '+habPct+'% of habits this month — what made it easier?'});
   }else if(habPct<=40&&habTotal>0){

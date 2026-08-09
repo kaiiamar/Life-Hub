@@ -477,22 +477,18 @@ function quickLogToday(type){
     return String(w.type||w.name||'').toLowerCase()===String(type).toLowerCase();
   });
   if(existing){
-    renderWorkout();
-    if(typeof renderPlanner==='function')renderPlanner();
     if(typeof showCelebrationToast==='function')showCelebrationToast(type+' is already logged today','✓');
     return existing;
   }
 
-  if(type==='Rest'){
-    STATE.workouts.push({id:g(),date:today,type:'Rest',name:'Rest day',note:''});
-  }else{
-    STATE.workouts.push({id:g(),date:today,type:type,name:type,note:''});
-    autoTickHabit('gym',today);
-    if(type==='Hyrox')autoTickHabit('hyrox',today);
+  var snapshot=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
+  var record={id:g(),date:today,type:type,name:type==='Rest'?'Rest day':type,note:''};STATE.workouts.push(record);
+  if(type!=='Rest'){
+    applyHabitSource('lifehub.workout.any',today,'workout',record.id);
+    if(type==='Hyrox')applyHabitSource('lifehub.workout.hyrox',today,'workout',record.id);
   }
-  saveState();renderWorkout();
-  // Keep the Planner "Today's training" card (3.2) in sync when it's on-screen.
-  if(typeof renderPlanner==='function')renderPlanner();
+  if(!saveStateOrRollback(snapshot)){renderWorkout();return null}
+  emitLifeHubChange({action:'workout-create',entityId:record.id,dateKeys:[today],domains:type==='Rest'?['workouts']:['workouts','habits'],source:'workout'});
   // First workout of the week = bigger celebration
   var wkStart=weekKey(new Date());
   var sessionsThisWeek=(STATE.workouts||[]).filter(function(s){return s.date>=wkStart&&s.type!=='Rest'});
@@ -502,18 +498,21 @@ function quickLogToday(type){
   }else{
     showCelebrationToast(type+' logged','💪');
   }
-  return STATE.workouts[STATE.workouts.length-1];
+  return record;
 }
 
 function sessionCard(w){
-  var typeLabel=w.type||w.name||'Session';
-  return '<div class="workout-card"><div class="workout-header"><div style="flex:1"><div class="workout-title">'+typeLabel+'</div><div class="workout-meta">'+fmtDate(w.date)+(w.note?' · '+w.note:'')+'</div></div><div style="display:flex;gap:6px;align-items:center"><span class="badge badge-fit">'+typeLabel+'</span><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteWorkout(\''+w.id+'\')">&#215;</button></div></div></div>';
+  var typeLabel=w.type||w.name||'Session';var deleteFn=w.isRun?'deleteRunFromWorkout':'deleteWorkout';
+  return '<div class="workout-card"><div class="workout-header"><div style="flex:1"><div class="workout-title">'+escapeHtml(typeLabel)+'</div><div class="workout-meta">'+fmtDate(w.date)+(w.note?' · '+escapeHtml(w.note):'')+'</div></div><div style="display:flex;gap:6px;align-items:center"><span class="badge badge-fit">'+escapeHtml(typeLabel)+'</span><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();'+deleteFn+'(\''+w.id+'\')">&#215;</button></div></div></div>';
 }
 
 function deleteWorkout(id){
   confirmDelete('Delete this session?',function(){
-    STATE.workouts=(STATE.workouts||[]).filter(function(w){return w.id!==id});
-    saveState();renderWorkout();
+    var record=(STATE.workouts||[]).find(function(w){return w.id===id});if(!record)return false;
+    var snapshot=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
+    STATE.workouts=(STATE.workouts||[]).filter(function(w){return w.id!==id});var habitIds=removeHabitSource('workout',id);
+    if(!saveStateOrRollback(snapshot)){renderWorkout();return false}
+    emitLifeHubChange({action:'workout-delete',entityId:id,dateKeys:[record.date],habitIds:habitIds,domains:habitIds.length?['workouts','habits']:['workouts'],source:'workout'});return true;
   });
 }
 
@@ -553,12 +552,14 @@ function saveQuickLog(){
   if(!type)return;
   var date=(document.getElementById('m-qldate')||{}).value||localDateKey(new Date());
   var note=(document.getElementById('m-qlnote')||{}).value||'';
+  var snapshot=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
   if(!STATE.workouts)STATE.workouts=[];
-  STATE.workouts.push({id:g(),date:date,type:type,name:type,note:note,muscleGroups:[type]});
-  autoTickHabit('gym',date);
-  saveState();closeModal();renderWorkout();
-  if(typeof renderPlanner==='function')renderPlanner();
-  showCelebrationToast(type+' session logged','💪');
+  var record={id:g(),date:date,type:type,name:type,note:note,muscleGroups:[type]};STATE.workouts.push(record);
+  applyHabitSource('lifehub.workout.any',date,'workout',record.id);
+  if(type==='Hyrox')applyHabitSource('lifehub.workout.hyrox',date,'workout',record.id);
+  if(!saveStateOrRollback(snapshot)){renderWorkout();return false}
+  closeModal();emitLifeHubChange({action:'workout-create',entityId:record.id,dateKeys:[date],domains:['workouts','habits'],source:'workout'});
+  showCelebrationToast(type+' session logged','💪');return true;
 }
 
 function saveRunFromWorkout(){
@@ -566,21 +567,26 @@ function saveRunFromWorkout(){
   var date=(document.getElementById('m-rundate')||{}).value||localDateKey(new Date());
   var time=(document.getElementById('m-runtime')||{}).value||'';
   var note=(document.getElementById('m-runnote')||{}).value||'';
+  var snapshot=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
   if(!STATE.metrics)STATE.metrics={};if(!STATE.metrics.run)STATE.metrics.run=[];
-  STATE.metrics.run.push({id:g(),date:date,distance:Number(dist),time:time,note:note});
-  autoTickHabit('run',date);saveState();closeModal();renderWorkout();
-  if(typeof renderPlanner==='function')renderPlanner();
+  var record={id:g(),date:date,distance:Number(dist),time:time,note:note};STATE.metrics.run.push(record);
+  applyHabitSource('lifehub.run.any',date,'run',record.id);
+  if(!saveStateOrRollback(snapshot)){renderWorkout();return false}
+  closeModal();emitLifeHubChange({action:'run-create',entityId:record.id,dateKeys:[date],domains:['metrics','habits'],source:'run'});
   var distNum=Number(dist);
   if(distNum>=10){fireConfetti({count:110,duration:2600,colors:['#5A8FB0','#7CA5C2','#6b9e7a','#d4845a']});showCelebrationToast(distNum+'km run — beast mode.','🏃')}
   else if(distNum>=5){fireConfetti({count:70,duration:2000,colors:['#5A8FB0','#7CA5C2','#6b9e7a']});showCelebrationToast(distNum+'km logged — nice one.','🏃')}
   else{showCelebrationToast(distNum+'km run logged','🏃')}
+  return true;
 }
 
 function deleteRunFromWorkout(id){
   confirmDelete('Delete this run?',function(){
-    if(!STATE.metrics||!STATE.metrics.run)return;
-    STATE.metrics.run=STATE.metrics.run.filter(function(r){return r.id!==id});
-    saveState();renderWorkout();
+    if(!STATE.metrics||!STATE.metrics.run)return false;var record=STATE.metrics.run.find(function(r){return r.id===id});if(!record)return false;
+    var snapshot=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
+    STATE.metrics.run=STATE.metrics.run.filter(function(r){return r.id!==id});var habitIds=removeHabitSource('run',id);
+    if(!saveStateOrRollback(snapshot)){renderWorkout();return false}
+    emitLifeHubChange({action:'run-delete',entityId:id,dateKeys:[record.date],habitIds:habitIds,domains:habitIds.length?['metrics','habits']:['metrics'],source:'run'});return true;
   });
 }
 
@@ -702,13 +708,14 @@ function toggleTrainEx(sessionId,exIdx){
     var typeLabel=sessionId==='strength-a'?'Lower':'Upper';
     var already=(STATE.workouts||[]).some(function(w){return w.date===today&&w.type===typeLabel});
     if(!already){
+      var snapshot=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
       if(!STATE.workouts)STATE.workouts=[];
-      STATE.workouts.push({id:g(),date:today,type:typeLabel,name:def.title,note:'Plan complete'});
-      saveState();
+      var record={id:g(),date:today,type:typeLabel,name:def.title,note:'Plan complete'};STATE.workouts.push(record);
+      applyHabitSource('lifehub.workout.any',today,'workout',record.id);
+      if(!saveStateOrRollback(snapshot)){renderMyPlanSchedule();return}
+      emitLifeHubChange({action:'workout-create',entityId:record.id,dateKeys:[today],domains:['workouts','habits'],source:'training-plan'});
       fireConfetti({count:120,duration:2600});
       showCelebrationToast(def.title.split('—')[0].trim()+' complete — logged!','💪');
-      renderTrainingOverview();
-      if(typeof renderPlanner==='function')renderPlanner();
     }
   }
 }

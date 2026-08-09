@@ -23,17 +23,14 @@ function celebrateGratitudeMilestone(entryDate,isFirstEver){
 }
 
 // ============================================================
-// DAILY HIGHLIGHT & CLOCK
+// CLOCK
 // ============================================================
-function saveDailyHighlight(){var today=localDateKey(new Date());var val=(document.getElementById('daily-highlight')||{}).value||'';if(!STATE.dailyHighlights)STATE.dailyHighlights={};STATE.dailyHighlights[today]=val;saveState();var btn=event.target;var orig=btn.textContent;btn.textContent='Saved!';setTimeout(function(){btn.textContent=orig},1500)}
-function loadDailyHighlight(){var today=localDateKey(new Date());var el=document.getElementById('daily-highlight');if(el)el.value=(STATE.dailyHighlights||{})[today]||''}
 function startClock(){function tick(){var now=new Date();var timeStr=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});var dateStr=now.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});var sdEl=document.getElementById('sidebar-date');if(sdEl)sdEl.textContent=timeStr+' · '+dateStr;var mdEl=document.getElementById('mobile-date');if(mdEl)mdEl.textContent=timeStr}tick();setInterval(tick,1000)}
 
 // ============================================================
 // MOOD
 // ============================================================
-function renderDashMoodCheckin(){var el=document.getElementById('dash-mood-checkin');if(!el)return;var today=localDateKey(new Date());var m=(STATE.mood||{})[today]||{};var moodEm=['','&#128542;','&#128528;','&#128578;','&#128522;','&#129321;'];var energyEm=['','&#129803;','&#128564;','&#9889;','&#128293;','&#128640;'];var moodLabels=['','Low','Meh','Okay','Good','Great'];var energyLabels=['','Drained','Tired','Okay','High','Buzzing'];if(m.mood){el.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr'+(m.sleep?' 1fr':'')+';gap:8px"><div style="display:flex;flex-direction:column;align-items:center;background:rgba(255,255,255,0.3);padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.4)"><span style="font-size:24px;margin-bottom:4px">'+(moodEm[m.mood]||'&#8212;')+'</span><span style="font-size:10px;color:var(--neutral);text-transform:uppercase;font-weight:600">Mood</span><span style="font-size:12px;font-weight:700;color:var(--primary)">'+(moodLabels[m.mood]||'')+'</span></div><div style="display:flex;flex-direction:column;align-items:center;background:rgba(255,255,255,0.3);padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.4)"><span style="font-size:24px;margin-bottom:4px">'+(energyEm[m.energy]||'&#8212;')+'</span><span style="font-size:10px;color:var(--neutral);text-transform:uppercase;font-weight:600">Energy</span><span style="font-size:12px;font-weight:700;color:var(--peach)">'+(energyLabels[m.energy]||'')+'</span></div>'+(m.sleep?'<div style="display:flex;flex-direction:column;align-items:center;background:rgba(255,255,255,0.3);padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.4)"><span style="font-size:24px;margin-bottom:4px">&#128564;</span><span style="font-size:10px;color:var(--neutral);text-transform:uppercase;font-weight:600">Sleep</span><span style="font-size:12px;font-weight:700;color:var(--secondary)">'+m.sleep+'h</span></div>':'')+'</div><button class="btn btn-ghost btn-sm" onclick="openModal(\'logMood\',\''+today+'\')" style="margin-top:10px;width:100%;justify-content:center">Edit check-in</button>'}else{el.innerHTML='<div style="font-size:13px;color:var(--text2);margin-bottom:10px">How are you feeling today?</div><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap"><div style="display:flex;gap:5px">'+['&#128542;','&#128528;','&#128578;','&#128522;','&#129321;'].map(function(e,i){return '<button onclick="quickLogMood('+(i+1)+',\''+today+'\')" style="font-size:22px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:10px;padding:5px 7px;cursor:pointer">'+e+'</button>'}).join('')+'</div><button class="btn btn-sm" onclick="openModal(\'logMood\',\''+today+'\')" style="margin-left:auto">Full check-in</button></div>'}}
-function quickLogMood(moodVal,date){if(!STATE.mood)STATE.mood={};if(!STATE.mood[date])STATE.mood[date]={};STATE.mood[date].mood=moodVal;saveState();renderDashMoodCheckin()}
+function quickLogMood(moodVal,date){if(!STATE.mood)STATE.mood={};if(!STATE.mood[date])STATE.mood[date]={};STATE.mood[date].mood=moodVal;saveState();if(typeof refreshDashboardIfActive==='function')refreshDashboardIfActive();else if(typeof renderDashMoodMini==='function')renderDashMoodMini()}
 
 function renderWaterInto(el){
   if(!el)return;
@@ -68,7 +65,6 @@ function renderWaterInto(el){
       +'<button class="btn btn-sm btn-ghost" onclick="openModal(\'waterSettings\')" title="Adjust target or glass size">⚙️</button>'
     +'</div>';
 }
-function renderDashWater(){renderWaterInto(document.getElementById('dash-water-tracker'))}
 function renderMetricsWater(){
   renderWaterInto(document.getElementById('metrics-water-tracker'));
   var hEl=document.getElementById('metrics-water-history');
@@ -93,7 +89,6 @@ function logWaterGlass(count){
   var prev=STATE.water[today]||0;
   STATE.water[today]=Math.max(0,count);
   saveState();
-  renderDashWater();
   renderMetricsWater();
   if(typeof renderPlannerWater === 'function') renderPlannerWater();
   // Celebrate hitting the daily target (crossing, not already there)
@@ -114,7 +109,6 @@ function saveWaterSettings(){
   STATE.waterSettings.glassMl=Math.max(50,Math.min(2000,ml));
   saveState();
   closeModal();
-  renderDashWater();
   renderMetricsWater();
 }
 
@@ -150,10 +144,10 @@ function renderGratitudeFlashback(){
   var d=new Date(+parts[0],+parts[1]-1,+parts[2]);
   var dateStr=d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   var html='<div style="padding:14px 4px 8px"><div style="font-size:11px;color:var(--accent-dark);font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">'+found.label+'</div><div style="font-size:12px;color:var(--text3);margin-bottom:12px">'+dateStr+'</div>';
-  if(e.wins)html+='<div style="font-size:14px;font-weight:500;margin-bottom:10px;color:var(--accent);line-height:1.5"><span style="margin-right:6px">&#127942;</span>'+e.wins+'</div>';
+  if(e.wins)html+='<div style="font-size:14px;font-weight:500;margin-bottom:10px;color:var(--accent);line-height:1.5"><span style="margin-right:6px">&#127942;</span>'+escapeHtml(e.wins)+'</div>';
   if(e.gratitude){
     var lines=e.gratitude.split('\n').filter(function(l){return l.trim()}).map(function(l){return l.replace(/^\d+\.\s*/,'')});
-    html+='<div style="font-size:13px;color:var(--text2);line-height:1.6">'+lines.map(function(l){return '<div style="display:flex;gap:8px;padding:3px 0"><span style="color:var(--gold)">&#128591;</span><span>'+l+'</span></div>'}).join('')+'</div>';
+    html+='<div style="font-size:13px;color:var(--text2);line-height:1.6">'+lines.map(function(l){return '<div style="display:flex;gap:8px;padding:3px 0"><span style="color:var(--gold)">&#128591;</span><span>'+escapeHtml(l)+'</span></div>'}).join('')+'</div>';
   }
   html+='<div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)"><button class="btn btn-ghost btn-sm" onclick="gratitudeFlashbackNext()">Show me another →</button><button class="btn btn-ghost btn-sm" onclick="gratitudeFlashbackDismiss()" style="color:var(--text3)">Dismiss for today</button></div>';
   html+='</div>';
@@ -179,10 +173,10 @@ function gratitudeFlashbackNext(){
   var label=daysAgo>=365?Math.floor(daysAgo/365)+' year'+(daysAgo>=730?'s':'')+' ago':daysAgo>=30?Math.floor(daysAgo/30)+' month'+(daysAgo>=60?'s':'')+' ago':daysAgo+' days ago';
   var dateStr=d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   var html='<div style="padding:14px 4px 8px"><div style="font-size:11px;color:var(--accent-dark);font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px">'+label+'</div><div style="font-size:12px;color:var(--text3);margin-bottom:12px">'+dateStr+'</div>';
-  if(e.wins)html+='<div style="font-size:14px;font-weight:500;margin-bottom:10px;color:var(--accent);line-height:1.5"><span style="margin-right:6px">&#127942;</span>'+e.wins+'</div>';
+  if(e.wins)html+='<div style="font-size:14px;font-weight:500;margin-bottom:10px;color:var(--accent);line-height:1.5"><span style="margin-right:6px">&#127942;</span>'+escapeHtml(e.wins)+'</div>';
   if(e.gratitude){
     var lines=e.gratitude.split('\n').filter(function(l){return l.trim()}).map(function(l){return l.replace(/^\d+\.\s*/,'')});
-    html+='<div style="font-size:13px;color:var(--text2);line-height:1.6">'+lines.map(function(l){return '<div style="display:flex;gap:8px;padding:3px 0"><span style="color:var(--gold)">&#128591;</span><span>'+l+'</span></div>'}).join('')+'</div>';
+    html+='<div style="font-size:13px;color:var(--text2);line-height:1.6">'+lines.map(function(l){return '<div style="display:flex;gap:8px;padding:3px 0"><span style="color:var(--gold)">&#128591;</span><span>'+escapeHtml(l)+'</span></div>'}).join('')+'</div>';
   }
   html+='<div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)"><button class="btn btn-ghost btn-sm" onclick="gratitudeFlashbackNext()">Show me another →</button><button class="btn btn-ghost btn-sm" onclick="gratitudeFlashbackDismiss()" style="color:var(--text3)">Dismiss for today</button></div>';
   html+='</div>';
@@ -194,21 +188,37 @@ function gratitudeFlashbackDismiss(){
   if(card)card.style.display='none';
 }
 
+// Heatmap rows run Monday → Sunday, matching habitWeekStart (Requirement 19.3).
+// Only alternate rows carry a visible letter; every row names its weekday.
+var GRATITUDE_HEATMAP_ROWS=[
+  {short:'M',label:'Monday'},
+  {short:'',label:'Tuesday'},
+  {short:'W',label:'Wednesday'},
+  {short:'',label:'Thursday'},
+  {short:'F',label:'Friday'},
+  {short:'',label:'Saturday'},
+  {short:'',label:'Sunday'}
+];
+
 function renderGratitudeHeatmap(){
   var el=document.getElementById('gratitude-heatmap');
   if(!el)return;
   var entries=STATE.gratitude||[];
+  if(!entries.length){
+    el.innerHTML='<div class="empty"><div class="empty-icon">&#128197;</div>No entries yet — the heatmap fills in as you write.</div>';
+    return;
+  }
   // Build a set of logged dates
   var logged={};
   entries.forEach(function(e){if(e.date)logged[e.date]=true});
 
-  // Build 53-week grid ending today (GitHub-style)
+  // Build the trailing 12 months as a week grid ending today (GitHub-style)
   var today=new Date();today.setHours(0,0,0,0);
   var end=new Date(today);
-  // Start: 52 weeks ago, snapped back to the nearest Sunday
+  // Start: 52 weeks ago, snapped back to that week's Monday (the single Week_Start helper)
   var start=new Date(end);
   start.setDate(start.getDate()-(52*7));
-  while(start.getDay()!==0)start.setDate(start.getDate()-1);
+  start=habitWeekStart(start);
 
   var weeks=[];
   var cur=new Date(start);
@@ -247,17 +257,19 @@ function renderGratitudeHeatmap(){
   var html='<div class="gr-heatmap-wrap">';
   html+='<div class="gr-heatmap-summary"><div><span class="gr-heatmap-stat">'+loggedDays+'</span><span class="gr-heatmap-stat-label">days logged</span></div><div><span class="gr-heatmap-stat">'+consistencyPct+'%</span><span class="gr-heatmap-stat-label">of the year</span></div></div>';
   html+='<div class="gr-heatmap-scroll">';
-  html+='<div class="gr-heatmap-months">'+monthLabels.map(function(m){return '<span style="grid-column:'+(m.wi+2)+' / span 1">'+m.label+'</span>'}).join('')+'</div>';
+  html+='<div class="gr-heatmap-months">'+monthLabels.map(function(m){return '<span style="grid-column:'+(m.wi+2)+' / span 1">'+escapeHtml(m.label)+'</span>'}).join('')+'</div>';
   html+='<div class="gr-heatmap-body">';
-  // Day labels column
-  html+='<div class="gr-heatmap-days"><span></span><span>M</span><span></span><span>W</span><span></span><span>F</span><span></span></div>';
+  // Day labels column, one row per weekday Monday → Sunday
+  html+='<div class="gr-heatmap-days">'+GRATITUDE_HEATMAP_ROWS.map(function(r){
+    return '<span title="'+escapeHtml(r.label)+'">'+escapeHtml(r.short)+'</span>';
+  }).join('')+'</div>';
   // Week columns
   weeks.forEach(function(w){
     html+='<div class="gr-heatmap-week">'+w.map(function(d){
       if(!d)return '<div class="gr-heatmap-cell gr-heatmap-empty"></div>';
       var dateStr=d.date.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
       var title=d.logged?'✓ '+dateStr:dateStr+' — nothing logged';
-      return '<div class="gr-heatmap-cell'+(d.logged?' gr-heatmap-logged':'')+'" title="'+title+'"></div>';
+      return '<div class="gr-heatmap-cell'+(d.logged?' gr-heatmap-logged':'')+'" title="'+escapeHtml(title)+'"></div>';
     }).join('')+'</div>';
   });
   html+='</div></div></div>';

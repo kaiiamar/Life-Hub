@@ -12,7 +12,7 @@
 <title>Kai's Life Hub 🤎</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style-new.css?v=35">
+<link rel="stylesheet" href="style-new.css?v=41">
 <!-- Chart.js is lazy-loaded on first visit to a chart page — see ensureChartJs() in js/navigation.js (Part 5.3) -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -129,88 +129,81 @@
 
     <!-- ══ DASHBOARD ══ -->
     <div class="page" id="page-dashboard">
-      <!-- HERO -->
-      <div class="hero hero--overview" id="hero">
+      <section class="hero hero--overview dashboard-hero" id="hero" aria-labelledby="dashboard-heading">
         <div class="hero-inner" id="hero-inner">
-          <div class="hero-eyebrow"><span class="pulse-dot"></span>Your overview</div>
+          <div class="hero-eyebrow">Dashboard</div>
+          <h1 id="dashboard-heading">Life in motion</h1>
           <p class="hero-sub" id="dash-date-sub"></p>
-          <div class="hero-streak" id="dash-streak" style="display:none"></div>
-          <div class="hero-focus-banner" id="dash-monthly-focus-card" style="display:none" onclick="nav('review')">
+          <button class="hero-focus-banner" id="dash-monthly-focus-card" type="button" style="display:none" onclick="nav('review')">
             <span class="hero-focus-icon">🌙</span>
-            <span class="hero-focus-label">This month's focus:</span>
+            <span class="hero-focus-label">Monthly intention</span>
             <span class="hero-focus-text" id="dash-monthly-focus">—</span>
-          </div>
-          <div class="hero-quote" id="dash-quote"></div>
+            <span aria-hidden="true">→</span>
+          </button>
         </div>
+      </section>
+
+      <div class="dashboard-chrome-grid">
+        <section class="card card-quiet dash-mood-orb" id="dash-mood-orb" aria-labelledby="dash-mood-title">
+          <div class="stat-orb accent" aria-hidden="true">🌡️</div>
+          <h2 class="stat-label" id="dash-mood-title">Today's check-in</h2>
+          <div id="dash-mood-checkin-mini" aria-live="polite"></div>
+        </section>
+        <section class="card card-quiet dashboard-today-bridge" id="dash-today-bridge" aria-labelledby="dash-today-title"></section>
       </div>
 
-      <!-- Mood check-in mini — always-on overview chrome, directly under Hero -->
-      <div class="bento-stat dash-mood-orb" id="dash-mood-orb">
-        <div class="stat-orb accent">🌡️</div>
-        <div class="stat-label">Today's check-in</div>
-        <div id="dash-mood-checkin-mini"></div>
+      <div class="page-tabs dashboard-tabs" role="tablist" aria-label="Dashboard views">
+        <button class="page-tab active" id="dash-tab-btn-overview" type="button" role="tab" aria-selected="true" aria-controls="dash-tab-overview" tabindex="0" onclick="switchDashTab('overview',this)" onkeydown="dashboardTabKeydown(event)">Overview</button>
+        <button class="page-tab" id="dash-tab-btn-insights" type="button" role="tab" aria-selected="false" aria-controls="dash-tab-insights" tabindex="-1" onclick="switchDashTab('insights',this)" onkeydown="dashboardTabKeydown(event)">Insights</button>
+        <button class="page-tab" id="dash-tab-btn-numbers" type="button" role="tab" aria-selected="false" aria-controls="dash-tab-numbers" tabindex="-1" onclick="switchDashTab('numbers',this)" onkeydown="dashboardTabKeydown(event)">Numbers</button>
       </div>
 
-      <div id="dash-notification-prompt" style="margin-bottom:18px"></div>
-      <div id="dash-review-nudge" style="margin-bottom:18px"></div>
-
-      <!-- Dashboard tabs -->
-      <div class="page-tabs" style="margin-bottom:16px">
-        <button class="page-tab active" onclick="switchDashTab('week',this)">This week</button>
-        <button class="page-tab" onclick="switchDashTab('life',this)">Life</button>
-        <button class="page-tab" id="dash-tab-btn-insights" onclick="switchDashTab('insights',this)">Insights</button>
-      </div>
-
-      <!-- THIS WEEK TAB -->
-      <div class="dash-tab active" id="dash-tab-week">
-        <!-- Mood week strip (item 8) -->
-        <div class="card" style="margin-bottom:14px">
-          <div class="card-label">🌈 Mood this week</div>
-          <div id="dash-mood-week"></div>
-        </div>
-        <div class="bento-row-3">
-          <div class="card">
-            <div class="card-label">🏋️ Recent activity</div>
-            <div class="dash-quick-log">
-              <button class="dash-ql-btn" onclick="quickLogToday('Upper')" title="Log upper body">💪 Upper</button>
-              <button class="dash-ql-btn" onclick="quickLogToday('Lower')" title="Log lower body">🦵 Lower</button>
-              <button class="dash-ql-btn" onclick="quickLogToday('Hyrox')" title="Log Hyrox">⚡ Hyrox</button>
-              <button class="dash-ql-btn" onclick="openModal('logRun')" title="Log a run">🏃 Run</button>
-              <button class="dash-ql-btn" onclick="quickLogToday('Rest')" title="Log a rest day">🌿 Rest</button>
+      <div class="dash-tab active" id="dash-tab-overview" role="tabpanel" aria-labelledby="dash-tab-btn-overview">
+        <section class="dashboard-section" aria-labelledby="dashboard-pulse-heading">
+          <div class="dashboard-section-head">
+            <div>
+              <h2 class="dashboard-section-title" id="dashboard-pulse-heading">Current pulse</h2>
+              <p class="dashboard-section-sub">This week compared with the previous one.</p>
             </div>
-            <div id="dash-workouts-preview"></div>
           </div>
-          <div class="card">
-            <div class="card-label">🤎 Relationship check-ins</div>
-            <div id="dash-relationships-preview"></div>
-          </div>
-          <div class="card">
-            <div class="card-label">💸 Finance snapshot</div>
-            <div id="dash-finance-preview"></div>
-          </div>
-        </div>
-        <div class="card" style="margin-top:14px">
-          <div class="card-label" style="color:var(--accent-dark)">🙏 Gratitude</div>
-          <div id="dash-gratitude-inline"></div>
-        </div>
-      </div>
+          <div class="dashboard-pulse-grid" id="dashboard-pulse-grid"></div>
+        </section>
 
-      <!-- LIFE TAB -->
-      <div class="dash-tab" id="dash-tab-life">
-        <div class="bento-row-2">
-          <div class="card">
-            <div class="card-label">🎯 Goals snapshot</div>
+        <div class="dashboard-overview-grid">
+          <section class="card dashboard-attention-card" aria-labelledby="dashboard-attention-heading">
+            <div class="card-label" id="dashboard-attention-heading">Worth your attention</div>
+            <div id="dashboard-attention-list"></div>
+          </section>
+          <section class="card" aria-labelledby="dashboard-upcoming-heading">
+            <div class="card-label" id="dashboard-upcoming-heading">Coming up</div>
+            <div id="dashboard-upcoming-list"></div>
+          </section>
+        </div>
+
+        <section class="dashboard-section" aria-labelledby="dashboard-movement-heading">
+          <div class="dashboard-section-head">
+            <div>
+              <h2 class="dashboard-section-title" id="dashboard-movement-heading">Recent movement</h2>
+              <p class="dashboard-section-sub">Useful changes across your life, without repeating Today's actions.</p>
+            </div>
+          </div>
+          <div class="dashboard-movement-grid" id="dashboard-recent-movement"></div>
+        </section>
+
+        <div class="dashboard-context-grid">
+          <section class="card" aria-labelledby="dashboard-goals-heading">
+            <div class="card-label" id="dashboard-goals-heading">🎯 Goals in motion</div>
             <div id="dash-goals-snapshot"></div>
-          </div>
-          <div class="card">
-            <div class="card-label">📝 Recent reviews</div>
+          </section>
+          <section class="card" aria-labelledby="dashboard-review-heading">
+            <div class="card-label" id="dashboard-review-heading">📝 Latest review</div>
             <div id="dash-reviews-snapshot"></div>
-          </div>
+          </section>
         </div>
       </div>
 
       <!-- INSIGHTS TAB (merged from the old standalone Insights page) -->
-      <div class="dash-tab" id="dash-tab-insights">
+      <div class="dash-tab" id="dash-tab-insights" role="tabpanel" aria-labelledby="dash-tab-btn-insights" hidden>
         <!-- Pulse check -->
         <div class="card" style="margin-bottom:20px">
           <div class="card-label">📊 Pulse check — how things are going</div>
@@ -230,11 +223,13 @@
         <div class="grid-2" style="margin-bottom:20px">
           <div class="card">
             <div class="card-label">✅ Habit consistency — last 4 weeks</div>
-            <div class="chart-wrap"><canvas id="insightHabitChart"></canvas></div>
+            <div class="chart-wrap"><canvas id="insightHabitChart" role="img" aria-label="Habit consistency over the last four weeks"></canvas></div>
+            <p class="chart-text-summary" id="insight-habit-summary"></p>
           </div>
           <div class="card">
             <div class="card-label">🌡️ Mood trend — last 14 days</div>
-            <div class="chart-wrap"><canvas id="insightMoodChart"></canvas></div>
+            <div class="chart-wrap"><canvas id="insightMoodChart" role="img" aria-label="Mood and energy trend over the last fourteen days"></canvas></div>
+            <p class="chart-text-summary" id="insight-mood-summary"></p>
           </div>
         </div>
 
@@ -260,7 +255,7 @@
         <div class="grid-2" style="margin-bottom:20px">
           <div class="card">
             <div class="card-label">📅 Monthly review ratings</div>
-            <div class="chart-wrap"><canvas id="insightReviewChart"></canvas></div>
+            <div class="chart-wrap"><canvas id="insightReviewChart" role="img" aria-label="Monthly review ratings over time"></canvas></div>
             <div id="review-trend-summary" style="margin-top:8px"></div>
           </div>
           <div class="card">
@@ -282,8 +277,11 @@
         </div>
       </div>
 
-      <!-- Hidden but kept for compatibility with existing renderDashboard -->
-      <div id="dash-stats" style="display:none"></div>
+      <!-- NUMBERS TAB — the single numbers surface (Requirement 12) -->
+      <div class="dash-tab" id="dash-tab-numbers" role="tabpanel" aria-labelledby="dash-tab-btn-numbers" hidden>
+        <div id="numbers-surface" aria-live="polite"></div>
+      </div>
+
     </div>
 
     <!-- ══ GOALS (simplified — high-level only) ══ -->
@@ -312,22 +310,32 @@
 
     <!-- ══ HABITS ══ -->
     <div class="page" id="page-habits">
-      <div class="page-header">
+      <div class="page-header habit-page-header">
         <div class="header-row">
-          <div style="display:flex;align-items:center;gap:12px">
-            <div class="page-emoji-tile">✅</div>
-            <div><h1>Habits</h1><p>Daily tracking · streaks · consistency</p></div>
+          <div class="habit-page-title">
+            <div class="page-emoji-tile" aria-hidden="true">🌿</div>
+            <div><p class="habit-page-kicker">Your field notes</p><h1>Habits</h1><p>Rhythms, seasons, and the history you have built</p></div>
           </div>
-          <button class="btn btn-accent" onclick="openModal('addHabit')">+ Add Habit</button>
+          <button type="button" class="btn btn-accent habit-add-btn" onclick="openModal('addHabit')">+ New rhythm</button>
         </div>
       </div>
-      <div id="habit-filters" class="habit-filters"></div>
-      <div class="week-nav" style="margin-top:14px;margin-bottom:6px;font-size:11px;color:var(--text3)">
-        <button class="btn btn-sm btn-ghost" onclick="changeWeek(-1)">← Prev</button>
-        <span class="week-label" id="habit-week-label"></span>
-        <button class="btn btn-sm btn-ghost" onclick="changeWeek(1)">Next →</button>
-      </div>
-      <div id="habits-grid" class="habits-grid"></div>
+      <section class="habit-workspace" aria-label="Habit tracker">
+        <div class="habit-view-tabs" role="tablist" aria-label="Habit lifecycle">
+          <button type="button" role="tab" class="habit-view-tab active" data-habit-view="active" aria-selected="true" aria-controls="habits-grid" onclick="setHabitLifecycleView('active')" onkeydown="habitViewKeydown(event)">Active <span class="habit-view-count">0</span></button>
+          <button type="button" role="tab" class="habit-view-tab" data-habit-view="paused" aria-selected="false" aria-controls="habits-grid" tabindex="-1" onclick="setHabitLifecycleView('paused')" onkeydown="habitViewKeydown(event)">Paused <span class="habit-view-count">0</span></button>
+          <button type="button" role="tab" class="habit-view-tab" data-habit-view="archived" aria-selected="false" aria-controls="habits-grid" tabindex="-1" onclick="setHabitLifecycleView('archived')" onkeydown="habitViewKeydown(event)">Archived <span class="habit-view-count">0</span></button>
+        </div>
+        <p id="habit-lifecycle-summary" class="habit-lifecycle-summary" aria-live="polite"></p>
+        <div class="habit-toolbar">
+          <div id="habit-filters" class="habit-filters" aria-label="Filter rhythms by life area"></div>
+          <div class="week-nav habit-week-nav" role="group" aria-label="Habit week">
+            <button type="button" class="habit-week-btn" aria-label="Show previous habit week" onclick="changeWeek(-1)">←</button>
+            <span class="week-label" id="habit-week-label" aria-live="polite"></span>
+            <button type="button" class="habit-week-btn" id="habit-next-week" aria-label="Show next habit week" onclick="changeWeek(1)">→</button>
+          </div>
+        </div>
+        <div id="habits-grid" class="habits-grid" role="tabpanel"></div>
+      </section>
     </div>
 
     <!-- ══ TRAINING ══ -->
@@ -660,7 +668,8 @@
         <div class="card"><div class="card-label">This week</div><div id="gratitude-wins"></div></div>
         <div class="card"><div class="card-label">Gratitude streak</div><div id="gratitude-stats"></div></div>
       </div>
-      <div class="card" style="margin-bottom:16px"><div class="card-label">☁️ Themes — what you mention most</div><div id="gratitude-themes"></div></div>
+      <div class="card" id="gratitude-flashback-card" style="display:none;margin-bottom:16px"><div id="gratitude-flashback"></div></div>
+      <div class="card" id="gratitude-heatmap-card" style="margin-bottom:16px"><div class="card-label">🗓️ Entry heatmap — the trailing 12 months</div><div id="gratitude-heatmap"></div></div>
       <div class="card"><div class="card-label">All entries</div><div id="gratitude-all"></div></div>
     </div>
 
@@ -813,20 +822,20 @@
 
 
 
-<script src="js/state.js?v=35"></script>
-<script src="js/persistence.js?v=35"></script>
-<script src="js/navigation.js?v=35"></script>
-<script src="js/dashboard.js?v=35"></script>
-<script src="js/habits.js?v=35"></script>
-<script src="js/workouts.js?v=35"></script>
-<script src="js/finance.js?v=35"></script>
-<script src="js/reviews.js?v=35"></script>
-<script src="js/relationships.js?v=35"></script>
-<script src="js/gratitude.js?v=35"></script>
-<script src="js/insights.js?v=35"></script>
-<script src="js/skincare.js?v=35"></script>
-<script src="js/modals.js?v=35"></script>
-<script src="js/planner.js?v=35"></script>
-<script src="js/init.js?v=35"></script>
+<script src="js/state.js?v=41"></script>
+<script src="js/persistence.js?v=41"></script>
+<script src="js/navigation.js?v=41"></script>
+<script src="js/dashboard.js?v=41"></script>
+<script src="js/habits.js?v=41"></script>
+<script src="js/workouts.js?v=41"></script>
+<script src="js/finance.js?v=41"></script>
+<script src="js/reviews.js?v=41"></script>
+<script src="js/relationships.js?v=41"></script>
+<script src="js/gratitude.js?v=41"></script>
+<script src="js/insights.js?v=41"></script>
+<script src="js/skincare.js?v=41"></script>
+<script src="js/modals.js?v=41"></script>
+<script src="js/planner.js?v=41"></script>
+<script src="js/init.js?v=41"></script>
 </body>
 </html>

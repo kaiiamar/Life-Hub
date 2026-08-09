@@ -1,11 +1,11 @@
 // ============================================================
-// Life Hub service worker — offline-first app shell (3.6)
+// Life Hub service worker — offline-first app shell (4.0)
 // ============================================================
 // Bump VERSION whenever the shell asset list changes. The versioned cache
 // supersedes the ?v= query strings on the script/style tags in index.html
 // (those are left in place — harmless). On activate, only stale Life Hub
 // shell/runtime caches are deleted; unrelated origin caches are preserved.
-var VERSION='v35';
+var VERSION='v41';
 var SHELL_PREFIX='lifehub-shell-';
 var RUNTIME_PREFIX='lifehub-runtime-';
 var CACHE=SHELL_PREFIX+VERSION;

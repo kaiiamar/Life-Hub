@@ -57,15 +57,6 @@ function ringSVG(pct,color,size,centerText){
     +'</svg>';
 }
 
-function focusBar(icon,label,val,pct,grad){
-  return '<div class="focus-bar">'
-    +'<span class="focus-bar-icon">'+icon+'</span>'
-    +'<span class="focus-bar-label">'+label+'</span>'
-    +'<div class="focus-bar-track"><div class="focus-bar-fill" data-w="'+pct+'" style="background:'+grad+'"></div></div>'
-    +'<span class="focus-bar-val">'+val+'</span>'
-    +'</div>';
-}
-
 // ── "Showed up" streak (#5) ──
 // Forgiving momentum metric: a day counts if you logged ANYTHING — ticked a
 // habit, logged mood, water, a task, a workout or a run. Counts consecutive
@@ -92,51 +83,92 @@ function showUpStreak(){
   }
   return streak;
 }
-function renderDashStreak(){
-  var el=document.getElementById('dash-streak');
-  if(!el)return;
-  var s=showUpStreak();
-  if(s<2){el.style.display='none';return}
-  var todayDone=dayHadActivity(localDateKey(new Date()));
-  el.style.display='';
-  // Bloom glow-up (#6): render the streak as a small ring with 🔥 inside next
-  // to the "N days showing up" pill. Ring fills toward a 30-day milestone; the
-  // streak value/logic is unchanged.
-  var ringPct=Math.min(100,Math.round(s/30*100));
-  var flame=(typeof ringSVG==='function')
-    ? '<span class="hero-streak-ring">'+ringSVG(ringPct,'var(--amber)',34,'🔥')+'</span>'
-    : '<span class="hero-streak-flame">🔥</span>';
-  el.innerHTML=flame+'<span class="hero-streak-num">'+s+'</span>'
-    +'<span class="hero-streak-label">day'+(s===1?'':'s')+' showing up</span>';
-}
 
+// ── Quiet-gap detection ──
+// Nothing new is stored: the Last_Activity_Date is derived by walking back over
+// the dated records every Activity_Event already writes, using dayHadActivity()
+// above as the single definition of "an Activity_Event happened that day".
+// Both helpers are pure reads — no saveState, no STATE mutation — so the gap is
+// a function of the activity-bearing domains alone.
 
-function setStat(key,val,pct){
-  var v=document.getElementById('stat-'+key);if(v)v.textContent=val;
-  var b=document.getElementById('stat-'+key+'-bar');if(b){setTimeout(function(){b.style.width=pct+'%'},120)}
-}
-
-// Smooth number tick animation
-function tickNumber(el,targetStr,duration){
-  if(!el)return;
-  duration=duration||900;
-  var target=parseInt(targetStr,10);
-  if(isNaN(target)){el.textContent=targetStr;return}
-  var start=parseInt(el.getAttribute('data-current')||'0',10);
-  var t0=performance.now();
-  function step(t){
-    var p=Math.min(1,(t-t0)/duration);
-    // easeOutCubic
-    var eased=1-Math.pow(1-p,3);
-    var v=Math.round(start+(target-start)*eased);
-    el.firstChild?el.firstChild.nodeValue=v:el.textContent=v;
-    if(p<1)requestAnimationFrame(step);
-    else el.setAttribute('data-current',target);
+// The latest day at or before beforeKey (default yesterday) that carries an
+// Activity_Event, or null when none is found. Bounded at 400 days back so a long
+// silence reads as "no activity" instead of walking for years.
+function lastActivityDateKey(beforeKey){
+  var d;
+  if(beforeKey){d=new Date(beforeKey+'T12:00:00')}
+  else{d=new Date();d.setDate(d.getDate()-1)}
+  if(isNaN(d.getTime()))return null;
+  for(var i=0;i<400;i++){
+    var key=localDateKey(d);
+    if(dayHadActivity(key))return key;
+    d.setDate(d.getDate()-1);
   }
-  requestAnimationFrame(step);
+  return null;
 }
 
-// Time-based theming
+// Whole days of silence ending today. Zero when today already has an
+// Activity_Event, and zero when there is no activity anywhere — a brand-new user
+// is not in a quiet period. Monotonic while no new activity arrives.
+function quietGapDays(){
+  var todayKey=localDateKey(new Date());
+  if(dayHadActivity(todayKey))return 0;
+  var last=lastActivityDateKey();
+  if(!last)return 0;
+  return Math.round((new Date(todayKey+'T12:00:00')-new Date(last+'T12:00:00'))/86400000);
+}
+
+// ── Quiet-period recap ──
+// The window is half-open: the days *after* fromKey through toKey inclusive.
+// fromKey is the last day that carried an Activity_Event, so the counted stretch
+// is exactly the silence quietGapDays() measures — call it with no arguments and
+// `days` equals `quietGapDays()`, so the Re_Entry_Card and the recap never
+// disagree about how long the period was (Requirements 6.4, 7.3).
+// Bounded at the same 400 days as the derivation walk; when a caller passes a
+// longer range the most recent 400 days are counted and `days` reports what was
+// actually counted, so the stated period always matches the counts.
+var QUIET_RECAP_MAX_DAYS=400;
+function quietPeriodRecapDays(fromKey,toKey){
+  var endKey=toKey||localDateKey(new Date());
+  var startKey=fromKey||lastActivityDateKey();
+  // No last-activity day, or nothing between the two: an empty window.
+  if(!startKey||!endKey||startKey>=endKey)return [];
+  var d=new Date(endKey+'T12:00:00');
+  if(isNaN(d.getTime()))return [];
+  var days=[];
+  for(var i=0;i<QUIET_RECAP_MAX_DAYS;i++){
+    var key=localDateKey(d);
+    if(key<=startKey)break;
+    days.push(key);
+    d.setDate(d.getDate()-1);
+  }
+  return days.reverse();
+}
+
+// Counts of what was recorded during the quiet stretch, each over the same day
+// window so every figure is stated against the one period. Pure read: it
+// delegates to the existing calculators — habitCountInRange for ticks,
+// dashboardTrainingCount for sessions and runs, gratitudeStats for entries — and
+// defines no measure of its own. `empty` is the no-activity case the recap
+// states plainly instead of reporting three zeros (Requirement 7.4).
+function quietPeriodRecap(fromKey,toKey){
+  var days=quietPeriodRecapDays(fromKey,toKey);
+  var habitTicks=0;
+  if(days.length){
+    var rangeStart=days[0],rangeEnd=days[days.length-1];
+    (STATE.habits||[]).forEach(function(h){habitTicks+=habitCountInRange(h,rangeStart,rangeEnd)});
+  }
+  var sessions=days.length?dashboardTrainingCount(days):0;
+  var gratitudeEntries=days.length?gratitudeStats(days).entries:0;
+  return {
+    days:days.length,
+    habitTicks:habitTicks,
+    sessions:sessions,
+    gratitudeEntries:gratitudeEntries,
+    empty:habitTicks===0&&sessions===0&&gratitudeEntries===0
+  };
+}
+
 function getTimeContext(){
   var h=new Date().getHours();
   if(h>=5&&h<12)return {slot:'morning',greeting:'Good morning',class:'time-morning'};
@@ -151,137 +183,245 @@ var CONTEXTUAL_QUOTES={
   night:['Time to wind down.','Rest is part of the plan.','Dim the screen, quiet the mind.','Tomorrow starts with tonight\'s rest.']
 };
 
-// Always-on Dashboard chrome (Hero, mood mini, nudge) — tab-independent (Req 8.4).
-function renderDashChrome(){
-  var now=new Date();var todayKey=localDateKey(now);
-  var ctx=getTimeContext();
-  // Auto night mode (only if user hasn't set a manual preference)
-  var themePref=null;try{themePref=localStorage.getItem('lh_theme')}catch(e){}
-  if(!themePref){
-    if(ctx.slot==='night')document.body.classList.add('night-mode');
-    else document.body.classList.remove('night-mode');
-  }
-  renderDashStreak();
-  // Apply time-based class to hero
-  var hero=document.getElementById('hero');
-  if(hero){
-    hero.classList.remove('time-morning','time-afternoon','time-evening','time-night');
-    hero.classList.add(ctx.class);
-  }
-  var dEl=document.getElementById('dash-date-sub');
-  var tbd=document.getElementById('top-bar-date');if(tbd)tbd.textContent=now.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
-  var qEl=document.getElementById('dash-quote');
-  if(qEl){
-    var pool=CONTEXTUAL_QUOTES[ctx.slot]||CONTEXTUAL_QUOTES.morning;
-    // Stable-per-day choice — same quote all day, refreshes next day
-    var seed=now.getFullYear()*366+now.getMonth()*31+now.getDate();
-    qEl.textContent=pool[seed%pool.length];
-  }
-  loadDailyHighlight();
+// Dashboard view state. A direct Insights navigation sets this before nav()
+// renders the page, avoiding timing-coupled tab switching.
+var _dashboardRequestedTab=null;
 
-  // End-of-month review nudge (28th onwards)
-  var nudgeEl=document.getElementById('dash-review-nudge');
-  if(nudgeEl){
-    var dayOfMonth=now.getDate();
-    var monthEnd=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
-    var monthKey=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-    var existing=(STATE.reviews&&STATE.reviews.monthly&&STATE.reviews.monthly[monthKey]);
+function dashboardHabitStats(days,todayKey){
+  return habitStatsForDays(STATE.habits||[],days,todayKey);
+}
 
-    var nudges=[];
-    if(dayOfMonth>=monthEnd-2&&!existing){
-      var monthName=now.toLocaleDateString('en-GB',{month:'long'});
-      nudges.push('<div class="review-nudge" onclick="nav(\'review\')"><div class="review-nudge-icon">🌙</div><div class="review-nudge-body"><div class="review-nudge-title">'+monthName+' is almost wrapped.</div><div class="review-nudge-sub">Time for your monthly review — 10 mins of honest reflection.</div></div><div class="review-nudge-arrow">→</div></div>');
-    }
-    nudgeEl.innerHTML=nudges.join('');
-  }
+function dashboardTrainingCount(days){
+  var sessions=(STATE.workouts||[]).filter(function(w){
+    return w&&days.indexOf(w.date)!==-1&&String(w.type||w.name||'').toLowerCase()!=='rest'&&String(w.name||'').toLowerCase()!=='rest day';
+  }).length;
+  var runs=(((STATE.metrics||{}).run)||((STATE.metrics||{}).runs)||[]).filter(function(r){return r&&days.indexOf(r.date)!==-1}).length;
+  return sessions+runs;
+}
 
-  // Smart hero subtext — habits done + priorities ticked today.
-  var expectedHabits=STATE.habits.filter(function(h){
-    var status=habitDayStatus(h,todayKey);
-    return status==='done'||status==='todo';  // exclude 'rest' (monthly/bi-monthly not today, or weekly already hit)
+function dashboardMoodStats(days){
+  var moodVals=[],sleepVals=[];
+  days.forEach(function(day){
+    var entry=(STATE.mood||{})[day]||{};
+    if(Number(entry.mood)>0)moodVals.push(Number(entry.mood));
+    if(Number(entry.sleep)>0)sleepVals.push(Number(entry.sleep));
   });
-  var habitsToday=expectedHabits.filter(function(h){return h.logs[todayKey]}).length;
-  var priData=(function(){var wk=weekKey(now);var plan=(STATE.weeklyPlans||{})[wk]||{};var pris=(plan.priorities||[]).filter(function(p){return p&&p.trim()});var done=0;var td=plan.prioritiesDone||{};pris.forEach(function(_,i){if(td[i])done++});return {done:done,total:pris.length}})();
+  function avg(values){return values.length?Math.round(values.reduce(function(sum,value){return sum+value},0)/values.length*10)/10:null}
+  return {mood:avg(moodVals),sleep:avg(sleepVals),logged:moodVals.length};
+}
+
+function dashboardDelta(current,previous,unit){
+  if(current==null||previous==null)return 'No previous-week comparison yet';
+  var diff=Math.round((current-previous)*10)/10;
+  if(diff===0)return 'About the same as last week';
+  return (diff>0?'+':'')+diff+(unit||'')+' from last week';
+}
+
+function buildDashboardViewModel(){
+  var now=new Date();
+  var todayKey=localDateKey(now);
+  var thisWeekDays=habitWeekDays(now).filter(function(day){return day<=todayKey});
+  var previousStart=habitAddDays(habitWeekStart(now),-7);
+  var previousWeekDays=habitWeekDays(previousStart);
+  var habits=dashboardHabitStats(thisWeekDays,todayKey);
+  var previousHabits=dashboardHabitStats(previousWeekDays,todayKey);
+  var sessions=dashboardTrainingCount(thisWeekDays);
+  var previousSessions=dashboardTrainingCount(previousWeekDays);
+  var mood=dashboardMoodStats(thisWeekDays);
+  var previousMood=dashboardMoodStats(previousWeekDays);
+
+  // financeTotals() lives in js/finance.js and is the single definition of these
+  // figures. Safe to call here: buildDashboardViewModel only runs from render
+  // paths, long after every script tag has been evaluated.
+  var finance=financeTotals();
+  var margin=finance.margin;
+
+  var focus=(STATE.tasks||[]).filter(function(task){return task&&task.focusDate===todayKey});
+  var focusDone=focus.filter(function(task){return task.done}).length;
+  var commitments=typeof getTodayCommitments==='function'?getTodayCommitments(todayKey):[];
+  var nextCommitment=commitments.filter(function(item){return !item.done}).sort(function(a,b){return String(a.start||'99:99').localeCompare(String(b.start||'99:99'))})[0]||null;
+
+  var attention=[];
+  var dueRelationships=(STATE.relationships||[]).filter(function(person){
+    if(!person.lastContact)return true;
+    var last=new Date(person.lastContact+'T12:00:00');
+    return Math.floor((now-last)/86400000)>=Number(person.freq||14);
+  });
+  if(dueRelationships.length){
+    attention.push({icon:'🤎',title:dueRelationships.length+' relationship check-in'+(dueRelationships.length===1?'':'s')+' ready',body:'Reconnect when it feels useful.',cta:'Open relationships',action:"nav('relationships')"});
+  }
+  var monthKey=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  var monthEnd=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+  var hasReview=!!(STATE.reviews&&STATE.reviews.monthly&&STATE.reviews.monthly[monthKey]);
+  if(now.getDate()>=monthEnd-2&&!hasReview){
+    attention.push({icon:'🌙',title:'Monthly reflection is available',body:'A short review can close the month when you are ready.',cta:'Open reviews',action:"nav('review')"});
+  }
+  var targetSoon=(STATE.goals||[]).filter(function(goal){return goal&&!goal.done&&goal.deadline}).map(function(goal){return {goal:goal,days:Math.ceil((new Date(goal.deadline+'T12:00:00')-new Date(todayKey+'T12:00:00'))/86400000)}}).filter(function(item){return item.days>=-30&&item.days<=30}).sort(function(a,b){return a.days-b.days})[0];
+  if(targetSoon){
+    attention.push({icon:'🎯',title:targetSoon.goal.name,body:targetSoon.days<0?'Target date was '+fmtDate(targetSoon.goal.deadline)+'. Revisit it when useful.':targetSoon.days+' days until the target date.',cta:'Open goals',action:"nav('goals')"});
+  }
+  if(margin<0){
+    attention.push({icon:'🧮',title:'Monthly plan has a '+fmtMoney(Math.abs(margin))+' gap',body:'Income and recurring expenses currently do not balance.',cta:'Review finance',action:"nav('finance')"});
+  }
+
+  var recentSessions=(STATE.workouts||[]).filter(function(w){return w&&String(w.type||w.name||'').toLowerCase()!=='rest'&&String(w.name||'').toLowerCase()!=='rest day'}).map(function(w){return {date:w.date,title:w.name||w.type||'Training session',detail:(w.muscleGroups||[]).join(', ')||'Training',icon:/hyrox/i.test((w.name||'')+' '+(w.type||''))?'⚡':'🏋️'}});
+  (((STATE.metrics||{}).run)||((STATE.metrics||{}).runs)||[]).forEach(function(run){recentSessions.push({date:run.date,title:Number(run.distance||0)+'km run',detail:run.time||run.note||'Run',icon:'🏃'})});
+  recentSessions.sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''))});
+
+  var latestGratitude=(STATE.gratitude||[]).slice().sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''))})[0]||null;
+  var upcoming=[];
+  (STATE.trainingEvents||[]).filter(function(event){return event&&event.date>=todayKey}).sort(function(a,b){return a.date.localeCompare(b.date)}).slice(0,2).forEach(function(event){upcoming.push({icon:'🏁',title:event.name||'Training event',detail:fmtDate(event.date),date:event.date,action:"nav('workout')"})});
+  (STATE.goals||[]).filter(function(goal){return goal&&!goal.done&&goal.deadline&&goal.deadline>=todayKey}).sort(function(a,b){return a.deadline.localeCompare(b.deadline)}).slice(0,2).forEach(function(goal){upcoming.push({icon:'🎯',title:goal.name,detail:'Target '+fmtDate(goal.deadline),date:goal.deadline,action:"nav('goals')"})});
+  upcoming.sort(function(a,b){return String(a.date||'').localeCompare(String(b.date||''))});
+
+  return {
+    todayKey:todayKey,
+    habits:habits,previousHabits:previousHabits,
+    sessions:sessions,previousSessions:previousSessions,
+    mood:mood,previousMood:previousMood,
+    finance:finance,
+    focus:{done:focusDone,total:focus.length},nextCommitment:nextCommitment,
+    attention:attention,recentSessions:recentSessions.slice(0,3),latestGratitude:latestGratitude,upcoming:upcoming.slice(0,4)
+  };
+}
+
+function renderDashboardTodayBridge(view){
+  var el=document.getElementById('dash-today-bridge');if(!el)return;
+  var focusText=view.focus.total?view.focus.done+' of '+view.focus.total+' focus tasks complete':'No focus selected yet';
+  var next=view.nextCommitment?'<div class="dashboard-next-line"><span class="dashboard-next-time">'+escapeHtml(view.nextCommitment.start||'Any time')+'</span><span>'+escapeHtml(view.nextCommitment.text||'Commitment')+'</span></div>':'<div class="dashboard-next-line dashboard-next-empty">No remaining commitments today</div>';
+  el.innerHTML='<div class="dashboard-today-head"><div><h2 id="dash-today-title">Today at a glance</h2><p>'+focusText+'</p></div><button class="btn btn-accent btn-sm" onclick="nav(\'planner\')">Open Today</button></div>'+next;
+}
+
+function renderDashChrome(view){
+  var now=new Date();var ctx=getTimeContext();
+  var themePref=null;try{themePref=localStorage.getItem('lh_theme')}catch(e){}
+  if(!themePref){if(ctx.slot==='night')document.body.classList.add('night-mode');else document.body.classList.remove('night-mode')}
+  var hero=document.getElementById('hero');
+  if(hero){hero.classList.remove('time-morning','time-afternoon','time-evening','time-night');hero.classList.add(ctx.class)}
+  var dEl=document.getElementById('dash-date-sub');
   if(dEl){
     var dateStr=now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
-    var parts=[];
-    if(habitsToday>0)parts.push('<strong>'+habitsToday+'</strong> habit'+(habitsToday===1?'':'s')+' done');
-    if(priData.done>0)parts.push('<strong>'+priData.done+'</strong> priorit'+(priData.done===1?'y':'ies')+' ticked');
-    var insight=parts.length?parts.join(' · ')+'.':'A clean slate to work with.';
-    dEl.innerHTML=dateStr+'. '+insight;
+    dEl.textContent=dateStr+' · '+view.habits.done+' of '+view.habits.total+' habit check-ins · '+view.focus.done+' of '+view.focus.total+' focus tasks';
   }
-
-  // Monthly focus — surfaced in the hero header (this month, or last month's if unset)
   renderDashMonthlyFocus();
-  // Mini mood orb (item 4) — always-on overview element in chrome
   renderDashMoodMini();
-  renderDashMoodCheckin();
+  renderDashboardTodayBridge(view);
 }
 
-// Week tab body — trends + relocated gratitude capture (Req 5).
-function renderDashWeek(){
-  var recent=(STATE.workouts||[]).slice(-3).reverse();
-  var recentRuns=((STATE.metrics||{}).run||[]).slice(-3).reverse();
-  var combined=recent.map(function(w){return {type:'gym',date:w.date,name:w.name,sub:(w.muscleGroups||[]).join(', '),icon:((w.muscleGroups||[]).indexOf('Hyrox')!==-1)?'\u26a1':'\ud83c\udfcb\ufe0f'}}).concat(recentRuns.map(function(r){return {type:'run',date:r.date,name:r.distance+'km'+(r.time?' \u00b7 '+r.time:''),sub:r.note||'Run',icon:'\ud83c\udfc3'}})).sort(function(a,b){return b.date.localeCompare(a.date)}).slice(0,5);
-  var wpEl=document.getElementById('dash-workouts-preview');
-  if(wpEl)wpEl.innerHTML=combined.length?combined.map(function(w){return '<div class="u-tile"><div class="u-tile-icon'+(w.type==='run'?' is-run':'')+'">'+w.icon+'</div><div class="u-tile-body"><div class="u-tile-title">'+w.name+'</div><div class="u-tile-sub">'+w.sub+' · '+fmtDate(w.date)+'</div></div></div>'}).join('')+'<button class="btn btn-ghost btn-sm u-mt-8" onclick="nav(\'workout\')" style="width:100%;justify-content:center">View all →</button>':'<div class="empty" style="padding:12px 0"><div style="font-size:28px;margin-bottom:6px">🏋️</div>No sessions yet</div><button class="btn btn-accent btn-sm" onclick="openModal(\'quickLog\')" style="width:100%;justify-content:center">+ Log session</button>';
-  renderDashboardRelationships();
-  renderDashMoodWeek();
-  var tExp=(STATE.expenses||[]).reduce(function(s,e){return s+Number(e.amount)},0);var tInc=(STATE.income||[]).reduce(function(s,i){return s+Number(i.amount)},0);var tDebt=(STATE.debts||[]).reduce(function(s,d){return s+Number(d.balance)},0);var tSav=(STATE.accounts||[]).reduce(function(s,a){return s+Number(a.balance)},0);var left=tInc-tExp;
-  var fpEl=document.getElementById('dash-finance-preview');
-  if(fpEl)fpEl.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px"><div style="background:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.4);border-radius:12px;padding:14px;text-align:center"><div style="font-size:10px;color:var(--neutral);text-transform:uppercase;letter-spacing:.05em;font-weight:600">Savings</div><div style="font-size:20px;font-family:var(--serif);font-weight:600;color:var(--secondary);margin-top:4px">'+fmtMoney(tSav)+'</div></div><div style="background:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.4);border-radius:12px;padding:14px;text-align:center"><div style="font-size:10px;color:var(--neutral);text-transform:uppercase;letter-spacing:.05em;font-weight:600">Total debt</div><div style="font-size:20px;font-family:var(--serif);font-weight:600;color:var(--primary);margin-top:4px">'+fmtMoney(tDebt)+'</div></div></div><div style="font-size:11px;color:var(--on-surface-variant)">'+fmtMoney(tInc)+' in \u00b7 '+fmtMoney(tExp)+' out \u00b7 <span style="color:'+(left>=0?'var(--mint)':'var(--red)')+';font-weight:600">'+fmtMoney(Math.abs(left))+' '+(left>=0?'left over':'over')+'</span></div><button class="btn btn-ghost btn-sm" onclick="nav(\'finance\')" style="margin-top:8px;width:100%;justify-content:center">View finance \u2192</button>';
-  var rpEl=document.getElementById('dash-roadmap-preview');
-  if(rpEl){rpEl.innerHTML=''}  // legacy: roadmap page removed, element may no longer exist
-  // Inline gratitude prompt (low-friction) — relocated to the Week tab
-  renderDashGratitudeInline();
+function renderDashboardPulse(view){
+  var el=document.getElementById('dashboard-pulse-grid');if(!el)return;
+  var moodValue=view.mood.mood==null?'—':view.mood.mood.toFixed(1)+'/5';
+  var cards=[
+    {icon:'✅',label:'Habit consistency',value:view.habits.pct+'%',detail:view.habits.done+'/'+view.habits.total+' available check-ins',delta:dashboardDelta(view.habits.pct,view.previousHabits.pct,' pts'),pct:view.habits.pct,color:'var(--moss)'},
+    {icon:'🏋️',label:'Training',value:String(view.sessions),detail:'sessions logged this week',delta:dashboardDelta(view.sessions,view.previousSessions,' sessions'),pct:null,color:'var(--clay)'},
+    {icon:'🌡️',label:'Mood',value:moodValue,detail:view.mood.sleep==null?view.mood.logged+' check-ins':view.mood.sleep.toFixed(1)+'h average sleep',delta:dashboardDelta(view.mood.mood,view.previousMood.mood,' mood'),pct:view.mood.mood==null?0:view.mood.mood*20,color:'var(--sky)'},
+    {icon:'💷',label:'Monthly plan',value:view.finance.margin>=0?fmtMoney(view.finance.margin):'−'+fmtMoney(view.finance.margin),detail:fmtMoney(view.finance.savings)+' in savings accounts',delta:view.finance.margin>=0?'planned margin after recurring costs':'planned gap to revisit',pct:null,color:'var(--amber)'}
+  ];
+  el.innerHTML=cards.map(function(card){
+    return '<article class="dashboard-pulse-card"><div class="dashboard-pulse-icon" aria-hidden="true">'+card.icon+'</div><div class="dashboard-pulse-label">'+card.label+'</div><div class="dashboard-pulse-value">'+card.value+'</div><div class="dashboard-pulse-detail">'+card.detail+'</div>'+(card.pct==null?'':'<div class="dashboard-pulse-track" role="progressbar" aria-label="'+card.label+'" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+Math.round(card.pct)+'"><span style="width:'+Math.max(0,Math.min(100,card.pct))+'%;background:'+card.color+'"></span></div>')+'<div class="dashboard-pulse-delta">'+card.delta+'</div></article>';
+  }).join('');
 }
 
-// Life tab body — thin wrapper over the existing goals + reviews snapshot renderer (Req 6).
-function renderDashLife(){
+function renderDashboardAttention(view){
+  var el=document.getElementById('dashboard-attention-list');if(!el)return;
+  if(!view.attention.length){el.innerHTML='<div class="dashboard-clear-state"><span aria-hidden="true">🌿</span><div><strong>Nothing needs sorting right now.</strong><p>Your overview is clear.</p></div></div>';return}
+  el.innerHTML=view.attention.slice(0,4).map(function(item){return '<div class="dashboard-list-item"><span class="dashboard-list-icon" aria-hidden="true">'+item.icon+'</span><div class="dashboard-list-body"><strong>'+escapeHtml(item.title)+'</strong><span>'+escapeHtml(item.body)+'</span></div><button class="dashboard-list-action" onclick="'+item.action+'" aria-label="'+escapeHtml(item.cta)+'">'+escapeHtml(item.cta)+' →</button></div>'}).join('');
+}
+
+function renderDashboardUpcoming(view){
+  var el=document.getElementById('dashboard-upcoming-list');if(!el)return;
+  if(!view.upcoming.length){el.innerHTML='<div class="dashboard-clear-state"><span aria-hidden="true">🗓️</span><div><strong>Open horizon.</strong><p>Future goals and events will appear here.</p></div></div>';return}
+  el.innerHTML=view.upcoming.map(function(item){return '<button class="dashboard-upcoming-item" onclick="'+item.action+'"><span aria-hidden="true">'+item.icon+'</span><span><strong>'+escapeHtml(item.title)+'</strong><small>'+escapeHtml(item.detail)+'</small></span><span aria-hidden="true">→</span></button>'}).join('');
+}
+
+function renderDashboardMovement(view){
+  var el=document.getElementById('dashboard-recent-movement');if(!el)return;
+  var cards=[];
+  if(view.recentSessions.length){
+    var session=view.recentSessions[0];
+    cards.push('<article class="card card-quiet dashboard-movement-card"><div class="dashboard-movement-kicker">'+session.icon+' Latest training</div><strong>'+escapeHtml(session.title)+'</strong><p>'+escapeHtml(session.detail)+' · '+fmtDate(session.date)+'</p><button class="dashboard-inline-link" onclick="nav(\'workout\')">Open training →</button></article>');
+  }
+  cards.push('<article class="card card-quiet dashboard-movement-card"><div class="dashboard-movement-kicker">🌿 Weekly rhythm</div><strong>'+view.habits.pct+'% habit consistency</strong><p>'+dashboardDelta(view.habits.pct,view.previousHabits.pct,' points')+'. '+view.sessions+' training session'+(view.sessions===1?'':'s')+' logged.</p><button class="dashboard-inline-link" onclick="openInsights()">See patterns →</button></article>');
+  if(view.latestGratitude){
+    var gratitude=view.latestGratitude.wins||view.latestGratitude.gratitude||'';
+    cards.push('<article class="card card-quiet dashboard-movement-card"><div class="dashboard-movement-kicker">🙏 Latest reflection</div><strong>'+fmtDate(view.latestGratitude.date)+'</strong><p>'+escapeHtml(String(gratitude).split('\n')[0].slice(0,120))+'</p><button class="dashboard-inline-link" onclick="nav(\'gratitude\')">Open gratitude →</button></article>');
+  }
+  if(!cards.length)cards.push('<article class="card card-quiet dashboard-movement-card"><div class="dashboard-clear-state"><span aria-hidden="true">🌱</span><div><strong>Your movement will appear here.</strong><p>Use Today normally; Dashboard will summarize it.</p></div></div></article>');
+  el.innerHTML=cards.join('');
+}
+
+function renderDashboardOverview(view){
+  renderDashboardPulse(view);
+  renderDashboardAttention(view);
+  renderDashboardUpcoming(view);
+  renderDashboardMovement(view);
   renderLifeTab();
 }
 
-// Coordinator — chrome always, then only the active tab (Req 8.1, 8.4).
+function refreshDashboardIfActive(){
+  var page=document.getElementById('page-dashboard');
+  if(page&&page.classList.contains('active'))renderDashboard();
+}
+
 function renderDashboard(){
-  renderDashChrome();
-  var active=(document.querySelector('#page-dashboard .dash-tab.active')||{}).id;
-  if(active==='dash-tab-life') renderDashLife();
-  else if(active==='dash-tab-insights'){if(typeof renderInsights==='function')renderInsights()}
-  else renderDashWeek(); // default + Week
+  var view=buildDashboardViewModel();
+  renderDashChrome(view);
+  if(_dashboardRequestedTab){
+    var requested=_dashboardRequestedTab;_dashboardRequestedTab=null;
+    document.querySelectorAll('#page-dashboard [role="tab"]').forEach(function(button){var selected=button.id==='dash-tab-btn-'+requested;button.classList.toggle('active',selected);button.setAttribute('aria-selected',selected?'true':'false');button.tabIndex=selected?0:-1});
+    document.querySelectorAll('#page-dashboard [role="tabpanel"]').forEach(function(panel){var selected=panel.id==='dash-tab-'+requested;panel.classList.toggle('active',selected);panel.hidden=!selected});
+  }
+  var active=document.querySelector('#page-dashboard .dash-tab.active');
+  if(active&&active.id==='dash-tab-insights'){if(typeof renderInsights==='function')renderInsights()}
+  else if(active&&active.id==='dash-tab-numbers'){if(typeof renderNumbersSurface==='function')renderNumbersSurface()}
+  else renderDashboardOverview(view);
 }
 
 // ── CELEBRATIONS ──
-// Fires a big celebration when both habits and today's tasks are fully done.
-// Only counts if there's something being tracked (>=1 of each, or >=2 total).
+// The Day_Complete_Acknowledgement. Fires when today's Focus_Slate and today's
+// due habits are both fully done.
+//
+// The focus reading comes from focusStats([todayKey]) over the Unified_Task_Store
+// — never STATE.dailyPriorities, which the tasks migration retired and which is
+// an empty object on live data, so the acknowledgement used to be unreachable
+// whenever a slate existed (Requirements 1.1, 1.6).
+//
+// The "at least two tracked items" guard is kept, so a day with nothing on it
+// never fires. An empty slate is therefore evaluated from habits alone and
+// returns without error (Requirement 1.3).
+//
+// Once-per-calendar-day is held by STATE.companion.acks.dayComplete rather than
+// sessionStorage, so a reload cannot re-fire it (Requirement 1.5).
 function checkAllDoneToday(){
   var todayKey=localDateKey(new Date());
-  var expectedHabits=STATE.habits.filter(function(h){
-    var status=habitDayStatus(h,todayKey);
-    return status==='done'||status==='todo';
-  });
-  var habitsDone=expectedHabits.filter(function(h){return h.logs[todayKey]}).length;
-  var habitsTotal=expectedHabits.length;
-  var pris=(STATE.dailyPriorities||{})[todayKey]||[];
-  var prisDone=pris.filter(function(p){return p.done}).length;
-  var prisTotal=pris.length;
+  var habitStats=habitStatsForDays(STATE.habits||[],[todayKey],todayKey);
+  var habitsDone=habitStats.done;
+  var habitsTotal=habitStats.total;
+  var focus=focusStats([todayKey]);
+  var focusDone=focus.done;
+  var focusTotal=focus.total;
 
   // Need at least 2 items tracked in total, and both categories (if present) fully done
-  var totalTracked=habitsTotal+prisTotal;
+  var totalTracked=habitsTotal+focusTotal;
   if(totalTracked<2)return;
   var habitsComplete=habitsTotal===0||habitsDone===habitsTotal;
-  var prisComplete=prisTotal===0||prisDone===prisTotal;
-  if(!habitsComplete||!prisComplete)return;
+  var focusComplete=focusTotal===0||focusDone===focusTotal;
+  if(!habitsComplete||!focusComplete)return;
 
-  celebrateOnce('all-done-today',function(){
-    setTimeout(function(){
-      fireConfetti({count:160,duration:3200,colors:['#3F5A44','#C98A2D','#6E93AE','#B0563C','#EFEAE0']});
-      showCelebrationToast('Day complete. Everything ticked.','🌟');
-    },350);
-  });
+  if(!STATE.companion)STATE.companion=JSON.parse(JSON.stringify(DEFAULT_STATE.companion));
+  if(!STATE.companion.acks)STATE.companion.acks={dayComplete:null,focusSlate:null};
+  if(STATE.companion.acks.dayComplete===todayKey)return;
+  STATE.companion.acks.dayComplete=todayKey;
+  saveState();
+
+  // Factual counts, not just "everything ticked" — the numbers are the reward.
+  var focusLabel=focusDone+' focus '+(focusDone===1?'task':'tasks');
+  var habitLabel=habitsDone+' '+(habitsDone===1?'habit':'habits');
+  setTimeout(function(){
+    fireConfetti({count:160,duration:3200,colors:['#3F5A44','#C98A2D','#6E93AE','#B0563C','#EFEAE0']});
+    showCelebrationToast('Day complete — '+focusLabel+', '+habitLabel+'.','🌟');
+  },350);
 }
-
-function quickToggleHabit(hid,day){var h=STATE.habits.find(function(x){return x.id===hid});if(!h)return;var wasDone=h.logs[day];h.logs[day]=!h.logs[day];saveState();renderDashboard();if(/skincare/i.test(h.name)&&typeof renderSkincareToday==='function')renderSkincareToday();if(!wasDone&&h.logs[day]){var s=habitStreak(h);if(s===7||s===14||s===21||s===30){fireConfetti();showCelebrationToast(h.name+' — '+s+' day streak!','🔥')}if(day===localDateKey(new Date()))checkAllDoneToday()}}
-function toggleDashPriority(idx){var wk=weekKey(new Date());if(!STATE.weeklyPlans)STATE.weeklyPlans={};if(!STATE.weeklyPlans[wk])STATE.weeklyPlans[wk]={priorities:[]};if(!STATE.weeklyPlans[wk].prioritiesDone)STATE.weeklyPlans[wk].prioritiesDone={};STATE.weeklyPlans[wk].prioritiesDone[idx]=!STATE.weeklyPlans[wk].prioritiesDone[idx];saveState();renderDashboard()}
 
 // GOALS (simplified)
 function renderGoals(){var catColors={Finance:'#6E93AE',Fitness:'#B0563C',Career:'#C98A2D',Personal:'#3F5A44'};var all=STATE.goals||[];var doneCount=all.filter(function(g){return g.done}).length;var total=all.length;var pct=total>0?Math.round(doneCount/total*100):0;var sumEl=document.getElementById('goals-summary');if(sumEl&&total>0){var sh='<div style="display:flex;gap:12px;flex-wrap:wrap">';
@@ -347,77 +487,29 @@ function saveGoal(){var name=((document.getElementById('m-gname')||{}).value||''
 function updateGoalProgress(id){var goal=STATE.goals.find(function(x){return x.id===id});if(!goal)return;var wasDone=goalPct(goal)>=100;goal.progress=Number((document.getElementById('m-gprogress')||{}).value)||0;saveState();closeModal();renderGoals();if(!wasDone&&goalPct(goal)>=100){fireConfetti({count:150,duration:3000});showCelebrationToast('Goal complete: '+goal.name,'🎯')}}
 function editGoalSave(id){var goal=STATE.goals.find(function(x){return x.id===id});if(!goal)return;goal.name=(document.getElementById('m-gname')||{}).value||goal.name;goal.deadline=(document.getElementById('m-gdeadline')||{}).value||goal.deadline;goal.desc=(document.getElementById('m-gdesc')||{}).value||'';var cat=(document.getElementById('m-gcat')||{}).value;if(cat){goal.cat=cat;var badges={Finance:'fin',Fitness:'fit',Career:'car',Personal:'per'};goal.badge=badges[cat]||goal.badge}var manualEl=document.getElementById('m-gmanual');if(manualEl){goal.manualOverride=manualEl.value==='1';if(goal.manualOverride){var p=document.getElementById('m-gprogress');if(p&&p.value!=='')goal.progress=Number(p.value)}}saveState();closeModal();renderGoals()}
 function deleteGoal(id){confirmDelete('Delete this goal?',function(){STATE.goals=STATE.goals.filter(function(g){return g.id!==id});saveState();renderGoals()})}
-function saveMetric(type){if(!STATE.metrics)STATE.metrics={};var date=(document.getElementById('m-mdate')||{}).value||localDateKey(new Date());var note=(document.getElementById('m-mnote')||{}).value||'';var entry={id:g(),date:date};if(type==='project'){var name=((document.getElementById('m-mname')||{}).value||'').trim();if(!name)return;entry.name=name}else if(type==='run'){var val=(document.getElementById('m-mval')||{}).value;if(!val)return;entry.distance=Number(val);entry.time=(document.getElementById('m-mtime')||{}).value||'';entry.note=note}else if(type==='moneySaved'){var val=(document.getElementById('m-mval')||{}).value;if(!val)return;entry.amount=Number(val);entry.note=note}else{var val=(document.getElementById('m-mval')||{}).value;if(!val)return;entry.value=Number(val);entry.note=note}if(!STATE.metrics[type])STATE.metrics[type]=[];STATE.metrics[type].push(entry);saveState();closeModal();if(type==='weight'&&typeof renderTrainingBody==='function'){var bodyEl=document.getElementById('workout-body');if(bodyEl&&bodyEl.classList.contains('active'))renderTrainingBody()}if(type==='weight'&&typeof renderPlanner==='function')renderPlanner();if(type==='run'){var rrEl=document.getElementById('recent-runs-workout');if(rrEl)renderWorkout()}}
-
-
-
-
-// ── DAILY PRIORITIES ──
-function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
-function addDailyPri(){
-  var input=document.getElementById('daily-pri-input');
-  if(!input)return;
-  var text=input.value.trim();
-  if(!text)return;
-  var key=localDateKey(new Date());
-  if(!STATE.dailyPriorities)STATE.dailyPriorities={};
-  if(!STATE.dailyPriorities[key])STATE.dailyPriorities[key]=[];
-  STATE.dailyPriorities[key].push({text:text,done:false});
-  input.value='';
-  saveState();
-  renderDashboard();
-}
-function toggleDailyPri(dateKey,idx){
-  var list=(STATE.dailyPriorities||{})[dateKey];
-  if(!list||!list[idx])return;
-  var wasDone=list[idx].done;
-  list[idx].done=!list[idx].done;
-  saveState();
-  renderDashboard();
-  // Only celebrate on the today list, and only when ticking ON
-  var todayKey=localDateKey(new Date());
-  if(dateKey===todayKey&&!wasDone&&list[idx].done){
-    var doneCount=list.filter(function(p){return p.done}).length;
-    // First task of the day — subtle toast
-    if(doneCount===1){
-      celebrateOnce('first-task',function(){
-        showCelebrationToast('First one done. Momentum starts here.','✨');
-      });
-    }
-    // All tasks done (and there were at least 2)
-    if(doneCount===list.length&&list.length>=2){
-      celebrateOnce('all-tasks',function(){
-        fireConfetti({count:80,duration:2000});
-        showCelebrationToast('All tasks ticked — nice work.','📝');
-      });
-    }
-    checkAllDoneToday();
+function saveMetric(type){
+  if(!STATE.metrics)STATE.metrics={};var snapshot=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
+  var date=(document.getElementById('m-mdate')||{}).value||localDateKey(new Date());var note=(document.getElementById('m-mnote')||{}).value||'';var entry={id:g(),date:date};
+  if(type==='project'){var name=((document.getElementById('m-mname')||{}).value||'').trim();if(!name)return;entry.name=name}
+  else if(type==='run'){var runValue=(document.getElementById('m-mval')||{}).value;if(!runValue)return;entry.distance=Number(runValue);entry.time=(document.getElementById('m-mtime')||{}).value||'';entry.note=note}
+  else if(type==='moneySaved'){var savedValue=(document.getElementById('m-mval')||{}).value;if(!savedValue)return;entry.amount=Number(savedValue);entry.note=note}
+  else{var metricValue=(document.getElementById('m-mval')||{}).value;if(!metricValue)return;entry.value=Number(metricValue);entry.note=note}
+  if(!STATE.metrics[type])STATE.metrics[type]=[];STATE.metrics[type].push(entry);
+  if(type==='run')applyHabitSource('lifehub.run.any',date,'run',entry.id);
+  if(!saveStateOrRollback(snapshot))return false;closeModal();
+  if(type==='run')emitLifeHubChange({action:'run-create',entityId:entry.id,dateKeys:[date],domains:['metrics','habits'],source:'dashboard'});
+  else{
+    if(type==='weight'&&typeof renderTrainingBody==='function'){var bodyEl=document.getElementById('workout-body');if(bodyEl&&bodyEl.classList.contains('active'))renderTrainingBody()}
+    if(type==='weight'&&typeof renderPlanner==='function')renderPlanner();
   }
-}
-function deleteDailyPri(dateKey,idx){
-  var list=(STATE.dailyPriorities||{})[dateKey];
-  if(!list)return;
-  list.splice(idx,1);
-  saveState();
-  renderDashboard();
-}
-function moveDailyPriToTomorrow(dateKey,idx){
-  var list=(STATE.dailyPriorities||{})[dateKey];
-  if(!list||!list[idx])return;
-  var item=list[idx];
-  item.done=false;
-  // Compute tomorrow from dateKey
-  var parts=dateKey.split('-');
-  var d=new Date(+parts[0],+parts[1]-1,+parts[2]);
-  d.setDate(d.getDate()+1);
-  var tomorrowKey=localDateKey(d);
-  if(!STATE.dailyPriorities[tomorrowKey])STATE.dailyPriorities[tomorrowKey]=[];
-  STATE.dailyPriorities[tomorrowKey].push(item);
-  list.splice(idx,1);
-  saveState();
-  renderDashboard();
+  return true;
 }
 
+
+
+
+// Shared escaping helper for user-authored text rendered into HTML strings.
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 
 // ── TASKS ARCHIVE PAGE ──
 function renderTasksArchive(){
@@ -433,22 +525,25 @@ function renderTasksArchive(){
     return;
   }
 
-  var totalTasks=all.length;
-  var totalDone=all.filter(function(t){return t.done}).length;
-  var thirtyAgo=new Date();thirtyAgo.setDate(thirtyAgo.getDate()-30);
-  var thirtyKey=localDateKey(thirtyAgo);
-  var last30Done=all.filter(function(t){return t.done&&t.doneAt&&t.doneAt>=thirtyKey}).length;
+  // Four counts, no ratio: the all-time completion percentage and its "of N
+  // all-time" fraction are the same Guilt_Metric, and for a capture-heavy user
+  // both can only fall as more is captured. Design Decision 8, Requirements
+  // 13.5, 13.6. Completion counts come from taskCompletionStats, the sole
+  // definition of the measure; `open now` is the one actionable number here and
+  // `completed all time` only ever grows.
   var todayKey=localDateKey(new Date());
-  var doneToday=all.filter(function(t){return t.done&&t.doneAt===todayKey}).length;
-
-  var overallPct=totalTasks>0?Math.round(totalDone/totalTasks*100):0;
+  var last30=Array.from({length:30},function(_,i){var d=new Date();d.setDate(d.getDate()-i);return localDateKey(d)});
+  var last30Done=taskCompletionStats(last30).completed;
+  var doneToday=taskCompletionStats([todayKey]).completed;
+  var openNow=all.filter(function(t){return !t.done}).length;
+  var totalDone=all.filter(function(t){return t.done}).length;
 
   if(statsEl){
     statsEl.innerHTML=
-      '<div class="card-sm" style="text-align:center;border-top:3px solid var(--accent)"><div style="font-family:var(--serif);font-size:26px;font-weight:500;color:var(--accent-dark);line-height:1">'+totalDone+'</div><div style="font-size:11px;color:var(--text2);margin-top:4px">of '+totalTasks+' all-time</div></div>'
-      +'<div class="card-sm" style="text-align:center;border-top:3px solid var(--mint)"><div style="font-family:var(--serif);font-size:26px;font-weight:500;color:#5A8A55;line-height:1">'+overallPct+'%</div><div style="font-size:11px;color:var(--text2);margin-top:4px">completion rate</div></div>'
-      +'<div class="card-sm" style="text-align:center;border-top:3px solid var(--purple)"><div style="font-family:var(--serif);font-size:26px;font-weight:500;color:#7A6A9E;line-height:1">'+last30Done+'</div><div style="font-size:11px;color:var(--text2);margin-top:4px">done last 30d</div></div>'
-      +'<div class="card-sm" style="text-align:center;border-top:3px solid var(--gold)"><div style="font-family:var(--serif);font-size:26px;font-weight:500;color:#B8860B;line-height:1">'+doneToday+'</div><div style="font-size:11px;color:var(--text2);margin-top:4px">done today</div></div>';
+      '<div class="card-sm" style="text-align:center;border-top:3px solid var(--accent)"><div style="font-family:var(--serif);font-size:26px;font-weight:500;color:var(--accent-dark);line-height:1">'+last30Done+'</div><div style="font-size:11px;color:var(--text2);margin-top:4px">done last 30 days</div></div>'
+      +'<div class="card-sm" style="text-align:center;border-top:3px solid var(--mint)"><div style="font-family:var(--serif);font-size:26px;font-weight:500;color:#5A8A55;line-height:1">'+doneToday+'</div><div style="font-size:11px;color:var(--text2);margin-top:4px">done today</div></div>'
+      +'<div class="card-sm" style="text-align:center;border-top:3px solid var(--purple)"><div style="font-family:var(--serif);font-size:26px;font-weight:500;color:#7A6A9E;line-height:1">'+openNow+'</div><div style="font-size:11px;color:var(--text2);margin-top:4px">open now</div></div>'
+      +'<div class="card-sm" style="text-align:center;border-top:3px solid var(--gold)"><div style="font-family:var(--serif);font-size:26px;font-weight:500;color:#B8860B;line-height:1">'+totalDone+'</div><div style="font-size:11px;color:var(--text2);margin-top:4px">completed all time</div></div>';
   }
 
   // Group: open (sorted by due then created), done (sorted by doneAt desc)
@@ -491,24 +586,42 @@ function renderArchiveTaskRow(t){
 
 // ── DASHBOARD TABS ──
 function switchDashTab(tab,btn){
-  document.querySelectorAll('#page-dashboard .page-tab').forEach(function(b){b.classList.remove('active')});
-  document.querySelectorAll('.dash-tab').forEach(function(p){p.classList.remove('active')});
-  if(btn)btn.classList.add('active');
-  var el=document.getElementById('dash-tab-'+tab);
-  if(el)el.classList.add('active');
-  if(tab==='life')renderDashLife();
-  else if(tab==='insights'){if(typeof renderInsights==='function')renderInsights()}
-  else renderDashWeek();
+  if(tab!=='overview'&&tab!=='insights'&&tab!=='numbers')tab='overview';
+  var page=document.getElementById('page-dashboard');if(!page)return;
+  page.querySelectorAll('[role="tab"]').forEach(function(button){
+    var selected=button.id==='dash-tab-btn-'+tab;
+    button.classList.toggle('active',selected);
+    button.setAttribute('aria-selected',selected?'true':'false');
+    button.tabIndex=selected?0:-1;
+  });
+  page.querySelectorAll('[role="tabpanel"]').forEach(function(panel){
+    var selected=panel.id==='dash-tab-'+tab;
+    panel.classList.toggle('active',selected);
+    panel.hidden=!selected;
+  });
+  var activeButton=btn||document.getElementById('dash-tab-btn-'+tab);
+  if(activeButton&&document.activeElement&&document.activeElement.getAttribute('role')==='tab')activeButton.focus();
+  if(tab==='insights'){if(typeof renderInsights==='function')renderInsights()}
+  // The Numbers_Surface, reached from the Dashboard as a third tab rather than a
+  // page of its own. Requirement 12.1.
+  else if(tab==='numbers'){if(typeof renderNumbersSurface==='function')renderNumbersSurface()}
+  else renderDashboardOverview(buildDashboardViewModel());
 }
 
-// Open the Dashboard and activate its Insights tab (the old Insights page is
-// now folded in here). Called from the nav menus.
+function dashboardTabKeydown(event){
+  if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight'&&event.key!=='Home'&&event.key!=='End')return;
+  var tabs=Array.from(document.querySelectorAll('#page-dashboard [role="tab"]'));
+  var current=tabs.indexOf(event.currentTarget);if(current<0)return;
+  event.preventDefault();
+  var next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(current+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
+  var tab=tabs[next].id.replace('dash-tab-btn-','');
+  switchDashTab(tab,tabs[next]);
+}
+
+// Open Dashboard directly on Insights without waiting for the page transition.
 function openInsights(){
+  _dashboardRequestedTab='insights';
   if(typeof nav==='function')nav('dashboard');
-  setTimeout(function(){
-    var b=document.getElementById('dash-tab-btn-insights');
-    switchDashTab('insights',b);
-  },220);
 }
 
 // ── LIFE TAB ──
@@ -517,7 +630,10 @@ function renderLifeTab(){
   var gSnapEl=document.getElementById('dash-goals-snapshot');
   if(gSnapEl){
     var active=(STATE.goals||[]).filter(function(g){return !g.done});
-    var top3=active.slice(0,3);
+    var top3=active.slice().sort(function(a,b){
+      var ad=a.deadline||'9999-12-31',bd=b.deadline||'9999-12-31';
+      return ad.localeCompare(bd)||goalPct(b)-goalPct(a);
+    }).slice(0,3);
     if(!top3.length){
       gSnapEl.innerHTML='<div class="empty" style="padding:20px 0">No active goals. <a href="#" onclick="nav(\'goals\');return false" style="color:var(--accent-dark)">Set one →</a></div>';
     }else{
@@ -527,7 +643,7 @@ function renderLifeTab(){
         var progressDisplay=src.source!=='manual'?src.progress:go.progress;
         return '<div style="padding:10px 0;border-bottom:1px solid var(--border)">'
           +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
-            +'<div style="font-size:13px;font-weight:500">'+go.name+'</div>'
+            +'<div style="font-size:13px;font-weight:500">'+escapeHtml(go.name)+'</div>'
             +'<span style="font-size:11px;font-weight:600;color:'+pbarColor(pct)+'">'+pct+'%</span>'
           +'</div>'
           +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">'
@@ -559,121 +675,10 @@ function renderLifeTab(){
       var color=avg>=7?'var(--mint)':avg>=5?'var(--gold)':'var(--accent-dark)';
       rSnapEl.innerHTML='<div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--border)">'
         +'<div style="width:52px;height:52px;border-radius:50%;background:'+color+';color:var(--white);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:20px;font-weight:500;flex-shrink:0">'+avg+'</div>'
-        +'<div style="flex:1"><div style="font-size:14px;font-weight:600">'+monthLabel+'</div>'+(r.focus?'<div style="font-size:11px;color:var(--text2);margin-top:2px;line-height:1.4">🎯 '+r.focus.split('\n')[0].slice(0,80)+(r.focus.length>80?'…':'')+'</div>':'<div style="font-size:11px;color:var(--text3);margin-top:2px">No focus set</div>')+'</div>'
+        +'<div style="flex:1"><div style="font-size:14px;font-weight:600">'+monthLabel+'</div>'+(r.focus?'<div style="font-size:11px;color:var(--text2);margin-top:2px;line-height:1.4">🎯 '+escapeHtml(r.focus.split('\n')[0].slice(0,80))+(r.focus.length>80?'…':'')+'</div>':'<div style="font-size:11px;color:var(--text3);margin-top:2px">No focus set</div>')+'</div>'
         +'</div>'
         +'<button class="btn btn-ghost btn-sm" onclick="nav(\'review\')" style="margin-top:10px;width:100%;justify-content:center">Open Reviews →</button>';
     }
-  }
-}
-
-
-// ── DASHBOARD: WEEKLY TOP-3 ──
-// Now merged into dash-priorities-preview. This stub keeps existing onclick handlers safe.
-function renderDashWeeklyTop3(){
-  // The standalone card was removed — weekly priorities now render alongside today's tasks.
-  // Re-render the priorities card to reflect changes.
-  if(typeof renderDashboard==='function'){
-    var ppEl=document.getElementById('dash-priorities-preview');
-    if(ppEl)renderDashboard();
-  }
-}
-
-function saveDashWeeklyTop3(idx,val){
-  var wk=weekKey(new Date());
-  if(!STATE.weeklyPlans)STATE.weeklyPlans={};
-  if(!STATE.weeklyPlans[wk])STATE.weeklyPlans[wk]={priorities:['','',''],prioritiesDone:{}};
-  if(!STATE.weeklyPlans[wk].priorities)STATE.weeklyPlans[wk].priorities=['','',''];
-  STATE.weeklyPlans[wk].priorities[idx]=val;
-  saveState();
-  renderDashWeeklyTop3();
-}
-
-function toggleDashWeeklyTop3(idx){
-  var wk=weekKey(new Date());
-  if(!STATE.weeklyPlans)STATE.weeklyPlans={};
-  if(!STATE.weeklyPlans[wk])STATE.weeklyPlans[wk]={priorities:['','',''],prioritiesDone:{}};
-  var p=STATE.weeklyPlans[wk];
-  if(!p.prioritiesDone)p.prioritiesDone={};
-  var wasDone=!!p.prioritiesDone[idx];
-  p.prioritiesDone[idx]=!wasDone;
-  saveState();
-  renderDashWeeklyTop3();
-  // Celebration
-  if(!wasDone){
-    var set=p.priorities.filter(function(x){return x&&x.trim()});
-    var done=p.priorities.filter(function(x,i){return x&&x.trim()&&p.prioritiesDone[i]}).length;
-    if(set.length>=2&&done===set.length){
-      if(typeof celebrateOnce==='function'){
-        celebrateOnce('weekly-top3-done',function(){
-          fireConfetti({count:110,duration:2400});
-          showCelebrationToast('All weekly priorities ticked — strong week.','🎯');
-        });
-      }
-    }
-  }
-}
-
-// ── DASHBOARD: INLINE GRATITUDE PROMPT ──
-function renderDashGratitudeInline(){
-  var el=document.getElementById('dash-gratitude-inline');
-  if(!el)return;
-  var todayKey=localDateKey(new Date());
-  var entries=(STATE.gratitude||[]).filter(function(e){return e.date===todayKey});
-  if(entries.length){
-    el.innerHTML='<div class="dash-gr-done">'
-      +entries.map(function(e){
-        return (e.wins?'<div class="dash-gr-line"><span class="dash-gr-emoji">🏆</span>'+escapeHtml(e.wins)+'</div>':'')
-             +(e.gratitude?'<div class="dash-gr-line"><span class="dash-gr-emoji">🙏</span>'+escapeHtml(e.gratitude.split('\n')[0])+'</div>':'');
-      }).join('')
-      +'<button class="btn btn-ghost btn-sm dash-gr-more" onclick="openModal(\'addGratitude\')">+ Add another</button>'
-      +'</div>';
-  }else{
-    var hr=new Date().getHours();
-    var prompt;
-    if(hr<12)prompt='What\'s one thing you\'re looking forward to today?';
-    else if(hr<17)prompt='What went well so far?';
-    else if(hr<21)prompt='Wind down. What\'s one win from today?';
-    else prompt='Before bed — what\'s one thing you\'re grateful for?';
-    el.innerHTML=''
-      +'<div class="dash-gr-prompt">'+prompt+'</div>'
-      +'<div class="dash-gr-fields">'
-        +'<input type="text" id="dash-gr-win" placeholder="One line — a win or moment of gratitude…" onkeydown="if(event.key===\'Enter\')dashSaveGratitudeInline()">'
-        +'<button class="btn btn-accent btn-sm" onclick="dashSaveGratitudeInline()">Save</button>'
-      +'</div>'
-      +'<button class="dash-gr-expand" onclick="document.getElementById(\'dash-gr-thankful-wrap\').style.display=\'flex\';this.style.display=\'none\'">+ Add a separate gratitude line</button>'
-      +'<div id="dash-gr-thankful-wrap" class="dash-gr-fields" style="display:none;margin-top:8px">'
-        +'<input type="text" id="dash-gr-thankful" placeholder="🙏 One thing you\'re thankful for…" onkeydown="if(event.key===\'Enter\')dashSaveGratitudeInline()">'
-      +'</div>';
-  }
-}
-
-function dashSaveGratitudeInline(){
-  var win=((document.getElementById('dash-gr-win')||{}).value||'').trim();
-  var thankful=((document.getElementById('dash-gr-thankful')||{}).value||'').trim();
-  if(!win&&!thankful)return;
-  if(!STATE.gratitude)STATE.gratitude=[];
-  var today=localDateKey(new Date());
-  var isFirstEver=STATE.gratitude.length===0;
-  STATE.gratitude.push({id:g(),date:today,wins:win,gratitude:thankful});
-  saveState();
-  renderDashGratitudeInline();
-  if(typeof celebrateGratitudeMilestone==='function'){
-    celebrateGratitudeMilestone(today,isFirstEver);
-  }
-}
-
-
-// Dismiss the evening gratitude nudge for the day
-function dismissGratitudeNudge(){
-  var todayK=localDateKey(new Date());
-  try{sessionStorage.setItem('lh_gr_nudge_dismissed:'+todayK,'1')}catch(e){}
-  var nudgeEl=document.getElementById('dash-review-nudge');
-  if(nudgeEl){
-    // Remove just the gratitude nudge
-    var children=nudgeEl.querySelectorAll('.review-nudge');
-    children.forEach(function(c){
-      if(c.textContent.indexOf('Wind-down')>-1)c.remove();
-    });
   }
 }
 
@@ -706,67 +711,17 @@ function renderDashMoodMini(){
   var today=localDateKey(new Date());
   var m=(STATE.mood||{})[today]||{};
   var moodEm=['','😞','😐','🙂','😊','🤩'];
+  var moodLabels=['','Low','Flat','Okay','Good','Great'];
   if(m.mood){
-    el.innerHTML='<div class="dash-mood-mini-done"><span class="dash-mood-mini-emoji">'+moodEm[m.mood]+'</span><button class="dash-mood-mini-edit" onclick="openModal(\'logMood\',\''+today+'\')">Edit</button></div>';
+    el.innerHTML='<div class="dash-mood-mini-done"><span class="dash-mood-mini-emoji" aria-hidden="true">'+moodEm[m.mood]+'</span><span class="sr-only">Mood: '+moodLabels[m.mood]+'</span><button class="dash-mood-mini-edit" onclick="openModal(\'logMood\',\''+today+'\')">Edit check-in</button></div>';
   }else{
-    el.innerHTML='<div class="dash-mood-mini-row">'
+    el.innerHTML='<div class="dash-mood-mini-row" aria-label="Log today\'s mood">'
       +['😞','😐','🙂','😊','🤩'].map(function(e,i){
-        return '<button class="dash-mood-mini-btn" onclick="quickLogMood('+(i+1)+',\''+today+'\')">'+e+'</button>';
+        return '<button class="dash-mood-mini-btn" aria-label="Log mood as '+moodLabels[i+1]+'" onclick="quickLogMood('+(i+1)+',\''+today+'\')">'+e+'</button>';
       }).join('')
       +'</div>';
   }
 }
-
-// ── DASHBOARD: MOOD THIS WEEK (item 8) ──
-function renderDashMoodWeek(){
-  var el=document.getElementById('dash-mood-week');
-  if(!el)return;
-  var todayK=localDateKey(new Date());
-  var days=[];
-  for(var i=6;i>=0;i--){
-    var d=new Date();d.setDate(d.getDate()-i);
-    var k=localDateKey(d);
-    var m=(STATE.mood||{})[k]||{};
-    days.push({key:k,date:d,mood:m.mood||0,energy:m.energy||0,sleep:m.sleep||0,isToday:k===todayK});
-  }
-  var moodEm=['—','😞','😐','🙂','😊','🤩'];
-  var loggedDays=days.filter(function(d){return d.mood>0});
-  var avgMood=loggedDays.length?(loggedDays.reduce(function(s,d){return s+d.mood},0)/loggedDays.length):0;
-  var avgSleep=days.filter(function(d){return d.sleep>0}).length>0?
-    (days.filter(function(d){return d.sleep>0}).reduce(function(s,d){return s+d.sleep},0)/days.filter(function(d){return d.sleep>0}).length):0;
-
-  var html='';
-  if(loggedDays.length===0){
-    html='<div class="empty" style="padding:14px 0;font-size:12px;color:var(--text3);text-align:center">No mood logged this week. Tap any face to start.</div>';
-    html+='<div class="dmw-grid">'+days.map(function(d){
-      var lbl=d.date.toLocaleDateString('en-GB',{weekday:'narrow'});
-      var dnum=d.date.getDate();
-      return '<div class="dmw-cell empty'+(d.isToday?' today':'')+'" onclick="openModal(\'logMood\',\''+d.key+'\')">'
-        +'<div class="dmw-cell-day">'+lbl+'</div>'
-        +'<div class="dmw-cell-num">'+dnum+'</div>'
-        +'<div class="dmw-cell-emoji">·</div>'
-        +'</div>';
-    }).join('')+'</div>';
-  }else{
-    html='<div class="dmw-summary">'
-      +'<div class="dmw-stat"><span class="dmw-stat-num">'+(avgMood?avgMood.toFixed(1):'—')+'</span><span class="dmw-stat-lbl">avg mood</span></div>'
-      +'<div class="dmw-stat"><span class="dmw-stat-num">'+(avgSleep?avgSleep.toFixed(1)+'h':'—')+'</span><span class="dmw-stat-lbl">avg sleep</span></div>'
-      +'<div class="dmw-stat"><span class="dmw-stat-num">'+loggedDays.length+'/7</span><span class="dmw-stat-lbl">logged</span></div>'
-      +'</div>';
-    html+='<div class="dmw-grid">'+days.map(function(d){
-      var lbl=d.date.toLocaleDateString('en-GB',{weekday:'narrow'});
-      var dnum=d.date.getDate();
-      return '<div class="dmw-cell'+(d.mood>0?' filled':' empty')+(d.isToday?' today':'')+'" onclick="openModal(\'logMood\',\''+d.key+'\')">'
-        +'<div class="dmw-cell-day">'+lbl+'</div>'
-        +'<div class="dmw-cell-num">'+dnum+'</div>'
-        +'<div class="dmw-cell-emoji">'+(d.mood>0?moodEm[d.mood]:'·')+'</div>'
-        +(d.sleep>0?'<div class="dmw-cell-sleep">💤'+d.sleep+'h</div>':'')
-        +'</div>';
-    }).join('')+'</div>';
-  }
-  el.innerHTML=html;
-}
-
 
 // ── GOALS — sub-steps (item 10) ──
 function addGoalSubStep(goalId){
@@ -889,231 +844,6 @@ function addTaskSubStep(taskId){
   t.subSteps.push({text:text,done:false});
   saveState();
   if(typeof openModal==='function')openModal('editTask',taskId);
-}
-
-
-// ── DASHBOARD: WHAT'S NEXT (ADHD-friendly single-focus card) ──
-// Surfaces ONE habit at a time based on time-of-day anchor + due status.
-// Animates on tick, rolls to next. Compassionate "all caught up" state.
-var _whatsNextDismissed={}; // session-only dismiss for current habit id
-
-// ── Today's training (dashboard) ──
-function renderDashTrainingToday(){
-  var card=document.getElementById('dash-training-card');
-  var el=document.getElementById('dash-training-today');
-  if(!card||!el)return;
-  if(typeof todaysTrainingSession!=='function'){card.style.display='none';return}
-  var t=todaysTrainingSession();
-  if(!t){card.style.display='none';return}
-  card.style.display='';
-  var def=(typeof workoutDef==='function')?workoutDef(t.session):null;
-  var todayKey=localDateKey(new Date());
-
-  if(t.session==='rest'){
-    el.innerHTML='<div class="dash-train-rest"><span style="font-size:22px">🌿</span><div><div class="dash-train-title">Rest day</div><div class="dash-train-sub">'+t.sub+'. Recovery is training too.</div></div></div>';
-    return;
-  }
-  if(def){
-    // Strength day — show progress + jump to plan
-    var wk=weekKey(new Date());
-    var plan=getTrainingPlan();
-    var checks=(plan.checks[wk]&&plan.checks[wk][t.session])||{};
-    var doneCount=def.exercises.filter(function(ex,xi){return checks[xi]}).length;
-    var pct=Math.round(doneCount/def.exercises.length*100);
-    el.innerHTML='<div class="dash-train-main">'
-      +'<div class="dash-train-icon">'+def.emoji+'</div>'
-      +'<div style="flex:1;min-width:0">'
-        +'<div class="dash-train-title">'+t.label+'</div>'
-        +'<div class="dash-train-sub">'+def.exercises.length+' exercises · '+def.duration+(t.run?' · then recovery run':'')+'</div>'
-        +'<div class="dash-train-bar" role="progressbar" aria-valuenow="'+pct+'" aria-valuemin="0" aria-valuemax="100" aria-label="'+t.label+' progress: '+doneCount+' of '+def.exercises.length+' done"><div class="dash-train-bar-fill" style="width:'+pct+'%"></div></div>'
-      +'</div>'
-      +'<button class="btn btn-accent btn-sm" onclick="nav(\'workout\');setTimeout(function(){subNav(\'workout\',\'myplan\');toggleTrainDay(\''+t.session+'\')},60)">'+(doneCount>0?doneCount+'/'+def.exercises.length:'Start')+'</button>'
-      +'</div>';
-    return;
-  }
-  // Run day
-  var logged=(((STATE.metrics||{}).run)||[]).some(function(r){return r.date===todayKey});
-  el.innerHTML='<div class="dash-train-main">'
-    +'<div class="dash-train-icon">🏃</div>'
-    +'<div style="flex:1;min-width:0">'
-      +'<div class="dash-train-title">'+t.label+'</div>'
-      +'<div class="dash-train-sub">'+t.sub+' (Nike Run Club)</div>'
-    +'</div>'
-    +(logged?'<span class="dash-train-done">✓ Logged</span>':'<button class="btn btn-accent btn-sm" onclick="openModal(\'logRun\')">+ Log run</button>')
-    +'</div>';
-}
-
-
-function renderDashWhatsNext(){
-  var el=document.getElementById('dash-whats-next');
-  var labelEl=document.getElementById('whats-next-label');
-  if(!el)return;
-  var habits=STATE.habits||[];
-  if(!habits.length){
-    if(labelEl)labelEl.textContent='✨ Habits';
-    el.innerHTML='<div class="wn-empty"><div class="wn-empty-icon">✨</div><div class="wn-empty-msg">Add your first habit to start.</div><button class="btn btn-accent btn-sm" onclick="openModal(\'addHabit\')" style="margin-top:10px">+ Add habit</button></div>';
-    return;
-  }
-
-  var slot=currentTimeSlot();
-  var slotLabel=slot==='night'?'Late night':slot==='morning'?'Morning':slot==='midday'?'Midday':'Evening';
-  var slotEmoji=slot==='night'?'🌙':slot==='morning'?'🌅':slot==='midday'?'☀️':'🌙';
-
-  // Due-now habits: due today AND not dismissed for this session
-  var due=habits.filter(function(h){return isHabitDueToday(h)&&!_whatsNextDismissed[h.id]});
-
-  // Pick the most relevant one based on anchor matching the slot
-  function anchorMatchScore(h){
-    var a=h.anchor||'anytime';
-    if(slot==='night'&&a==='evening')return 3;  // late = still evening priority
-    if(slot==='night'&&a==='anytime')return 1;
-    if(a===slot)return 3;
-    if(a==='anytime')return 1;
-    return 0;
-  }
-  due.sort(function(a,b){
-    var sa=anchorMatchScore(a),sb=anchorMatchScore(b);
-    if(sa!==sb)return sb-sa;
-    // Tiebreak: highest consistency last (so we don't always show the strongest one)
-    return habitConsistency(a).pct-habitConsistency(b).pct;
-  });
-
-  // Total dues remaining + done today
-  var todayKey=localDateKey(new Date());
-  var allDueToday=habits.filter(function(h){return isHabitDueToday(h)});
-  var dueCount=allDueToday.length;
-  var doneTodayCount=habits.filter(function(h){return h.logs&&h.logs[todayKey]}).length;
-
-  if(labelEl)labelEl.innerHTML='✨ What\'s next <span class="wn-progress">'+doneTodayCount+' done · '+dueCount+' to go</span>';
-
-  // All caught up state
-  if(!due.length){
-    if(dueCount===0&&doneTodayCount>0){
-      // Everything done!
-      el.innerHTML='<div class="wn-celebrate"><div class="wn-celebrate-emoji">🎉</div><div class="wn-celebrate-title">All caught up</div><div class="wn-celebrate-sub">You\'ve handled every habit due today. Rest well.</div><button class="btn btn-ghost btn-sm" onclick="nav(\'habits\')" style="margin-top:12px">See all habits →</button></div>';
-    }else if(dueCount===0){
-      el.innerHTML='<div class="wn-celebrate"><div class="wn-celebrate-emoji">🌿</div><div class="wn-celebrate-title">Nothing due right now</div><div class="wn-celebrate-sub">Easy day. Tap below to log something anyway.</div><button class="btn btn-ghost btn-sm" onclick="nav(\'habits\')" style="margin-top:12px">View habits →</button></div>';
-    }else{
-      // Dismissed all — offer to reset
-      el.innerHTML='<div class="wn-celebrate"><div class="wn-celebrate-emoji">⏭</div><div class="wn-celebrate-title">All skipped for now</div><div class="wn-celebrate-sub">'+dueCount+' habit'+(dueCount===1?'':'s')+' still due — come back later or open the full list.</div><button class="btn btn-ghost btn-sm" onclick="resetWhatsNextSkips()" style="margin-top:8px;margin-right:6px">Show again</button><button class="btn btn-accent btn-sm" onclick="nav(\'habits\')" style="margin-top:8px">View all →</button></div>';
-    }
-    return;
-  }
-
-  // The hero — single habit
-  var h=due[0];
-  var meta=HABIT_CAT_META[h.badge]||HABIT_CAT_META.per||{color:'#6B9E7A',emoji:'✅'};
-  var icon=h.icon||meta.emoji;
-  var anchor=HABIT_ANCHORS[h.anchor||'anytime']||HABIT_ANCHORS.anytime;
-  var consistency=habitConsistency(h);
-  var tone=consistencyTone(consistency.pct);
-  var streak=habitStreak(h);
-  var streakBadge='';
-  if(streak>=7)streakBadge='<span class="wn-streak hot">🔥 '+streak+'</span>';
-  else if(streak>=3)streakBadge='<span class="wn-streak">⚡ '+streak+'</span>';
-
-  var html='<div class="wn-hero" style="border-color:'+meta.color+'33">';
-  html+='<div class="wn-icon" style="background:'+meta.color+'22;color:'+meta.color+'">'+icon+'</div>';
-  html+='<div class="wn-info">';
-  html+='<div class="wn-anchor">'+anchor.emoji+' '+anchor.label+(slot!=='night'&&h.anchor===slot?' · now':'')+'</div>';
-  html+='<div class="wn-name">'+escapeHtml(h.name)+'</div>';
-  if(h.note)html+='<div class="wn-note">'+escapeHtml(h.note)+'</div>';
-  html+='<div class="wn-stats">';
-  html+='<span class="wn-consistency" style="color:'+tone.color+'">'+consistency.pct+'% <span class="wn-stat-label">'+tone.label+'</span></span>';
-  if(streakBadge)html+=streakBadge;
-  if(due.length>1)html+='<span class="wn-queue">+'+(due.length-1)+' more after this</span>';
-  html+='</div>';
-  html+='</div>';
-  html+='<button class="wn-tick-btn" onclick="tickWhatsNext(\''+h.id+'\')" style="background:'+meta.color+'" aria-label="Mark done">✓</button>';
-  html+='</div>';
-  html+='<div class="wn-actions">';
-  html+='<button class="btn btn-ghost btn-sm" onclick="skipWhatsNext(\''+h.id+'\')" title="Show me a different one">Skip for now</button>';
-  if(due.length>1)html+='<button class="btn btn-ghost btn-sm" onclick="nav(\'habits\')" style="margin-left:auto">See all '+due.length+' →</button>';
-  else html+='<button class="btn btn-ghost btn-sm" onclick="nav(\'habits\')" style="margin-left:auto">All habits →</button>';
-  html+='</div>';
-  el.innerHTML=html;
-}
-
-function tickWhatsNext(hid){
-  var h=STATE.habits.find(function(x){return x.id===hid});
-  if(!h)return;
-  var todayKey=localDateKey(new Date());
-  if(!h.logs)h.logs={};
-  h.logs[todayKey]=true;
-  saveState();
-  // Animate the tick before re-rendering
-  var heroEl=document.querySelector('#dash-whats-next .wn-hero');
-  if(heroEl){
-    heroEl.classList.add('wn-ticking');
-    setTimeout(function(){
-      renderDashWhatsNext();
-      // Streak celebrations
-      var s=habitStreak(h);
-      if(s===7||s===14||s===21||s===30){
-        fireConfetti();
-        showCelebrationToast(h.name+' — '+s+' '+((h.freq||'daily')==='daily'?'day':'period')+' streak!','🔥');
-      }
-      if(typeof checkAllDoneToday==='function')checkAllDoneToday();
-      // Cross-render
-      if(/skincare/i.test(h.name)&&typeof renderSkincareToday==='function')renderSkincareToday();
-    },380);
-  }else{
-    renderDashWhatsNext();
-  }
-}
-
-function skipWhatsNext(hid){
-  _whatsNextDismissed[hid]=true;
-  var heroEl=document.querySelector('#dash-whats-next .wn-hero');
-  if(heroEl){
-    heroEl.classList.add('wn-skipping');
-    setTimeout(renderDashWhatsNext,250);
-  }else{
-    renderDashWhatsNext();
-  }
-}
-
-function resetWhatsNextSkips(){
-  _whatsNextDismissed={};
-  renderDashWhatsNext();
-}
-
-
-// ── Bedtime catch-up handlers ──
-function bedNudgeTick(hid){
-  var h=STATE.habits.find(function(x){return x.id===hid});
-  if(!h)return;
-  var todayKey=localDateKey(new Date());
-  if(!h.logs)h.logs={};
-  h.logs[todayKey]=true;
-  saveState();
-  // Quick toast
-  if(typeof showCelebrationToast==='function')showCelebrationToast(h.name+' done','✓');
-  renderDashboard();
-  // Cross-render
-  if(/skincare/i.test(h.name)&&typeof renderSkincareToday==='function')renderSkincareToday();
-}
-function bedNudgeTickAll(){
-  var todayKey=localDateKey(new Date());
-  var ticked=[];
-  (STATE.habits||[]).forEach(function(h){
-    if(!isHabitDueToday(h))return;
-    if(!h.logs)h.logs={};
-    if(h.logs[todayKey])return;
-    h.logs[todayKey]=true;
-    ticked.push(h.name);
-  });
-  saveState();
-  if(ticked.length&&typeof showCelebrationToast==='function'){
-    if(typeof fireConfetti==='function')fireConfetti({count:80});
-    showCelebrationToast(ticked.length+' habits caught up','🌙');
-  }
-  renderDashboard();
-}
-function dismissBedNudge(){
-  var todayK=localDateKey(new Date());
-  try{sessionStorage.setItem('lh_bed_nudge_dismissed:'+todayK,'1')}catch(e){}
-  renderDashboard();
 }
 
 

@@ -1,6 +1,6 @@
 // NAVIGATION
 // ============================================================
-var activeWeek=weekKey(new Date());
+var activeWeek=localDateKey(habitWeekStart(new Date()));
 var goalFilter='all';
 var metricCharts={};
 
@@ -19,9 +19,126 @@ document.addEventListener('keydown',function(e){
 });
 
 function localDateKey(d){var y=d.getFullYear();var m=('0'+(d.getMonth()+1)).slice(-2);var day=('0'+d.getDate()).slice(-2);return y+'-'+m+'-'+day}
-function weekKey(d){var s=new Date(d);s.setHours(0,0,0,0);s.setDate(s.getDate()-s.getDay());return localDateKey(s)}
+// Monday week convention. habitWeekStart() below is the single week-start helper
+// and every weekly window derives from it, so there is one implementation of the
+// rule rather than two. Function declarations hoist within a script, so calling
+// habitWeekStart from up here is safe — `var activeWeek` at the top of this file
+// already relies on that.
+function weekKey(d){return localDateKey(habitWeekStart(d))}
+// True when `key` is itself a Monday. Makes the Sunday→Monday migration
+// self-checking, and therefore a no-op on a second run whatever its flag says.
+function isMondayKey(key){return localDateKey(habitWeekStart(key))===key}
+// Sunday-keyed week S maps to S+1: the Monday week that contains six of the same
+// seven days. Injective over Sunday keys, and a Monday key is left alone.
+function mondayKeyForWeekKey(key){return isMondayKey(key)?key:localDateKey(habitWeekStart(habitAddDays(key,1)))}
 function weekDays(wk){var parts=wk.split('-');var s=new Date(+parts[0],+parts[1]-1,+parts[2]);return Array.from({length:7},function(_,i){var d=new Date(s);d.setDate(d.getDate()+i);return localDateKey(d)})}function fmtDate(d){return new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}
 function fmtMoney(n){return '\u00a3'+Math.abs(Number(n)).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:0})}
+
+// ── SHARED MEASUREMENT CALCULATORS ──
+// One definition per measure, living here because js/navigation.js loads third —
+// before dashboard.js, insights.js, reviews.js and planner.js, all four of which
+// read these. Every calculator reads STATE.tasks and never the retired
+// STATE.dailyPriorities. Per Components §A.
+
+// A `days` array turned into a membership lookup, so a 30-day window over a long
+// task store stays a single pass rather than a nested scan.
+function _dayKeySet(days){var set={};(days||[]).forEach(function(d){if(d)set[d]=true});return set}
+
+// Focus_Task population over `days`. Slate membership is by `focusDate`, the
+// permanent record of the day a task was chosen for; a task counts as done only
+// when `done === true` and its `doneAt` also falls inside the window. So a task
+// slated Monday and finished Wednesday sits in Monday's population without
+// counting as a Monday completion — the disambiguation in Design Decision 7.
+// Sole definition of the Priorities measure. Requirements 1.1, 1.6, 2.1, 2.2, 15.2.
+function focusStats(days){
+  var set=_dayKeySet(days);
+  var total=0,done=0;
+  (STATE.tasks||[]).forEach(function(t){
+    if(!t||!t.focusDate||!set[t.focusDate])return;
+    total++;
+    if(t.done===true&&t.doneAt&&set[t.doneAt])done++;
+  });
+  return {total:total,done:done,pct:total>0?Math.round(done/total*100):0};
+}
+
+// Every task completed inside `days`, counted by `doneAt` — not just Focus_Tasks,
+// because the monthly number is what was actually finished that month.
+// `capturedInWindow` counts tasks created inside the window; it is context, never
+// a denominator, since Decision 8 retires the completion ratio as a Guilt_Metric.
+// `createdAt` is a date key on tasks the app writes, so the slice tolerates an
+// ISO timestamp from any older record. Requirements 3.1, 3.2, 13.6.
+function taskCompletionStats(days){
+  var set=_dayKeySet(days);
+  var completed=0,capturedInWindow=0;
+  (STATE.tasks||[]).forEach(function(t){
+    if(!t)return;
+    if(t.done===true&&t.doneAt&&set[t.doneAt])completed++;
+    if(t.createdAt&&set[String(t.createdAt).slice(0,10)])capturedInWindow++;
+  });
+  return {completed:completed,capturedInWindow:capturedInWindow};
+}
+
+// The days inside `days` whose Focus_Slate was non-empty and fully complete,
+// ascending. Slate membership is by `focusDate` and completion by the `done`
+// flag alone — a task slated Monday and finished Wednesday means Monday's slate
+// was completed, just late, so Monday is counted (Design Decision 7). Days with
+// no slate at all are never counted, so an untouched day cannot read as a win.
+// Reconstructing this from the task store is only possible because the daily
+// `focusDate` hygiene sweep is gone; stamps predating that removal are lost, so
+// the count fills in from the day it shipped forward. Requirement 15.3.
+function focusSlateDays(days){
+  var set=_dayKeySet(days);
+  var byDay={};
+  (STATE.tasks||[]).forEach(function(t){
+    if(!t||!t.focusDate||!set[t.focusDate])return;
+    (byDay[t.focusDate]||(byDay[t.focusDate]=[])).push(t);
+  });
+  // Date keys are ISO, so a lexicographic sort is a chronological one, and the
+  // set collapses any duplicate day the caller passed.
+  return Object.keys(set).sort().filter(function(d){
+    var slate=byDay[d]||[];
+    return slate.length>0&&slate.every(function(t){return t.done===true});
+  });
+}
+
+// Water logging over `days`. `loggedDays` counts the days carrying at least one
+// glass, `glasses` the total logged across them, and `target` is the daily
+// preference — 8 when unset, the same fallback every existing water reader uses
+// (js/gratitude.js, js/planner.js, the waterSettings modal), so the calculator
+// and the cards never disagree about what the target is. The window is walked
+// rather than the store, so a day repeated in `days` is counted once.
+// Sole definition of the water measure. Requirements 12.4, 12.5.
+function waterStats(days){
+  var set=_dayKeySet(days);
+  var water=STATE.water||{};
+  var loggedDays=0,glasses=0;
+  Object.keys(set).forEach(function(d){
+    var n=Number(water[d]||0);
+    // Excludes 0, a negative, and a non-numeric leftover: a day with no water
+    // logged is not a logged day.
+    if(!(n>0))return;
+    loggedDays++;
+    glasses+=n;
+  });
+  return {loggedDays:loggedDays,glasses:glasses,target:Number((STATE.waterSettings&&STATE.waterSettings.target)||8)};
+}
+
+// Gratitude entries over `days`. `entries` counts records, `entryDays` the
+// distinct days holding at least one — the app writes one entry per day, but the
+// two are reported separately so neither caller has to assume that. An entry
+// counts by its `date` alone, exactly as dayHadActivity() reads the domain.
+// Sole definition of the gratitude measure. Requirements 7.2, 12.4.
+function gratitudeStats(days){
+  var set=_dayKeySet(days);
+  var seen={};
+  var entries=0,entryDays=0;
+  (STATE.gratitude||[]).forEach(function(e){
+    if(!e||!e.date||!set[e.date])return;
+    entries++;
+    if(!seen[e.date]){seen[e.date]=true;entryDays++}
+  });
+  return {entryDays:entryDays,entries:entries};
+}
 
 // Auto-link goal progress to real data sources
 function getGoalSource(g){
@@ -126,117 +243,162 @@ function goalPct(g){
 function pbarColor(p){return p>=80?'#6b9e7a':p>=50?'#c9973a':'var(--accent)'}
 function daysLeft(dl){return Math.ceil((new Date(dl)-new Date())/86400000)}
 function statusBadge(g){var p=goalPct(g);var dl=daysLeft(g.deadline);if(p>=100)return '<span class="badge badge-done">Done</span>';if(dl<0)return '<span class="badge">Past target date</span>';if(dl<30&&p<70)return '<span class="badge">Target approaching</span>';if(p>0)return '<span class="badge badge-track">On track</span>';return '<span class="badge badge-pend">Not started</span>'}
-// Frequency-aware habit helpers
-// freq: 'daily' | '3x/week' | 'weekly' | 'bi-monthly' | 'monthly'
-function habitTargetPerWeek(h){
-  var f=(h.freq||'daily').toLowerCase();
-  if(f==='daily')return 7;
-  if(/^\d+x\/week$/.test(f))return Number(f.split('x')[0]);
-  if(f==='weekly')return 1;
-  if(f==='bi-monthly')return 0.5;  // every 2 weeks
-  if(f==='monthly')return 7/30;    // approx
-  return 7;
-}
+// Canonical habit cadence engine. Every habit surface should use these
+// helpers so daily, weekly, fortnightly, and monthly progress agree.
+var HABIT_FORTNIGHT_ANCHOR='2024-01-01'; // A stable Monday anchor.
 
-// Count logs within a date range
+function habitDate(value){
+  if(value instanceof Date)return new Date(value.getFullYear(),value.getMonth(),value.getDate());
+  var parts=String(value||'').slice(0,10).split('-');
+  if(parts.length===3&&parts.every(function(part){return /^\d+$/.test(part)}))return new Date(+parts[0],+parts[1]-1,+parts[2]);
+  var parsed=new Date(value);return new Date(parsed.getFullYear(),parsed.getMonth(),parsed.getDate());
+}
+function habitAddDays(value,days){var d=habitDate(value);d.setDate(d.getDate()+days);return d}
+function habitDayDiff(from,to){var a=habitDate(from),b=habitDate(to);return Math.round((Date.UTC(b.getFullYear(),b.getMonth(),b.getDate())-Date.UTC(a.getFullYear(),a.getMonth(),a.getDate()))/86400000)}
+function habitFrequency(habit){
+  var f=String(typeof habit==='string'?habit:(habit&&habit.freq)||'daily').trim().toLowerCase();
+  if(f==='bi-monthly')f='fortnightly';
+  if(f==='daily'||f==='weekly'||f==='fortnightly'||f==='monthly'||/^\d+x\/week$/.test(f))return f;
+  return 'daily';
+}
+function habitFrequencyTarget(frequency){var f=habitFrequency(frequency);if(/^\d+x\/week$/.test(f))return Math.max(1,Math.min(7,Number(f.split('x')[0])||1));return 1}
+function habitWeekStart(value){var d=habitDate(value);d.setDate(d.getDate()-((d.getDay()+6)%7));return d}
+function habitWeekDays(value){var start=habitWeekStart(value);return Array.from({length:7},function(_,i){return localDateKey(habitAddDays(start,i))})}
+
+function getHabitPeriod(habit,dateValue){
+  var date=habitDate(dateValue||new Date());
+  var f=habitFrequency(habit);
+  var start,end,target=habitFrequencyTarget(f);
+  if(f==='daily'){start=date;end=date}
+  else if(f==='weekly'||/^\d+x\/week$/.test(f)){start=habitWeekStart(date);end=habitAddDays(start,6)}
+  else if(f==='monthly'){start=new Date(date.getFullYear(),date.getMonth(),1);end=new Date(date.getFullYear(),date.getMonth()+1,0)}
+  else{
+    var anchor=habitDate(HABIT_FORTNIGHT_ANCHOR);
+    var periodIndex=Math.floor(habitDayDiff(anchor,date)/14);
+    start=habitAddDays(anchor,periodIndex*14);end=habitAddDays(start,13);
+  }
+  var startKey=localDateKey(start),endKey=localDateKey(end);
+  return {frequency:f,start:startKey,end:endKey,target:target,key:f+':'+startKey,unit:f==='daily'?'day':(f==='monthly'?'month':(f==='fortnightly'?'fortnight':'week'))};
+}
+function habitPeriodOffset(habit,dateValue,offset){
+  var period=getHabitPeriod(habit,dateValue),reference=habitDate(period.start),f=period.frequency;
+  if(f==='monthly')reference=new Date(reference.getFullYear(),reference.getMonth()+offset,1);
+  else reference=habitAddDays(reference,offset*(f==='daily'?1:(f==='fortnightly'?14:7)));
+  return getHabitPeriod(habit,reference);
+}
+function habitLifecycleRanges(habit){
+  var lifecycle=habit&&habit.lifecycle;
+  return lifecycle&&lifecycle.version===1&&Array.isArray(lifecycle.inactivePeriods)?lifecycle.inactivePeriods:[];
+}
+function habitInactiveKindOnDate(habit,dateValue){
+  var dateKey=localDateKey(habitDate(dateValue));
+  var ranges=habitLifecycleRanges(habit);
+  for(var i=ranges.length-1;i>=0;i--){
+    var range=ranges[i];
+    if(range&&range.from<=dateKey&&(range.to===null||range.to===undefined||dateKey<range.to))return range.kind;
+  }
+  return null;
+}
+function habitIsActiveOnDate(habit,dateValue){
+  var dateKey=localDateKey(habitDate(dateValue));
+  return !(habit&&habit.startDate&&dateKey<habit.startDate)&&!habitInactiveKindOnDate(habit,dateKey);
+}
+function habitLifecycleStatus(habit,dateValue){return habitInactiveKindOnDate(habit,dateValue||new Date())||'active'}
+function habitPeriodEligibility(habit,period){
+  var startKey=period.start;
+  if(habit&&habit.startDate&&habit.startDate>startKey)startKey=habit.startDate;
+  if(startKey>period.end)return {start:startKey,days:[],activeDays:[],active:false,interrupted:false};
+  var days=[],activeDays=[];
+  for(var day=habitDate(startKey);localDateKey(day)<=period.end;day=habitAddDays(day,1)){
+    var key=localDateKey(day);days.push(key);if(habitIsActiveOnDate(habit,key))activeDays.push(key);
+  }
+  return {start:startKey,days:days,activeDays:activeDays,active:activeDays.length>0,interrupted:activeDays.length>0&&activeDays.length!==days.length};
+}
 function habitCountInRange(h,startDate,endDate){
-  var n=0;
-  var d=new Date(startDate);
-  while(d<=endDate){
-    if(h.logs&&h.logs[localDateKey(d)])n++;
-    d.setDate(d.getDate()+1);
-  }
-  return n;
+  var startKey=localDateKey(habitDate(startDate)),endKey=localDateKey(habitDate(endDate));
+  return Object.keys((h&&h.logs)||{}).filter(function(key){return !!h.logs[key]&&key>=startKey&&key<=endKey&&habitIsActiveOnDate(h,key)}).length;
 }
-
-// Streak: consecutive periods the habit hit its target
-// daily → consecutive days
-// 3x/week, weekly → consecutive weeks
-// bi-monthly → consecutive 2-week windows
-// monthly → consecutive months
-function habitStreak(h){
-  var f=(h.freq||'daily').toLowerCase();
-  var today=new Date();today.setHours(0,0,0,0);
-
-  if(f==='daily'){
-    var streak=0;
-    for(var i=0;i<365;i++){
-      var d=new Date(today);d.setDate(d.getDate()-i);
-      if(h.logs&&h.logs[localDateKey(d)])streak++;
-      else if(i>0)break;
-    }
-    return streak;
-  }
-
-  if(f==='weekly'||/^\d+x\/week$/.test(f)){
-    var target=f==='weekly'?1:Number(f.split('x')[0]);
-    var streak=0;
-    for(var w=0;w<52;w++){
-      var ws=new Date(today);ws.setDate(ws.getDate()-ws.getDay()-w*7);
-      var we=new Date(ws);we.setDate(we.getDate()+6);
-      var count=habitCountInRange(h,ws,we);
-      if(count>=target)streak++;
-      else if(w>0)break;  // current week can still be incomplete
-    }
-    return streak;
-  }
-
-  if(f==='bi-monthly'){
-    var streak=0;
-    for(var b=0;b<26;b++){
-      var ps=new Date(today);ps.setDate(ps.getDate()-ps.getDay()-b*14);
-      var pe=new Date(ps);pe.setDate(pe.getDate()+13);
-      var count=habitCountInRange(h,ps,pe);
-      if(count>=1)streak++;
-      else if(b>0)break;
-    }
-    return streak;
-  }
-
-  if(f==='monthly'){
-    var streak=0;
-    var y=today.getFullYear(),m=today.getMonth();
-    for(var j=0;j<24;j++){
-      var mDate=new Date(y,m-j,1);
-      var me=new Date(y,m-j+1,0);
-      var count=habitCountInRange(h,mDate,me);
-      if(count>=1)streak++;
-      else if(j>0)break;
-    }
-    return streak;
-  }
-  return 0;
+function habitLogKeysInPeriod(h,period,asOfKey){
+  var eligibility=habitPeriodEligibility(h,period),endKey=period.end;
+  if(asOfKey&&asOfKey<endKey)endKey=asOfKey;
+  return Object.keys((h&&h.logs)||{}).filter(function(key){return !!h.logs[key]&&key>=eligibility.start&&key<=endKey&&habitIsActiveOnDate(h,key)}).sort();
 }
-
-// Progress this week — accounts for weekly targets
-function habitWeekPct(h,wk){
-  var days=weekDays(wk);
-  var f=(h.freq||'daily').toLowerCase();
-  var target=f==='daily'?7:f==='weekly'?1:/^\d+x\/week$/.test(f)?Number(f.split('x')[0]):1;
-  var count=days.filter(function(d){return h.logs&&h.logs[d]}).length;
-  return Math.min(100,Math.round((count/target)*100));
+function getHabitProgress(h,dateValue,asOfValue){
+  var period=getHabitPeriod(h,dateValue),asOfKey=localDateKey(habitDate(asOfValue||new Date()));
+  var eligibility=habitPeriodEligibility(h,period);
+  var target=eligibility.active?Math.min(period.target,eligibility.activeDays.length):0;
+  var logKeys=target?habitLogKeysInPeriod(h,period,asOfKey):[];
+  var count=logKeys.length;
+  return {period:period,target:target,count:count,met:target>0&&count>=target,active:eligibility.active,interrupted:eligibility.interrupted,eligibleDays:eligibility.activeDays,logKeys:logKeys};
 }
-
-// Is the habit "on track" for today?
-// Returns: 'done', 'todo', 'rest' (not expected today), 'missed', 'pre-start' (before habit existed)
-function habitDayStatus(h,dateKey){
-  var f=(h.freq||'daily').toLowerCase();
+function getHabitDayState(h,dateValue,asOfValue){
+  var dateKey=localDateKey(habitDate(dateValue)),asOfKey=localDateKey(habitDate(asOfValue||new Date()));
+  if(dateKey>asOfKey)return 'future';
   if(h.startDate&&dateKey<h.startDate)return 'pre-start';
+  if(!habitIsActiveOnDate(h,dateKey))return 'inactive';
   if(h.logs&&h.logs[dateKey])return 'done';
-  if(f==='daily')return 'todo';
-  // For weekly frequencies, check if they've already hit their target this week
-  if(/^\d+x\/week$/.test(f)||f==='weekly'){
-    var target=f==='weekly'?1:Number(f.split('x')[0]);
-    var parts=dateKey.split('-');
-    var d=new Date(+parts[0],+parts[1]-1,+parts[2]);
-    var ws=new Date(d);ws.setDate(ws.getDate()-ws.getDay());
-    var we=new Date(ws);we.setDate(we.getDate()+6);
-    var count=habitCountInRange(h,ws,we);
-    if(count>=target)return 'rest';
-    return 'todo';
-  }
-  return 'todo';
+  var progress=getHabitProgress(h,dateKey,asOfKey);
+  if(!progress.active)return 'pre-start';
+  return progress.met?'rest':'todo';
 }
+function habitDayStatus(h,dateKey){return getHabitDayState(h,dateKey,new Date())}
+
+function habitStatsForDays(habits,days,asOfValue){
+  var uniqueDays=(days||[]).filter(function(day,index,list){return list.indexOf(day)===index}).sort();
+  if(!uniqueDays.length)return {done:0,total:0,pct:0};
+  var requestedAsOf=localDateKey(habitDate(asOfValue||new Date()));
+  var cutoff=uniqueDays[uniqueDays.length-1]<requestedAsOf?uniqueDays[uniqueDays.length-1]:requestedAsOf;
+  var total=0,done=0;
+  (habits||[]).forEach(function(h,habitIndex){
+    var seen={};
+    uniqueDays.forEach(function(day){
+      if(day>cutoff||(h.startDate&&day<h.startDate))return;
+      var period=getHabitPeriod(h,day),token=habitIndex+':'+period.key;
+      if(seen[token])return;seen[token]=true;
+      var progress=getHabitProgress(h,day,cutoff);
+      if(!progress.active||progress.interrupted||!progress.target)return;
+      total+=progress.target;done+=Math.min(progress.count,progress.target);
+    });
+  });
+  return {done:done,total:total,pct:total?Math.round(done/total*100):0};
+}
+function getHabitHistoricalConsistency(h,asOfValue,windowSize,skipPeriods){
+  var f=habitFrequency(h),limit=windowSize||(f==='daily'?30:(f==='weekly'||/^\d+x\/week$/.test(f)?5:6));
+  var total=0,done=0,offset=-1,scanned=0,skip=Math.max(0,skipPeriods||0);
+  while(total<limit&&scanned<800){
+    var period=habitPeriodOffset(h,asOfValue||new Date(),offset--);scanned++;
+    if(h.startDate&&period.end<h.startDate)break;
+    if(h.startDate&&period.start<h.startDate)continue;
+    var progress=getHabitProgress(h,period.start,period.end);
+    if(!progress.active||progress.interrupted)continue;
+    if(skip){skip--;continue}
+    total++;if(progress.met)done++;
+  }
+  return {pct:total?Math.round(done/total*100):0,done:done,total:total,unit:getHabitPeriod(h,asOfValue||new Date()).unit,window:limit};
+}
+function habitCompletedPeriodTrend(h,asOfValue,windowSize){
+  var size=windowSize||4,recent=getHabitHistoricalConsistency(h,asOfValue,size,0);
+  var earlier=getHabitHistoricalConsistency(h,asOfValue,size,size);
+  if(recent.total<2||earlier.total<2)return {available:false,recent:recent,earlier:earlier,label:'More history will reveal a rhythm'};
+  var delta=recent.pct-earlier.pct,label=Math.abs(delta)<15?'Recent and earlier rhythm are similar':delta>0?'Recent rhythm feels steadier':'Recent rhythm is quieter';
+  return {available:true,recent:recent,earlier:earlier,delta:delta,label:label};
+}
+function habitStreak(h){
+  var current=getHabitProgress(h,new Date(),new Date());
+  var offset=current.met&&!current.interrupted?0:-1,streak=0,scanned=0;
+  while(scanned<800){
+    var period=habitPeriodOffset(h,new Date(),offset--);scanned++;
+    if(h.startDate&&period.end<h.startDate)break;
+    if(h.startDate&&period.start<h.startDate)continue;
+    var progress=getHabitProgress(h,period.start,period.end);
+    if(!progress.active||progress.interrupted)continue;
+    if(!progress.met)break;
+    streak++;
+  }
+  return streak;
+}
+function habitTargetPerWeek(h){var f=habitFrequency(h);if(f==='daily')return 7;if(/^\d+x\/week$/.test(f))return habitFrequencyTarget(f);if(f==='weekly')return 1;if(f==='fortnightly')return 0.5;if(f==='monthly')return 7/30;return 7}
+function habitWeekPct(h,wk){return habitStatsForDays([h],habitWeekDays(wk),habitAddDays(habitWeekStart(wk),6)).pct}
 
 // The roadmap feature was removed. Finance and navigation flows still call
 // refreshRoadmapLiveCards(); keep a no-op stub so those calls don't throw.

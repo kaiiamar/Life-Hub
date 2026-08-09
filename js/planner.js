@@ -162,8 +162,19 @@ function toggleCommitment(id,dateKey){
 // UI state for the Today tab's focus chooser
 var plannerFocusChooserOpen=false;
 var plannerFocusNote='';   // gentle inline note (e.g. 4th-focus rejection)
+// Today-tab view mode: null = the whole day, 'short' = the Short_Version.
+// Written only by the re-entry view-mode handlers below (plannerOpenShortVersion,
+// plannerLeaveShortVersion, plannerDismissReentry). While it is null,
+// plannerTodayOrder() returns the full day.
+var plannerViewMode=null;
+// Whether the re-entry card is currently showing the quiet-period recap. The
+// recap is opt-in (R7.1), so it starts closed and plannerToggleRecap() flips it.
+var plannerReentryRecapOpen=false;
 
-// Switch between the Today / This week tabs and re-render (R12.4)
+// Switch between the Today / This week / Inbox tabs (R12.4).
+// Renders only the tab being shown rather than all three — the two hidden panes
+// cannot have changed since they were last drawn, and rebuilding them throws
+// away any input state they hold (R17.4).
 function switchPlannerTab(tab,btn){
   var strip=btn&&btn.parentNode;
   if(strip){
@@ -173,7 +184,14 @@ function switchPlannerTab(tab,btn){
   document.querySelectorAll('#page-planner .planner-tab').forEach(function(p){p.classList.remove('active')});
   var pane=document.getElementById('planner-'+tab);
   if(pane)pane.classList.add('active');
-  renderPlanner();
+  renderPlannerTab(tab);
+}
+
+// Draw one Planner tab by name. Unknown names draw nothing.
+function renderPlannerTab(tab){
+  if(tab==='today')renderPlannerToday();
+  else if(tab==='week'){if(typeof renderPlannerWeek==='function')renderPlannerWeek()}
+  else if(tab==='inbox')renderPlannerInbox();
 }
 
 // Top-level render — draws whichever tabs exist on the page
@@ -203,8 +221,8 @@ function renderPlannerInbox(){
   html+='<div class="pw-inbox-helper">Empty your head here \u2014 sort it out later.</div>';
   html+='</div>';
 
-  // Capture input
-  html+=plannerCaptureCard();
+  // Capture input — its own root id, since the Today tab renders this card too.
+  html+=plannerCaptureCard('planner-inbox-capture-card');
 
   if(!openCount){
     html+='<div class="card planner-card pw-inbox-empty card-quiet"><span class="pw-inbox-empty-icon">\uD83D\uDCE5</span><span class="pw-inbox-empty-text">All clear. Nothing to sort.</span></div>';
@@ -237,18 +255,888 @@ function deleteInboxTask(id){
 }
 
 // ── Today tab ──────────────────────────────────────────────
+// The Today tab is a registry of cards rather than one long concatenation, so a
+// single mutation can re-render only the cards it actually touched instead of
+// reassigning the whole subtree (R17.1, R17.5).
+//
+//   host  — the stable DOM id that builder's root element carries, so a card can
+//           be found and replaced in place.
+//   build — (todayKey) → markup rooted on `host`, or '' when the card does not
+//           apply today. Every build is wrapped so the contract is uniform even
+//           for builders that take no argument.
+//
+// PLANNER_INPUT_CARDS is declared in this same statement, directly beside the
+// registry: those two cards can hold a focused text input and are therefore
+// skipped by an in-place patch that did not originate inside them. Keeping the
+// list here is the mitigation for it being a manual invariant — a card added
+// above with a text input has to be added below as well.
+var PLANNER_CARDS={
+  reentry:    {host:'pc-reentry',            build:function(todayKey){return plannerReentryCard(todayKey)}},
+  welcome:    {host:'planner-welcome-card',  build:function(todayKey){return plannerWelcomeCard(todayKey)}},
+  training:   {host:'planner-training-card', build:function(todayKey){return plannerTrainingCard(todayKey)}},
+  habits:     {host:'planner-habits-card',   build:function(){return plannerHabitCard()}},
+  focus:      {host:'planner-focus-card',    build:function(todayKey){return plannerFocusCard(todayKey)}},
+  suggested:  {host:'pc-suggested',          build:function(todayKey){return plannerSuggestedCard(todayKey)}},
+  schedule:   {host:'planner-schedule-card', build:function(todayKey){return plannerScheduleCard(todayKey)}},
+  capture:    {host:'planner-capture-card',  build:function(){return plannerCaptureCard('planner-capture-card')}},
+  waterweight:{host:'planner-water-card',    build:function(){return plannerWaterCard()}},
+  sweep:      {host:'planner-sweep-card',    build:function(todayKey){return plannerCloseDayCard(todayKey)}},
+  inbox:      {host:'planner-inbox-card',    build:function(){return plannerInboxCard()}},
+  short:      {host:'pc-short',              build:function(todayKey){return plannerShortVersionCard(todayKey)}}
+},
+PLANNER_INPUT_CARDS=['capture','sweep'];
+
+// The cards that change when a task joins or leaves today's focus slate — one
+// row of the mutation table in Components §C, shared by every handler that
+// promotes or demotes a task, so the set is written down once.
+//
+// `schedule` is in the set because getTodayTimedTasks() excludes today's focus
+// tasks: promoting a dated task removes its schedule row, and demoting it puts
+// the row back. R17.5 asks for every affected card, so it is declared here
+// rather than left to the next full render.
+var PLANNER_FOCUS_SLATE_CARDS=['focus','welcome','inbox','suggested','schedule'];
+
+// The ordered card keys for the current view mode. The Short_Version suppresses
+// the rest of the day by omission from this list, never by hiding markup that
+// was rendered anyway (R6.10).
+//
+// Full-day order: the re-entry greeting first, then the welcome masthead and the
+// two first-action cards, with the evening sweep near the end so it never
+// interrupts them and the Inbox last as the quiet sorting surface.
+function plannerTodayOrder(){
+  if(plannerViewMode==='short')return ['reentry','short'];
+  return ['reentry','welcome','training','habits','focus','suggested','schedule','capture','waterweight','sweep','inbox'];
+}
+
+// ── Quiet-day re-entry ─────────────────────────────────────
+// The Quiet_Day_Threshold: the gap length, in whole days, at which Life Hub
+// treats the stretch as a Quiet_Period and greets the return (R6.2).
+var QUIET_DAY_THRESHOLD=2;
+// Session-scoped dismissal, matching the gratitude flashback's precedent
+// (js/gratitude.js gratitudeFlashbackDismiss) — the key holds the day it was
+// dismissed for, so a new day brings the card back (R6.6).
+var REENTRY_DISMISS_KEY='lh_reentry_dismissed';
+
+// Re-entry card — first in the Today order during a Quiet_Period (R6.3).
+//
+// Returns '' in exactly two cases, which together are the whole of R6.12 and
+// R6.6: the gap has not reached the threshold, or the card was already dismissed
+// for today. Otherwise it states the gap in whole days and offers three
+// controls, every one of which is a plain button over data that already exists —
+// nothing to fill in first, so the Re_Entry_Cost stays at zero (R6.7).
+//
+// Everything here is Neutral_Palette (--text2, --text3, --gold, --mint, --sky,
+// --clay, --accent) and says nothing about a broken streak (R6.11, R6.13).
+function plannerReentryCard(todayKey){
+  var today=todayKey||localDateKey(new Date());
+  var gap=(typeof quietGapDays==='function')?quietGapDays():0;
+  if(gap<QUIET_DAY_THRESHOLD)return '';
+  if(plannerReentryDismissed()===today)return '';
+
+  var gapLine=escapeHtml(String(gap))+' quiet '+(gap===1?'day':'days')+' since your last logged day.';
+
+  return ''
+    +'<div class="card planner-card pc-reentry-card card-quiet" id="pc-reentry">'
+      +'<div class="planner-card-head"><span class="planner-card-title"><span class="section-rule-bar"></span>Welcome back</span></div>'
+      +'<div class="pc-reentry-gap" style="font-size:15px;font-weight:600;color:var(--text2)">'+gapLine+'</div>'
+      +'<div class="pc-reentry-note" style="font-size:13px;color:var(--text3);margin-top:4px">Nothing here needs catching up. Start wherever you like.</div>'
+      +'<div class="pc-reentry-actions" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">'
+        +'<button type="button" class="btn btn-sm" onclick="plannerOpenShortVersion()">Short version</button>'
+        +'<button type="button" class="btn btn-sm btn-ghost" onclick="plannerDismissReentry()">Show me everything</button>'
+        +'<button type="button" class="btn btn-sm btn-ghost" onclick="plannerToggleRecap()" aria-expanded="'+(plannerReentryRecapOpen?'true':'false')+'">'
+          +(plannerReentryRecapOpen?'Hide what happened':'What happened?')
+        +'</button>'
+      +'</div>'
+      +(plannerReentryRecapOpen?plannerReentryRecapPanel():'')
+    +'</div>';
+}
+
+// The dismissal day, or null. sessionStorage can throw in a private-mode window,
+// so every read is guarded exactly as the flashback's is.
+function plannerReentryDismissed(){
+  try{return sessionStorage.getItem(REENTRY_DISMISS_KEY)}catch(e){return null}
+}
+
+// The recap, built entirely from quietPeriodRecap() (R7.2–R7.5). Called with no
+// arguments so the counted window is the same silence quietGapDays() measures —
+// the card's stated gap and the recap's stated period can never disagree.
+// Every count is stated against that period in whole days (R7.3); a period with
+// nothing in it says so plainly rather than reporting three zeros (R7.4).
+function plannerReentryRecapPanel(){
+  if(typeof quietPeriodRecap!=='function')return '';
+  var r=quietPeriodRecap();
+  var period=escapeHtml(String(r.days))+' '+(r.days===1?'day':'days');
+  var rowStyle=' style="font-size:13px;color:var(--text2);margin-top:4px"';
+  var html='<div class="pc-reentry-recap" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">'
+    +'<div class="pc-reentry-recap-head" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3)">Those '+period+'</div>';
+  if(r.empty){
+    html+='<div class="pc-reentry-recap-empty"'+rowStyle+'>No recorded activity in that stretch \u2014 nothing to read back.</div>';
+  }else{
+    html+='<div class="pc-reentry-recap-row"'+rowStyle+'>'+plannerReentryRecapLine(r.habitTicks,'habit tick','habit ticks',period)+'</div>';
+    html+='<div class="pc-reentry-recap-row"'+rowStyle+'>'+plannerReentryRecapLine(r.sessions,'training session','training sessions',period)+'</div>';
+    html+='<div class="pc-reentry-recap-row"'+rowStyle+'>'+plannerReentryRecapLine(r.gratitudeEntries,'gratitude entry','gratitude entries',period)+'</div>';
+  }
+  html+='</div>';
+  return html;
+}
+
+function plannerReentryRecapLine(count,one,many,period){
+  return escapeHtml(String(count))+' '+(count===1?one:many)+' in '+period;
+}
+
+// The four view-mode handlers. Each one changes which cards belong on the page
+// rather than the contents of one card, so each calls a full renderPlannerToday()
+// instead of a targeted refreshPlannerCards() — the card set itself is what moved.
+function plannerOpenShortVersion(){
+  plannerViewMode='short';
+  renderPlannerToday();
+}
+
+// R6.10: leaving the Short_Version brings the full set of cards back.
+function plannerLeaveShortVersion(){
+  plannerViewMode=null;
+  renderPlannerToday();
+}
+
+// R6.6: dismiss for the session and show the full Planner. Also drops the
+// Short_Version, since "show me everything" means the whole day either way.
+function plannerDismissReentry(){
+  try{sessionStorage.setItem(REENTRY_DISMISS_KEY,localDateKey(new Date()))}catch(e){}
+  plannerViewMode=null;
+  plannerReentryRecapOpen=false;
+  renderPlannerToday();
+}
+
+// R7.1: the recap is requested, never volunteered.
+function plannerToggleRecap(){
+  plannerReentryRecapOpen=!plannerReentryRecapOpen;
+  renderPlannerToday();
+}
+
+// ── The Short_Version ──────────────────────────────────────
+// The at-most-three single-tap actions the Short_Version offers, in a fixed
+// order: the first habit due today and not complete, a glass of water while
+// today is short of the target, then the first open Focus_Task (R6.8). Fewer
+// apply on a quieter day, and a day with nothing outstanding returns [].
+//
+// Read-only and DOM-free by contract. It is called from the card builder below
+// *and* from updateAppBadge() during a Quiet_Period, where the Badge_Value is
+// just this list's length (R9.4) — so it must never write to STATE, never
+// touch the document, and return the same list for the same state.
+//
+// Each entry is {kind, id, label, meta, handler, arg}: `kind` names the domain
+// the action came from, and `handler` + `arg` name the existing write path it
+// delegates to. Nothing here reimplements a write — plannerToggleHabit(),
+// logWaterGlass() and plannerToggleFocusDone() already persist through the
+// Persistence_Layer, which is the whole of R6.9's first half.
+function shortVersionActions(todayKey){
+  var today=todayKey||localDateKey(new Date());
+  var actions=[];
+
+  // 1. Habits. STATE.habits order is the order the Habits card shows, so "the
+  //    first one due and not complete" means the same thing in both places.
+  //    habitDayStatus() is the sole definition of due-and-incomplete: 'todo'.
+  var habits=STATE.habits||[];
+  for(var i=0;i<habits.length;i++){
+    var h=habits[i];
+    if(!h)continue;
+    if(typeof habitDayStatus!=='function')break;
+    if(habitDayStatus(h,today)!=='todo')continue;
+    actions.push({
+      kind:'habit',
+      id:h.id,
+      label:(h.icon?h.icon+' ':'')+(h.name||'Habit'),
+      meta:'Habit due today',
+      handler:'plannerToggleHabit',
+      arg:h.id
+    });
+    break;
+  }
+
+  // 2. Water. waterStats() is the sole definition of the daily target, so the
+  //    Short_Version and every other water reader agree about what "short of
+  //    the target" means rather than each reading STATE.waterSettings itself.
+  var glasses=Number((STATE.water&&STATE.water[today])||0);
+  if(!(glasses>0))glasses=0;
+  var target=(typeof waterStats==='function')?Number(waterStats([today]).target||0):0;
+  if(glasses<target){
+    actions.push({
+      kind:'water',
+      id:'water',
+      label:'+1 glass',
+      meta:glasses+' of '+target+' today',
+      handler:'logWaterGlass',
+      arg:glasses+1
+    });
+  }
+
+  // 3. Focus slate. getTodayFocus() is today's slate; the first not-done task.
+  var focus=(typeof getTodayFocus==='function')?getTodayFocus(today):[];
+  for(var j=0;j<focus.length;j++){
+    var t=focus[j];
+    if(!t||t.done)continue;
+    actions.push({
+      kind:'focus',
+      id:t.id,
+      label:t.text||'Focus task',
+      meta:"Today's focus",
+      handler:'plannerToggleFocusDone',
+      arg:t.id
+    });
+    break;
+  }
+
+  // One entry per domain, so the cap is structural rather than enforced — the
+  // slice is here so it stays true if a fourth domain is ever added (R6.8).
+  return actions.slice(0,3);
+}
+
+// The Short_Version card (R6.8–R6.10). Root id `pc-short`.
+//
+// Unlike every other builder this one never returns '': it always carries the
+// "show me the whole day" control, which is the only way out of the reduced view
+// once the first action has made today active and taken the re-entry card off
+// the page (R6.10). A card that vanished when the last action was done would
+// leave the user on an empty page with no way back.
+//
+// It builds only rows — the suppression of the rest of the day is
+// plannerTodayOrder()'s omission of the other keys, never markup hidden here.
+// Neutral_Palette throughout, no --red (R6.13). Every row is a native <button>,
+// so it is focusable and operable from the keyboard without any ARIA (R26.9).
+function plannerShortVersionCard(todayKey){
+  var today=todayKey||localDateKey(new Date());
+  var actions=shortVersionActions(today);
+
+  var rows;
+  if(!actions.length){
+    rows='<div class="pc-short-empty" style="font-size:13px;color:var(--text3)">'
+      +'Nothing outstanding today. This is a good place to stop.'
+    +'</div>';
+  }else{
+    rows='<div class="pc-short-list" style="display:flex;flex-direction:column;gap:8px">'
+      +actions.map(function(a){
+        // One tap completes the action through the existing write path, which
+        // persists it and names `short` among the cards it refreshes. Nothing
+        // here touches plannerViewMode, so the reduced view is still what
+        // plannerTodayOrder() returns and the card is rebuilt in place — a done
+        // habit or task drops off the list, a glass of water comes back with
+        // the new count, and either way the user is still here (R6.9).
+        var call=a.handler+'('+(typeof a.arg==='number'?a.arg:'\''+escapeHtml(String(a.arg))+'\'')+')';
+        return '<button type="button" class="pc-short-row" data-short-action="'+escapeHtml(a.kind)+'"'
+          +' onclick="'+call+'"'
+          +' aria-label="'+escapeHtml(a.label)+'"'
+          +' style="display:flex;align-items:center;gap:10px;width:100%;min-height:44px;text-align:left;'
+            +'font:inherit;padding:10px 0;background:none;border:0;border-bottom:1px solid var(--border);cursor:pointer">'
+          +'<span class="pc-short-tick" aria-hidden="true" style="width:20px;height:20px;flex:0 0 20px;'
+            +'border:1.5px solid var(--mint);border-radius:50%"></span>'
+          +'<span class="pc-short-text" style="display:flex;flex-direction:column;gap:2px;min-width:0">'
+            +'<span style="font-size:14px;font-weight:600;color:var(--text2)">'+escapeHtml(a.label)+'</span>'
+            +'<span style="font-size:11px;color:var(--text3)">'+escapeHtml(a.meta)+'</span>'
+          +'</span>'
+        +'</button>';
+      }).join('')
+    +'</div>';
+  }
+
+  return ''
+    +'<div class="card planner-card pc-short-card card-quiet" id="pc-short">'
+      +'<div class="planner-card-head"><span class="planner-card-title"><span class="section-rule-bar"></span>The short version</span></div>'
+      +'<div class="pc-short-note" style="font-size:13px;color:var(--text3);margin-bottom:10px">'
+        +'One tap each. Anything you skip stays where it is.'
+      +'</div>'
+      +rows
+      +'<div class="pc-short-leave" style="margin-top:12px">'
+        +'<button type="button" class="btn btn-sm btn-ghost" onclick="plannerLeaveShortVersion()">Show me the whole day</button>'
+      +'</div>'
+    +'</div>';
+}
+
+// Stub for the card the registry expects but that does not exist yet (task 20).
+// Returning '' keeps it out of the composed markup and out of `data-cards`, so
+// registering it now costs nothing and the order never has to change again.
+function plannerSuggestedCard(todayKey){return ''}
+
 function renderPlannerToday(){
   var el=document.getElementById('planner-today');
   if(!el)return;
   var todayKey=localDateKey(new Date());
-  // Order: welcome → training → habits → focus → schedule → capture → water → inbox.
-  // The evening reflection stays near the end so it never interrupts the two
-  // first-action cards, while Inbox remains the final, quiet sorting surface.
-  el.innerHTML=plannerWelcomeCard()+plannerTrainingCard(todayKey)+plannerHabitCard()+plannerFocusCard(todayKey)+plannerScheduleCard(todayKey)+plannerCaptureCard()+plannerWaterCard()+plannerEveningSweepCard(todayKey)+plannerInboxCard();
-  // Keep the PWA app-icon badge in sync with today's open focus count (3.5).
+  var present=[];
+  var html=plannerTodayOrder().map(function(key){
+    var card=PLANNER_CARDS[key];
+    var markup=card?card.build(todayKey):'';
+    if(markup)present.push(key);
+    return markup;
+  }).join('');
+  el.innerHTML=html;
+  // The keys whose cards are actually on the page, in render order. A targeted
+  // in-place patch compares its own build against this to tell a card appearing
+  // or disappearing — which moves its neighbours — from a card merely changing.
+  el.setAttribute('data-cards',present.join(','));
+  // Keep the PWA app-icon badge in sync with today's open focus count (R9.1).
   if(typeof updateAppBadge==='function')updateAppBadge();
   // Evening sweep: fetch the AI one-liner once the card is in the DOM (§evening).
   loadEveningSweep(todayKey);
+}
+
+// Targeted in-place patch: replace only the cards a mutation actually touched,
+// instead of reassigning the whole #planner-today subtree (R17.1, R17.5).
+//
+// Returns true when it patched in place and false when it escalated to a full
+// renderPlannerToday(). It escalates in exactly two situations:
+//
+//   * the set of keys whose builder produces markup no longer matches the
+//     `data-cards` list the last render recorded. A card appearing or
+//     disappearing moves its neighbours, and inserting markup at the right
+//     position means knowing them — Decision 1 takes the full rebuild instead.
+//   * a card that belongs on the page has no host element, which means the DOM
+//     and `data-cards` have drifted apart. Patching from there would leave a
+//     half-updated page, so rebuild the whole thing.
+//
+// Cards named in PLANNER_INPUT_CARDS are left alone unless opts.includeInputCards
+// says the mutation originated inside them: replacing an element under an active
+// caret or IME is exactly what R17.3 exists to prevent.
+//
+// Neither path scrolls the page of its own accord: the only window.scrollTo in
+// this file is preservePlannerScroll's, and it fires only to undo an offset the
+// browser clamped (R17.2).
+function refreshPlannerCards(keys,opts){
+  // The patch itself lives in plannerPatchCards; this wrapper is the whole of
+  // R17.2 and R17.3 — the caret snapshot is taken before any markup moves, and
+  // the scroll guard spans the patch and every escalation inside it.
+  var focused=capturePlannerFocus();
+  return preservePlannerScroll(function(){
+    var patched=plannerPatchCards(keys||[],opts||{});
+    restorePlannerFocus(focused);
+    return patched;
+  });
+}
+
+// ── Focus, caret and scroll preservation (R17.2, R17.3) ────
+// Replacing an element under an active caret throws the user out of what they
+// were typing. Two mechanisms cover it, and both are needed:
+//
+//   * PLANNER_INPUT_CARDS keeps the common case out of harm's way — typing in
+//     the capture box while ticking a habit elsewhere never touches the input;
+//   * capture/restore covers what is left: the mutation that originates inside
+//     the input and so passes includeInputCards, and any escalation to a full
+//     renderPlannerToday(), which rebuilds every card including that one.
+//
+// Both lookups are scoped to #planner-today instead of going through
+// document.getElementById. The Inbox tab renders the same capture card, and it
+// used to render it under the same input id, so `planner-capture-input` was in
+// the document twice and a bare getElementById resolved to whichever pane the
+// markup happened to put first — a document-order dependency, and the wrong
+// element to restore a Today caret into. plannerCaptureCard() now derives a
+// distinct input id per host, so the Today name is unique again; the scoping
+// stays, because every other Week or Inbox field is a candidate for the same
+// collision and the scope is what makes that impossible rather than unlikely.
+
+// The Today field carrying `id`, or null. Scoped by construction: a duplicate of
+// the same id in the Week or Inbox pane is not a candidate.
+function plannerTodayField(id){
+  var el=document.getElementById('planner-today');
+  if(!el||!id)return null;
+  var fields=el.querySelectorAll('input,textarea');
+  for(var i=0;i<fields.length;i++){if(fields[i].id===id)return fields[i]}
+  return null;
+}
+
+// {id, value, start, end} for the focused Today text field, or null when focus
+// is anywhere else. An id is required: without one there is nothing to re-find.
+function capturePlannerFocus(){
+  var active=document.activeElement;
+  if(!active||!active.id)return null;
+  var tag=(active.tagName||'').toLowerCase();
+  if(tag!=='input'&&tag!=='textarea')return null;
+  if(plannerTodayField(active.id)!==active)return null;
+  var snap={id:active.id,value:active.value,start:null,end:null};
+  // selectionStart throws on input types that do not carry a caret (number,
+  // date, checkbox); those restore their value and focus, and no range.
+  try{snap.start=active.selectionStart;snap.end=active.selectionEnd}catch(e){}
+  return snap;
+}
+
+// Put the caret back. Returns true when the snapshot was restored, false when
+// there was nothing to restore or the field has left the page.
+function restorePlannerFocus(snap){
+  if(!snap)return false;
+  var el=plannerTodayField(snap.id);
+  if(!el)return false;
+  // The typed value wins over the rebuilt markup: the Planner builders render
+  // capture inputs with no value attribute, so a rebuilt card comes back empty.
+  if(el.value!==snap.value)el.value=snap.value;
+  if(snap.start!==null&&snap.end!==null&&typeof el.setSelectionRange==='function'){
+    try{el.setSelectionRange(snap.start,snap.end)}catch(e){}
+  }
+  if(typeof el.focus==='function')el.focus();
+  return true;
+}
+
+function plannerScrollTop(){
+  return (window.pageYOffset!==undefined)?window.pageYOffset:(window.scrollY||0);
+}
+
+// Run `fn` and leave the page where it was (R17.2).
+//
+// Nothing on the refresh path scrolls, so in the normal case the offset never
+// moves and no scrollTo is issued at all. The one thing that can move it is the
+// browser clamping the offset while a card's markup is momentarily out of the
+// document and the page is shorter than the current offset allows. A clamp can
+// only ever lower the offset, which is why the guard below is `< before` rather
+// than `!== before`: a lower offset is the clamp's signature, and anything else
+// is left alone.
+function preservePlannerScroll(fn){
+  var before=plannerScrollTop();
+  var result=fn();
+  if(before>0)plannerKeepScrollTop(before);
+  return result;
+}
+
+// Checked twice: once immediately, because reading the offset forces layout and
+// the clamp is usually already visible, and once on the next frame, because the
+// clamp lands with layout rather than with the markup assignment. The cost of
+// the deferred check is that a deliberate scroll up inside that one frame would
+// be corrected; the benefit is that the far more common clamp never lands.
+function plannerKeepScrollTop(before){
+  var restore=function(){
+    if(plannerScrollTop()<before&&typeof window.scrollTo==='function')window.scrollTo(0,before);
+  };
+  restore();
+  if(typeof window.requestAnimationFrame==='function')window.requestAnimationFrame(restore);
+}
+
+function plannerPatchCards(keys,opts){
+  var el=document.getElementById('planner-today');
+  if(!el)return false;
+  var todayKey=localDateKey(new Date());
+
+  // Build every card of the current order once. The present-key set is what
+  // separates "a card changed" from "a card appeared or disappeared", and the
+  // same markup is then reused for the patch, so each builder runs exactly once
+  // per refresh — the same number of times a full render would run it.
+  var built={},present=[];
+  plannerTodayOrder().forEach(function(key){
+    var card=PLANNER_CARDS[key];
+    var markup=card?card.build(todayKey):'';
+    built[key]=markup;
+    if(markup)present.push(key);
+  });
+  if(present.join(',')!==(el.getAttribute('data-cards')||'')){renderPlannerToday();return false}
+
+  // Resolve the requested keys to hosts before touching the document, so an
+  // absent host escalates instead of leaving a partly patched page behind.
+  var targets=[];
+  for(var i=0;i<keys.length;i++){
+    var key=keys[i];
+    if(!PLANNER_CARDS[key])continue;                                            // not a card
+    if(!built[key])continue;                                                    // does not apply today
+    if(targets.indexOf(key)!==-1)continue;                                      // named twice
+    if(!opts.includeInputCards&&PLANNER_INPUT_CARDS.indexOf(key)!==-1)continue; // may hold a caret
+    if(!document.getElementById(PLANNER_CARDS[key].host)){renderPlannerToday();return false}
+    targets.push(key);
+  }
+  targets.forEach(function(k){
+    document.getElementById(PLANNER_CARDS[k].host).outerHTML=built[k];
+  });
+
+  // The card set is unchanged, so `data-cards` still describes the page. The
+  // badge is not: a focus tick changes today's open count (R9.1).
+  if(typeof updateAppBadge==='function')updateAppBadge();
+  return true;
+}
+
+// ── Close-the-day sweep state machine ──────────────────────
+// The sweep is a persisted per-day state machine (Design Decision 3). Progress
+// lives in STATE.sweep[dateKey] = {step, recorded, startedAt, completedAt}, so
+// it survives a reload and an iOS eviction — a module variable or sessionStorage
+// would not, and R8.17 asks a completed sweep to reopen into its summary.
+//
+// `step` is an index into SWEEP_STEPS, or the string 'summary' once the last
+// step has been passed. `recorded` is a ledger of what *the sweep itself* wrote,
+// never what happens to be true for the day: water logged at lunchtime or a
+// habit ticked from the Habits page is not sweep output, and reporting it as
+// such would be a small dishonesty in a feature built on data honesty (R8.14).
+//
+// Every step delegates its write to the domain's existing global path, so there
+// is exactly one implementation of each write. This file owns only the step
+// pointer and the ledger.
+var SWEEP_STEPS=['water','skincare','mood','gratitude','habits'];
+
+// The other Today card each step's own write can change, keyed by the step being
+// left — the sweep row of the mutation table in Components §C. Skincare, mood and
+// gratitude have no Today card of their own, so leaving them repaints the sweep
+// and nothing else.
+var SWEEP_STEP_CARDS={water:['waterweight'],skincare:[],mood:[],gratitude:[],habits:['habits']};
+
+// Coerces a stored `step` to a valid pointer. Anything unrecognised reads as 0
+// rather than throwing, and an index past the last step reads as the summary, so
+// a truncated or hand-edited record still resolves to a renderable state.
+function sweepNormalizeStep(raw){
+  if(raw==='summary')return 'summary';
+  var n=Number(raw);
+  if(!isFinite(n)||n<0)return 0;
+  n=Math.floor(n);
+  return n>=SWEEP_STEPS.length?'summary':n;
+}
+
+// A pure read. The card builder calls this on every render, and R8.1 says that
+// simply opening the Planner writes nothing — so there is deliberately no
+// lazy-create here and no saveState(). `recorded` is copied out so a caller
+// cannot mutate the stored ledger without going through sweepRecord.
+function sweepState(dateKey){
+  var rec=(STATE.sweep&&typeof STATE.sweep==='object')?STATE.sweep[dateKey]:null;
+  if(!rec||typeof rec!=='object')return {step:0,recorded:{},startedAt:null,completedAt:null};
+  var recorded={};
+  if(rec.recorded&&typeof rec.recorded==='object')Object.keys(rec.recorded).forEach(function(k){recorded[k]=rec.recorded[k]});
+  return {
+    step:sweepNormalizeStep(rec.step),
+    recorded:recorded,
+    startedAt:rec.startedAt||null,
+    completedAt:rec.completedAt||null
+  };
+}
+
+// Creates the record on the first interaction, never on render, and returns the
+// live record for the mutators below. Does not save on its own: the save comes
+// from the sweepRecord or sweepAdvance that follows it, so an interaction that
+// fails to persist leaves nothing behind (see sweepAdvance's rollback).
+function sweepBegin(dateKey){
+  if(!STATE.sweep||typeof STATE.sweep!=='object')STATE.sweep={};
+  var rec=STATE.sweep[dateKey];
+  if(!rec||typeof rec!=='object'){
+    rec={step:0,recorded:{},startedAt:new Date().toISOString(),completedAt:null};
+    STATE.sweep[dateKey]=rec;
+    return rec;
+  }
+  rec.step=sweepNormalizeStep(rec.step);
+  if(!rec.recorded||typeof rec.recorded!=='object')rec.recorded={};
+  return rec;
+}
+
+// Records what the sweep itself wrote, and only ever after the delegated write
+// path has already returned success. Returns saveState()'s verdict: on a
+// rejected save the ledger entry is rolled back so it can never claim a write
+// that is not persisted, and the caller must not advance (Error Handling, R8.4).
+function sweepRecord(dateKey,stepKey,value){
+  if(!dateKey||SWEEP_STEPS.indexOf(stepKey)===-1)return false;
+  var existed=!!(STATE.sweep&&STATE.sweep[dateKey]);
+  var rec=sweepBegin(dateKey);
+  var had=Object.prototype.hasOwnProperty.call(rec.recorded,stepKey);
+  var before=rec.recorded[stepKey];
+  rec.recorded[stepKey]=value;
+  if(saveState())return true;
+  if(had)rec.recorded[stepKey]=before;else delete rec.recorded[stepKey];
+  if(!existed)delete STATE.sweep[dateKey];
+  return false;
+}
+
+// Moves the pointer on one step; past the last step the sweep enters its summary
+// state and stamps completedAt. The summary is terminal — advancing from it is a
+// no-op, which is what keeps a reopened Planner on the summary instead of
+// restarting at step 0 (R8.17).
+//
+// The step pointer is the only thing written here; the domain write already
+// happened in the delegated path. On a rejected save the pointer is rolled back
+// and no repaint runs, so a failed write never advances the sweep.
+//
+// The repaint names the sweep plus whichever Today card the step just left could
+// have changed, and passes includeInputCards because the mutation originated
+// inside the sweep card itself — the one case where replacing an input-bearing
+// card is allowed (R17.3, R17.5).
+function sweepAdvance(dateKey){
+  if(!dateKey)return false;
+  var existed=!!(STATE.sweep&&STATE.sweep[dateKey]);
+  var rec=sweepBegin(dateKey);
+  if(rec.step==='summary')return true;
+  var from=SWEEP_STEPS[rec.step]||null;
+  var prevStep=rec.step,prevCompleted=rec.completedAt;
+  var next=rec.step+1;
+  if(next>=SWEEP_STEPS.length){rec.step='summary';rec.completedAt=new Date().toISOString()}
+  else rec.step=next;
+  if(!saveState()){
+    rec.step=prevStep;rec.completedAt=prevCompleted;
+    if(!existed)delete STATE.sweep[dateKey];
+    return false;
+  }
+  var affected=['sweep'].concat((from&&SWEEP_STEP_CARDS[from])||[]);
+  if(typeof refreshPlannerCards==='function')refreshPlannerCards(affected,{includeInputCards:true});
+  return true;
+}
+
+// Skip is an advance and nothing else: no domain write, and no entry added to
+// `recorded`, so a skipped step leaves both its domain and the ledger untouched
+// (R8.5, R8.6). Named separately because that absence is the whole contract.
+function sweepSkip(dateKey){
+  return sweepAdvance(dateKey);
+}
+
+// ── Close-the-day card ─────────────────────────────────────
+// The deep-link open target. The evening notification opens the app at
+// `?open=close-day` (R10.6) and the router that reads the query string into this
+// variable belongs to task 17.3; it is declared here because plannerCloseDayCard
+// is its only reader and the card must not wait on that task to be correct.
+// `null` means "no override", which is every ordinary load.
+var plannerOpenTarget=null;
+
+// The Close_The_Day_Card. Root element keeps the id and class of the card it
+// replaces — `planner-sweep-card` — so the existing `.planner-sweep-*` styling and
+// the `sweep` registry host both carry over untouched (Decision 3).
+//
+// Returns '' before 17:00, which is the whole of R8.1's gate, unless the deep
+// link forced the card open. Renders exactly one step at a time (R8.3): the step
+// pointer selects one builder and nothing else is emitted, so a later step is
+// absent from the markup rather than hidden in it. Past the last step the card
+// renders the Sweep_Completion_Summary instead (R8.17).
+//
+// Neutral_Palette only — --text2, --text3, --gold, --mint, --sky, --clay,
+// --accent — and no --red anywhere, including the skipped-step affordances, since
+// a skipped step is a legitimate outcome and not a failure (R8.18).
+function plannerCloseDayCard(todayKey){
+  var today=todayKey||localDateKey(new Date());
+  var forced=(typeof plannerOpenTarget!=='undefined'&&plannerOpenTarget==='close-day');
+  if(new Date().getHours()<17&&!forced)return '';
+
+  var st=sweepState(today);                                                     // pure read: rendering writes nothing (R8.1)
+  var title,progress='',body;
+
+  if(st.step==='summary'){
+    title='Day closed';
+    // sweepSummaryPanel lands in task 14.4. Guarded so the card still renders
+    // its completed state before that task, rather than throwing mid-render.
+    body=(typeof sweepSummaryPanel==='function')
+      ? sweepSummaryPanel(today,st)
+      : '<div class="pc-sweep-summary" style="font-size:13px;color:var(--text2)">That\u2019s today closed.</div>';
+  }else{
+    title='Close the day';
+    progress='<span class="pc-sweep-progress" style="font-size:11px;color:var(--text3);letter-spacing:.06em">'
+      +escapeHtml(String(st.step+1))+' of '+escapeHtml(String(SWEEP_STEPS.length))
+    +'</span>';
+    var builders={
+      water:sweepStepWater,
+      skincare:sweepStepSkincare,
+      mood:sweepStepMood,
+      gratitude:sweepStepGratitude,
+      habits:sweepStepHabits
+    };
+    var stepKey=SWEEP_STEPS[st.step];
+    body=(stepKey&&builders[stepKey])?builders[stepKey](today,st):'';
+  }
+
+  return ''
+    +'<div class="card planner-card planner-sweep-card" id="planner-sweep-card">'
+      +'<div class="planner-card-head">'
+        +'<span class="planner-card-title"><span class="section-rule-bar"></span>'+escapeHtml(title)+'</span>'
+        +progress
+      +'</div>'
+      +body
+    +'</div>';
+}
+
+// The Sweep_Skip control, in one place because R8.5 asks for it at *every* step
+// and a per-step copy is a per-step chance to forget one. Skip is a native
+// button, so it is reachable and operable from the keyboard with no ARIA (R26.9),
+// and it goes through sweepSkip(), which advances without writing to any domain
+// and without adding to the ledger (R8.6).
+function sweepSkipControl(dateKey,label){
+  return '<button type="button" class="pc-sweep-skip btn btn-sm btn-ghost"'
+    +' onclick="sweepSkip(\''+escapeHtml(String(dateKey))+'\')"'
+    +' aria-label="'+escapeHtml(label||'Skip this step')+'">'
+    +escapeHtml(label||'Skip')
+  +'</button>';
+}
+
+// Shared chrome for a step: the prompt line, the controls, then the skip row.
+function sweepStepShell(prompt,note,controls,skip){
+  return '<div class="pc-sweep-step">'
+    +'<div class="pc-sweep-prompt" style="font-size:15px;font-weight:600;color:var(--text2)">'+prompt+'</div>'
+    +(note?'<div class="pc-sweep-note" style="font-size:12px;color:var(--text3);margin-top:3px">'+note+'</div>':'')
+    +'<div class="pc-sweep-controls" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">'+controls+'</div>'
+    +'<div class="pc-sweep-skiprow" style="margin-top:10px">'+skip+'</div>'
+  +'</div>';
+}
+
+// Step 1 — water. logWaterGlass(n) takes an *absolute* glass count, not a delta,
+// so every control here states the total it is about to write (R8.7).
+function sweepStepWater(dateKey,state){
+  var glasses=Number((STATE.water&&STATE.water[dateKey])||0);
+  if(!(glasses>0))glasses=0;
+  var target=(typeof waterStats==='function')?Number(waterStats([dateKey]).target||0):Number((STATE.waterSettings&&STATE.waterSettings.target)||8);
+  var d=escapeHtml(String(dateKey));
+
+  var controls=''
+    +'<button type="button" class="btn btn-sm" onclick="sweepLogWater(\''+d+'\','+(glasses+1)+')">+ 1 glass</button>'
+    +'<button type="button" class="btn btn-sm" onclick="sweepLogWater(\''+d+'\','+(glasses+2)+')">+ 2 glasses</button>';
+  if(glasses<target)controls+='<button type="button" class="btn btn-sm btn-ghost" onclick="sweepLogWater(\''+d+'\','+target+')">Reached '+escapeHtml(String(target))+'</button>';
+
+  return sweepStepShell(
+    'Water',
+    escapeHtml(String(glasses))+' of '+escapeHtml(String(target))+' logged so far today.',
+    controls,
+    sweepSkipControl(dateKey,'Skip water')
+  );
+}
+
+// Step 2 — skincare. Delegates to toggleSkincareToday('AM'|'PM'), which is a
+// toggle: an already-ticked period is rendered as done with no handler, so the
+// only reachable call is the one that adds a tick (R8.8).
+function sweepStepSkincare(dateKey,state){
+  var d=escapeHtml(String(dateKey));
+  var controls=['AM','PM'].map(function(period){
+    var habit=(typeof _findSkincareHabit==='function')?_findSkincareHabit(period):null;
+    if(!habit){
+      return '<span class="pc-sweep-missing" style="font-size:12px;color:var(--text3)">No '+escapeHtml(period)+' routine set up</span>';
+    }
+    var done=!!(habit.logs&&habit.logs[dateKey]);
+    if(done){
+      return '<span class="pc-sweep-done" style="font-size:13px;color:var(--mint)">\u2713 '+escapeHtml(period)+' done</span>';
+    }
+    return '<button type="button" class="btn btn-sm" onclick="sweepLogSkincare(\''+d+'\',\''+escapeHtml(period)+'\')"'
+      +' aria-label="'+escapeHtml('Log skincare '+period)+'">'+escapeHtml(period)+'</button>';
+  }).join('');
+
+  return sweepStepShell('Skincare','Tick whichever routine you did.',controls,sweepSkipControl(dateKey,'Skip skincare'));
+}
+
+// Step 3 — mood. The same 1–5 scale and the same labels the Dashboard mini-orb
+// uses, through the same quickLogMood(v, dateKey) path (R8.9).
+function sweepStepMood(dateKey,state){
+  var d=escapeHtml(String(dateKey));
+  var emoji=['\uD83D\uDE1E','\uD83D\uDE10','\uD83D\uDE42','\uD83D\uDE0A','\uD83E\uDD29'];
+  var labels=['Low','Flat','Okay','Good','Great'];
+  var controls=emoji.map(function(e,i){
+    return '<button type="button" class="btn btn-sm btn-ghost pc-sweep-mood"'
+      +' onclick="sweepLogMood(\''+d+'\','+(i+1)+')"'
+      +' aria-label="'+escapeHtml('Log mood as '+labels[i])+'">'+e+'</button>';
+  }).join('');
+  return sweepStepShell('How was today?','One tap. Nothing to explain.',controls,sweepSkipControl(dateKey,'Skip mood'));
+}
+
+// Step 4 — gratitude. The write itself is sweepSaveGratitude(text), which lands
+// in task 14.3; this step owns the input and the controls only. The textarea
+// carries an id and no value attribute so restorePlannerFocus() can put the caret
+// back after an in-place patch (R17.3).
+function sweepStepGratitude(dateKey,state){
+  var d=escapeHtml(String(dateKey));
+  var controls=''
+    +'<textarea id="sweep-gratitude-input" class="pc-sweep-gratitude planner-capture-input" rows="2"'
+      +' placeholder="One thing worth keeping"'
+      +' aria-label="Gratitude for today"'
+      +' style="width:100%;font:inherit;font-size:13px;color:var(--text2);resize:vertical"></textarea>'
+    +'<button type="button" class="btn btn-sm" onclick="sweepSubmitGratitude(\''+d+'\')">Save</button>';
+  return sweepStepShell(
+    'Gratitude',
+    'Leave it empty and nothing is written \u2014 the sweep still moves on.',
+    controls,
+    sweepSkipControl(dateKey,'Skip gratitude')
+  );
+}
+
+// Step 5 — habits. Lists only habits that are due today and not yet complete,
+// which is exactly habitDayStatus(h, dateKey) === 'todo' — the sole definition of
+// due-and-incomplete, shared with the Short_Version and the badge (R8.12).
+//
+// Ticking does not advance: a day can have several habits left, so each tick
+// writes through plannerToggleHabit() and the step stays put until the explicit
+// finish control (R8.13). A day with nothing due says so and offers the same
+// single control out.
+function sweepStepHabits(dateKey,state){
+  var d=escapeHtml(String(dateKey));
+  var due=(STATE.habits||[]).filter(function(h){
+    return h&&typeof habitDayStatus==='function'&&habitDayStatus(h,dateKey)==='todo';
+  });
+
+  var controls;
+  if(!due.length){
+    controls='<span class="pc-sweep-none" style="font-size:13px;color:var(--text3)">Nothing left due today.</span>';
+  }else{
+    controls=due.map(function(h){
+      var label=(h.icon?h.icon+' ':'')+(h.name||'Habit');
+      return '<button type="button" class="btn btn-sm pc-sweep-habit"'
+        +' data-sweep-habit="'+escapeHtml(String(h.id))+'"'
+        +' onclick="sweepLogHabit(\''+d+'\',\''+escapeHtml(String(h.id))+'\')"'
+        +' aria-label="'+escapeHtml('Complete '+(h.name||'habit'))+'">'+escapeHtml(label)+'</button>';
+    }).join('');
+  }
+  controls+='<button type="button" class="btn btn-sm btn-ghost" onclick="sweepAdvance(\''+d+'\')">Finish</button>';
+
+  var ticked=Array.isArray(state&&state.recorded&&state.recorded.habits)?state.recorded.habits.length:0;
+  var note=due.length
+    ?'Tick what you did, then finish.'+(ticked?' '+escapeHtml(String(ticked))+' ticked in this sweep.':'')
+    :'Nothing to tick.';
+
+  return sweepStepShell('Habits',note,controls,sweepSkipControl(dateKey,'Skip habits'));
+}
+
+// ── The five step handlers ─────────────────────────────────
+// Each one has the same shape, and that shape is the whole of the Error Handling
+// contract for the sweep: call the existing write path first, confirm it landed,
+// record the ledger entry, and only advance when both succeeded. A failed save
+// therefore leaves the step where it is with nothing recorded, rather than
+// advancing past a write that never happened (R8.4).
+//
+// logWaterGlass() and quickLogMood() return nothing, so "it landed" is read back
+// out of STATE rather than taken on trust.
+
+// Water. `count` is absolute — the builder above computes the total.
+function sweepLogWater(dateKey,count){
+  if(typeof logWaterGlass!=='function')return false;
+  var n=Math.max(0,Math.floor(Number(count)||0));
+  logWaterGlass(n);
+  if(Number((STATE.water&&STATE.water[dateKey])||0)!==n)return false;
+  if(!sweepRecord(dateKey,'water',n))return false;
+  return sweepAdvance(dateKey);
+}
+
+// Skincare. toggleSkincareToday() reports its own save verdict, and it is a
+// toggle: an already-ticked period is skipped rather than un-ticked, so a double
+// tap can never remove a tick the sweep just made.
+function sweepLogSkincare(dateKey,period){
+  if(typeof toggleSkincareToday!=='function')return false;
+  var habit=(typeof _findSkincareHabit==='function')?_findSkincareHabit(period):null;
+  if(habit&&habit.logs&&habit.logs[dateKey])return sweepSkip(dateKey);
+  if(!toggleSkincareToday(period))return false;
+  if(!sweepRecord(dateKey,'skincare',period))return false;
+  return sweepAdvance(dateKey);
+}
+
+// Mood. Same 1–5 value the Dashboard writes, through the same path.
+function sweepLogMood(dateKey,value){
+  if(typeof quickLogMood!=='function')return false;
+  var v=Math.floor(Number(value)||0);
+  if(v<1||v>5)return false;
+  quickLogMood(v,dateKey);
+  if(!(STATE.mood&&STATE.mood[dateKey]&&STATE.mood[dateKey].mood===v))return false;
+  if(!sweepRecord(dateKey,'mood',v))return false;
+  return sweepAdvance(dateKey);
+}
+
+// Gratitude. Empty or whitespace-only text writes nothing and still advances,
+// which is R8.11 — the step is satisfied by having been offered, not by having
+// been filled in. sweepSaveGratitude() lands in task 14.3 and is reached through
+// a typeof guard so this step degrades to a skip until it does.
+function sweepSubmitGratitude(dateKey){
+  var el=document.getElementById('sweep-gratitude-input');
+  var text=el?String(el.value||''):'';
+  if(!text.trim())return sweepSkip(dateKey);
+  if(typeof sweepSaveGratitude!=='function')return sweepSkip(dateKey);
+  if(!sweepSaveGratitude(text))return sweepSkip(dateKey);
+  if(!sweepRecord(dateKey,'gratitude',text.trim()))return false;
+  return sweepAdvance(dateKey);
+}
+
+// Habits. Writes one habit and stays on the step, so several can be ticked in a
+// row; the ledger accumulates the ids this sweep wrote. plannerToggleHabit()
+// already repaints the sweep among its cards, so the extra refresh here is only
+// to bring the just-updated ledger count back into the step.
+function sweepLogHabit(dateKey,hid){
+  if(typeof plannerToggleHabit!=='function')return false;
+  if(!plannerToggleHabit(hid))return false;
+  var st=sweepState(dateKey);
+  var list=Array.isArray(st.recorded&&st.recorded.habits)?st.recorded.habits.slice():[];
+  if(list.indexOf(hid)===-1)list.push(hid);
+  if(!sweepRecord(dateKey,'habits',list))return false;
+  if(typeof refreshPlannerCards==='function')refreshPlannerCards(['sweep'],{includeInputCards:true});
+  return true;
 }
 
 // Evening sweep (AI): after ~5pm, a single generated sentence reflecting the
@@ -264,12 +1152,9 @@ function plannerEveningSweepCard(todayKey){
 }
 
 function computeEveningSweepStats(todayKey){
-  var habits=(STATE.habits||[]).filter(function(h){
-    var s=(typeof habitDayStatus==='function')?habitDayStatus(h,todayKey):'todo';
-    return s==='done'||s==='todo';
-  });
-  var habitsTotal=habits.length;
-  var habitsDone=habits.filter(function(h){return h.logs&&h.logs[todayKey]}).length;
+  var habitStats=habitStatsForDays(STATE.habits||[],[todayKey],todayKey);
+  var habitsTotal=habitStats.total;
+  var habitsDone=habitStats.done;
   var training=null;
   var logged=(typeof plannerTrainingLoggedToday==='function')?plannerTrainingLoggedToday(todayKey):'';
   var t=(typeof todaysTrainingSession==='function')?todaysTrainingSession(todayKey):null;
@@ -293,6 +1178,10 @@ function loadEveningSweep(todayKey){
   var stats=computeEveningSweepStats(todayKey);
   if(!stats)return;
   var body=document.getElementById('planner-sweep-body');
+  // The close-the-day card reuses this card's id but not its inner body element,
+  // so the AI one-liner has nowhere to render until loadEveningSummaryLine
+  // (task 14.4) retargets it at #sweep-summary-line. Bail rather than throw.
+  if(!body)return;
   var sig=[stats.habitsDone,stats.habitsTotal,stats.training,stats.waterPct,stats.focusDone,stats.focusTotal].join('|').replace(/[^a-z0-9]/gi,'');
   var cacheKey='lh_sweep_'+todayKey+'_'+sig;
   try{var cached=localStorage.getItem(cacheKey);if(cached){body.textContent=cached;card.style.display='';return}}catch(e){}
@@ -307,11 +1196,22 @@ function loadEveningSweep(todayKey){
 
 // Welcome masthead — washi-tape decoration, greeting, status chips, quote.
 // Reuses getTimeContext() from dashboard.js and hardcodes user name "Kai".
-function plannerWelcomeCard(){
+//
+// While a Quiet_Period is active the streak chip is omitted entirely: a streak
+// value is a count and never carries a loss statement, and during a quiet
+// stretch the count itself is left unsaid so the return is not framed as a
+// setback (R6.11, R13.7). The Re_Entry_Card that renders above this one states
+// counts only and says nothing about a broken streak.
+function plannerWelcomeCard(todayKey){
   var tc=getTimeContext(); // {slot, greeting, class}
   var now=new Date();
   var dateStr=now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
-  var todayKey=localDateKey(now);
+  todayKey=todayKey||localDateKey(now);
+
+  // Quiet_Period gate — quietGapDays() lives in js/dashboard.js and is 0 when
+  // today carried an Activity_Event or when there is no activity at all.
+  var gap=(typeof quietGapDays==='function')?quietGapDays():0;
+  var quiet=gap>=QUIET_DAY_THRESHOLD;
 
   // Streak (showUpStreak from dashboard.js)
   var streak=(typeof showUpStreak==='function')?showUpStreak():0;
@@ -327,7 +1227,7 @@ function plannerWelcomeCard(){
 
   // Status chips
   var chips='<div class="pw-welcome-chips">';
-  if(streak>=2)chips+='<span class="pw-chip pw-chip-streak">\uD83D\uDD25 '+streak+' day streak</span>';
+  if(!quiet&&streak>=2)chips+='<span class="pw-chip pw-chip-streak">\uD83D\uDD25 '+streak+' day streak</span>';
   if(hasTraining)chips+='<span class="pw-chip pw-chip-training">\uD83C\uDFCB\uFE0F training day</span>';
   if(focusCount>0)chips+='<span class="pw-chip pw-chip-focus">\uD83C\uDFAF '+focusCount+' to focus on</span>';
   chips+='</div>';
@@ -337,7 +1237,7 @@ function plannerWelcomeCard(){
   var quote=quotes[Math.floor(now.getMinutes()/15)%quotes.length]||quotes[0];
 
   return ''
-    +'<div class="card planner-card planner-welcome-card">'
+    +'<div class="card planner-card planner-welcome-card" id="planner-welcome-card">'
       +'<span class="pw-washi-tape" aria-hidden="true"></span>'
       +'<div class="pw-welcome-greet">'+tc.greeting+', Kai \u2728</div>'
       +'<div class="pw-welcome-date">'+dateStr+' \u2014 a quiet, open day.</div>'
@@ -391,13 +1291,24 @@ function plannerWaterCard(){
     +'</div>';
 }
 
-// Re-render ONLY the water widget in place.
+// Re-render the cards a logged glass of water changes. Kept under this name
+// because logWaterGlass() in js/gratitude.js calls it through a `typeof` guard
+// and must keep finding it (R17.1, R17.5).
+//
+// `welcome` is in the set because a glass of water is an Activity_Event:
+// dayHadActivity() counts STATE.water, so the first glass of the day turns today
+// into an active day and showUpStreak() — which the welcome card renders as its
+// streak chip — goes up by one. Without it the chip stays a day behind until the
+// next full render, exactly the staleness plannerToggleHabit already declares
+// `welcome` to avoid (R17.5).
+//
+// `short` is in the set because a glass of water is one of the Short_Version's
+// three single-tap actions: the row has to come back showing the new count
+// without the view mode moving (R6.9). Outside the Short_Version the key builds
+// nothing and the patch skips it, so naming it here costs a full-day refresh
+// nothing.
 function renderPlannerWater(){
-  var el=document.getElementById('planner-today');
-  if(!el)return;
-  var host=document.getElementById('planner-water-card');
-  if(!host)return;
-  host.outerHTML=plannerWaterCard();
+  refreshPlannerCards(['waterweight','welcome','sweep','short']);
 }
 
 // Habits card — top coral border, hand-drawn underline, tappable rows.
@@ -409,16 +1320,16 @@ function plannerHabitCard(){
   });
   var rows;
   if(!habits.length){
-    rows='<div class="planner-empty-line">No habits due today \u2014 enjoy the breather.</div>';
+    rows='<div class="planner-empty-line">No active rhythms due today — enjoy the breather.</div>';
   } else {
     rows='<div class="pw-habits-list">';
     rows+=habits.map(function(h){
-      var done=!!(h.logs&&h.logs[today]);
-      return '<div class="pw-habit-row'+(done?' done':'')+'" onclick="plannerToggleHabit(\''+h.id+'\')">'
-        +'<div class="pw-habit-check" role="button" tabindex="0" data-tick="pwhab:'+h.id+'"'
-          +' aria-label="Toggle '+escapeHtml(h.name)+'">'+(done?'\u2713':'')+'</div>'
-        +'<span class="pw-habit-name">'+(h.icon?escapeHtml(h.icon)+' ':'')+escapeHtml(h.name)+'</span>'
-      +'</div>';
+      var done=!!(h.logs&&h.logs[today]),manual=done&&typeof habitManualCompleted==='function'&&habitManualCompleted(h,today),sourceOnly=done&&!manual;
+      var label=sourceOnly?'Completed by linked activity: '+h.name:(done?'Undo ':'Complete ')+h.name;
+      return '<button type="button" class="pw-habit-row'+(done?' done':'')+'" data-planner-habit="'+h.id+'" aria-pressed="'+(done?'true':'false')+'" aria-label="'+escapeHtml(label)+'"'+(sourceOnly?' disabled':' onclick="plannerToggleHabit(\''+h.id+'\')"')+'>'
+        +'<span class="pw-habit-check" data-tick="pwhab:'+h.id+'" aria-hidden="true">'+(done?'\u2713':'')+'</span>'
+        +'<span class="pw-habit-name">'+(h.icon?escapeHtml(h.icon)+' ':'')+escapeHtml(h.name)+(sourceOnly?'<span class="pw-habit-source">Linked</span>':'')+'</span>'
+      +'</button>';
     }).join('');
     rows+='</div>';
   }
@@ -440,18 +1351,25 @@ function plannerHabitCard(){
 // the same source the Dashboard uses — so no parallel state (R3.5, R3.6, R4.3, R4.4).
 function plannerToggleHabit(hid){
   var h=(STATE.habits||[]).find(function(x){return x.id===hid});
-  if(!h)return;
-  if(!h.logs)h.logs={};
-  var today=localDateKey(new Date());
-  var pwWasDone=!!h.logs[today];
-  h.logs[today]=!h.logs[today];
-  saveState();
-  // Re-render just the planner habit widget in place
-  var host=document.getElementById('planner-habits-card');
-  if(host)host.outerHTML=plannerHabitCard();
-  if(!pwWasDone&&h.logs[today]&&typeof bloomTick==='function')bloomTick('pwhab:'+hid);
-  // Keep Dashboard habit views in sync (guarded)
-  if(typeof renderDashboard==='function')renderDashboard();
+  if(!h)return false;
+  var today=localDateKey(new Date());var wasDone=!!(h.logs&&h.logs[today]);
+  // Whether the tick came from the habit control itself. The refresh replaces
+  // that control, so keyboard focus has to be put back on the new one — but only
+  // when it held focus to begin with. Reaching for it unconditionally would pull
+  // the caret out of the capture box mid-word, which is exactly what R17.3
+  // forbids; before the Planner patched in place this line could not tell the
+  // difference because everything was rebuilt anyway.
+  var control='[data-planner-habit="'+hid+'"]';
+  var fromControl=!!(document.activeElement&&document.activeElement.matches&&document.activeElement.matches(control));
+  var saved=toggleHabitToday(hid);if(!saved)return false;
+  // The tick changes the habits card, the welcome card's streak and chip line,
+  // the evening sweep's habit count, and — while the Short_Version is open —
+  // its first row, which is this same habit (R6.9).
+  refreshPlannerCards(['habits','welcome','sweep','short']);
+  var current=(STATE.habits||[]).find(function(x){return x.id===hid});
+  if(!wasDone&&current&&current.logs&&current.logs[today]&&typeof bloomTick==='function')bloomTick('pwhab:'+hid);
+  if(fromControl){var restored=document.querySelector(control);if(restored)restored.focus();}
+  return true;
 }
 
 // Schedule — vertical dashed timeline with colored dots and "now" line.
@@ -470,7 +1388,7 @@ function plannerScheduleCard(todayKey){
 
   var dotColors=['var(--moss)','var(--sky)','var(--amber)','var(--clay)','var(--text2)'];
 
-  var html='<div class="card planner-card planner-schedule-card">';
+  var html='<div class="card planner-card planner-schedule-card" id="planner-schedule-card">';
   html+='<div class="planner-card-head"><span class="planner-card-title">Schedule</span>'
     +'<button class="btn btn-sm btn-ghost" onclick="openModal(\'addTimeBlock\')" title="Add time block">+ Block</button></div>';
 
@@ -508,7 +1426,9 @@ function plannerScheduleCard(todayKey){
   return html;
 }
 
-// Delete a time block (commitment or timed task) and re-render.
+// Delete a time block (commitment or timed task) and refresh the schedule.
+// Clearing a task's date can also drop it into the inbox, so the Inbox tab is
+// redrawn alongside the Today cards.
 function deleteTimeBlock(id,kind){
   if(kind==='commit'){
     STATE.commitments=(STATE.commitments||[]).filter(function(c){return c.id!==id});
@@ -516,7 +1436,12 @@ function deleteTimeBlock(id,kind){
     var t=(STATE.tasks||[]).find(function(x){return x.id===id});
     if(t){delete t.dueTime;delete t.dueDate;}
   }
-  saveState();renderPlanner();
+  saveState();
+  // `inbox` is declared on top of the table's schedule/welcome pair: clearing a
+  // task's date leaves it undated and unslated, which is the definition of an
+  // inbox task, so the inbox card gains a row (R17.5).
+  refreshPlannerCards(['schedule','welcome','inbox']);
+  renderPlannerInbox();
 }
 
 // Save a new time block (commitment) from the modal.
@@ -529,7 +1454,8 @@ function saveTimeBlock(){
   var recur=(document.getElementById('m-tb-recur')||{}).checked?'weekly':'';
   if(!STATE.commitments)STATE.commitments=[];
   STATE.commitments.push({id:g(),text:text,date:date,start:start,end:end,done:false,recur:recur,createdAt:new Date().toISOString()});
-  saveState();closeModal();renderPlanner();
+  saveState();closeModal();
+  refreshPlannerCards(['schedule','welcome']);
 }
 
 // Inbox — captured-but-unscheduled tasks, so a quick-add never disappears.
@@ -537,7 +1463,7 @@ function saveTimeBlock(){
 function plannerInboxCard(){
   var inbox=getInboxTasks();
   if(!inbox.length)return '';
-  var html='<div class="card planner-card planner-inbox-card card-quiet">';
+  var html='<div class="card planner-card planner-inbox-card card-quiet" id="planner-inbox-card">';
   html+='<div class="planner-card-head"><span class="planner-card-title">Inbox</span>'
     +'<span class="planner-card-count">'+inbox.length+'</span></div>';
   html+='<div class="planner-inbox-list">';
@@ -671,7 +1597,7 @@ function plannerFocusCard(todayKey){
   var focus=getTodayFocus(todayKey);
   var doneCount=focus.filter(function(t){return t.done}).length;
 
-  var html='<div class="card planner-card planner-focus-card">';
+  var html='<div class="card planner-card planner-focus-card" id="planner-focus-card">';
   html+='<div class="planner-card-head"><span class="planner-card-title">Daily focus</span>'
     +(focus.length?'<span class="planner-card-count">'+doneCount+'/'+focus.length+'</span>':'<span class="pw-focus-hint">just 3 things</span>')
     +'</div>';
@@ -749,6 +1675,17 @@ function plannerFocusChooser(todayKey){
     }
   }
 
+  // Create straight into the slate (R14.5). The chooser is the one place that
+  // already knows the slate has room, and the empty state above already points
+  // here ("Add one below…"). Its own id keeps it out of the capture box's way,
+  // and it lives inside #planner-today, so capturePlannerFocus() /
+  // restorePlannerFocus() put the caret back if an unrelated refresh replaces
+  // the focus card mid-word (R17.3).
+  html+='<div class="planner-chooser-add-row planner-capture-row">'
+    +'<input type="text" id="planner-chooser-add-input" class="planner-capture-input" placeholder="or write a new one\u2026" aria-label="New focus task for today" onkeydown="if(event.key===\'Enter\')plannerCreateFocusTask()">'
+    +'<button class="planner-capture-btn" onclick="plannerCreateFocusTask()" title="Add as today\'s focus" aria-label="Add as today\'s focus">+</button>'
+  +'</div>';
+
   html+='</div>';
   return html;
 }
@@ -760,20 +1697,45 @@ function plannerChooserRow(t){
     +'</button>';
 }
 
-// Quick-capture — dashed torn-note style card (R12.1)
-function plannerCaptureCard(){
-  return '<div class="card planner-card planner-capture-card">'
+// Quick-capture — dashed torn-note style card (R12.1, R14.1)
+// `hostId` names the root element. The Today tab and the Inbox tab both render
+// this card, so each passes its own id rather than putting the same one in the
+// document twice.
+//
+// The text input is keyed off the same id. The Today card keeps the original
+// `planner-capture-input`: plannerQuickCapture() with no argument still reads
+// it, and capturePlannerFocus() / restorePlannerFocus() are scoped to
+// #planner-today around that name. Every other host derives its own input id
+// from its root, which is what makes the Inbox tab's box work — until now both
+// boxes carried `planner-capture-input`, and the single getElementById lookup
+// resolved by document order, so text typed on the Inbox tab went nowhere.
+//
+// Two controls: `+` files the text as an Inbox_Task (R14.4) and "+ Today" asks
+// for it as one of today's three Focus_Tasks (R14.1). Both are native buttons,
+// so both are keyboard-operable as they stand (R26.9).
+function plannerCaptureCard(hostId){
+  var host=hostId||'planner-capture-card';
+  var inputId=(host==='planner-capture-card')?'planner-capture-input':host+'-input';
+  var readInbox="{inputId:'"+inputId+"'}";
+  var readFocus="{inputId:'"+inputId+"',focus:true}";
+  return '<div class="card planner-card planner-capture-card" id="'+escapeHtml(host)+'">'
     +'<div class="planner-capture-row">'
-      +'<input type="text" id="planner-capture-input" class="planner-capture-input" placeholder="jot something down\u2026" onkeydown="if(event.key===\'Enter\')plannerQuickCapture()">'
-      +'<button class="planner-capture-btn" onclick="plannerQuickCapture()">+</button>'
+      +'<input type="text" id="'+escapeHtml(inputId)+'" class="planner-capture-input" placeholder="jot something down\u2026" onkeydown="if(event.key===\'Enter\')plannerQuickCapture('+readInbox+')">'
+      +'<button class="planner-capture-btn" onclick="plannerQuickCapture('+readInbox+')" title="Add to your inbox" aria-label="Add to your inbox">+</button>'
+      +'<button class="btn btn-ghost btn-sm planner-capture-today" onclick="plannerQuickCapture('+readFocus+')" title="Add as one of today\'s focus tasks">+ Today</button>'
     +'</div>'
   +'</div>';
 }
 
-// ── Today-tab mutations (each re-renders) ──────────────────
+// ── Today-tab mutations ────────────────────────────────────
+// Each one names the cards it invalidates and refreshes exactly those, in place
+// (Components §C, "Mutation → invalidated card set"). None of them re-renders
+// the whole Planner any more.
 function plannerToggleCommitment(id){
   toggleCommitment(id,localDateKey(new Date()));
-  renderPlanner();
+  // The schedule row changes, and the commitment count feeds the welcome card's
+  // day description.
+  refreshPlannerCards(['schedule','welcome']);
 }
 
 // Complete/uncomplete a focus task via the normal task done/doneAt flow (R10.2)
@@ -784,7 +1746,24 @@ function plannerToggleFocusDone(id){
   t.done=!wasDone;
   t.doneAt=t.done?localDateKey(new Date()):null;
   saveState();
-  renderPlanner();
+  // One handler serves the focus list, the Today inbox rows and the schedule
+  // rows, so all three can hold the task that just changed. The welcome chip
+  // line counts open focus tasks and the sweep counts completed ones.
+  //
+  // `reentry` is here for the un-complete direction. A completed task is an
+  // Activity_Event, so clearing a `doneAt` that sits in the past removes an
+  // active day and lengthens the gap quietGapDays() reports — while today stays
+  // inactive, so the re-entry card is still on the page and its gap line goes
+  // stale. Completing a task instead makes today active, which removes the card
+  // and escalates to a full render on its own (R17.5).
+  //
+  // `short` is the Short_Version's third row, which is this same task: ticking
+  // it there has to redraw the reduced view — where a done task drops off the
+  // list — without leaving it (R6.9).
+  refreshPlannerCards(['focus','welcome','sweep','inbox','schedule','reentry','short']);
+  // The Inbox tab renders its own rows from this same handler and is not part of
+  // the Today card registry, so it is redrawn separately.
+  renderPlannerInbox();
   if(!wasDone&&t.done){
     if(typeof bloomTick==='function')bloomTick('focus:'+id);
     if(typeof showCelebrationToast==='function')showCelebrationToast('Done — '+t.text,'✓');
@@ -794,16 +1773,17 @@ function plannerToggleFocusDone(id){
 function plannerRemoveFocus(id){
   removeFocusTask(id);
   plannerFocusNote='';
-  renderPlanner();
+  refreshPlannerCards(PLANNER_FOCUS_SLATE_CARDS);
 }
 
-// Toggle a task's micro-step from the Planner focus card.
+// Toggle a task's micro-step from the Planner focus card. Micro-steps render
+// inside the focus card and nowhere else.
 function plannerToggleSubStep(taskId,idx){
   var t=(STATE.tasks||[]).find(function(x){return x.id===taskId});
   if(!t||!t.subSteps||!t.subSteps[idx])return;
   t.subSteps[idx].done=!t.subSteps[idx].done;
   saveState();
-  renderPlanner();
+  refreshPlannerCards(['focus']);
 }
 
 function plannerShowFocusChooser(){
@@ -828,7 +1808,7 @@ function plannerPickFocus(taskId){
     // Close the chooser once we've reached the cap of 3
     if(getTodayFocus(localDateKey(new Date())).length>=3)plannerFocusChooserOpen=false;
   }
-  renderPlanner();
+  refreshPlannerCards(PLANNER_FOCUS_SLATE_CARDS);
 }
 
 // Pull an inbox task into today's focus; gives a toast if the 3-focus cap is hit
@@ -838,12 +1818,23 @@ function plannerInboxMakeFocus(taskId){
   if(!ok&&typeof showCelebrationToast==='function'){
     showCelebrationToast('Three focus tasks is plenty for today.','🎯');
   }
-  renderPlanner();
+  refreshPlannerCards(PLANNER_FOCUS_SLATE_CARDS);
 }
 
 // Quick capture — adds a task; routes time-blocked input to the commitment modal when available (R12.1)
-function plannerQuickCapture(){
-  var inp=document.getElementById('planner-capture-input');
+//
+// `opts` is optional and every field has a default, so plannerQuickCapture()
+// with no argument behaves exactly as it always has: read
+// `planner-capture-input`, file the text as an Inbox_Task (R14.4).
+//
+//   opts.inputId — which capture box to read. Defaults to the Today card's.
+//   opts.focus   — true asks for the task as one of today's Focus_Tasks
+//                  (R14.2). A full slate leaves it in the inbox and says so
+//                  (R14.3).
+function plannerQuickCapture(opts){
+  var o=opts||{};
+  var wantFocus=(o.focus===true);
+  var inp=document.getElementById(o.inputId||'planner-capture-input');
   if(!inp)return;
   var raw=(inp.value||'').trim();
   if(!raw)return;
@@ -851,8 +1842,13 @@ function plannerQuickCapture(){
   // Time-blocked shape (e.g. "maths 2-4pm", "call 14:00") → commitment capture.
   // The commitment modal + routing is wired in task 6; until then this falls
   // through to adding a task. plannerCaptureCommitment is defined there.
+  //
+  // Only on the default path: "+ Today" names a focus task outright, so a time
+  // in the text is part of the task rather than a request for a commitment, and
+  // diverting it into the commitment modal would drop the focus slot the press
+  // asked for.
   var timeBlocked=/\b\d{1,2}(:\d{2})?\s*(am|pm)?\s*[-–]\s*\d{1,2}(:\d{2})?\s*(am|pm)?\b/i.test(raw)||/\b\d{1,2}:\d{2}\b/.test(raw);
-  if(timeBlocked&&typeof plannerCaptureCommitment==='function'){
+  if(!wantFocus&&timeBlocked&&typeof plannerCaptureCommitment==='function'){
     plannerCaptureCommitment(raw);
     inp.value='';
     return;
@@ -860,8 +1856,9 @@ function plannerQuickCapture(){
 
   var parsed=(typeof parseTaskInput==='function')?parseTaskInput(raw):{text:raw,dueDate:null};
   if(!STATE.tasks)STATE.tasks=[];
+  var newId=g();
   STATE.tasks.push({
-    id:g(),
+    id:newId,
     text:parsed.text,
     done:false,
     dueDate:parsed.dueDate||null,
@@ -869,8 +1866,70 @@ function plannerQuickCapture(){
     createdAt:localDateKey(new Date())
   });
   inp.value='';
-  saveState();
-  renderPlanner();
+  var slated=false;
+  if(wantFocus){
+    // R14.6 — the cap of three is addFocusTask's, the same guard plannerPickFocus,
+    // plannerInboxMakeFocus and plannerWeekMakeFocus go through. It stamps
+    // today's focusDate and saves on success (R14.2); on a full slate it returns
+    // false and the task stays exactly what it already is — an Inbox_Task —
+    // which is what R14.3 asks for, stated as a fact and nothing more.
+    slated=addFocusTask(newId);
+    if(!slated){
+      saveState();
+      if(typeof showCelebrationToast==='function'){
+        showCelebrationToast('Today\'s focus slate is full — this is in your inbox.','\uD83D\uDCE5');
+      }
+    }
+  }else{
+    saveState();
+  }
+  // includeInputCards: the capture input is this mutation's own origin and has
+  // already been cleared, so replacing it is safe here and nowhere else.
+  // `schedule` is declared because parseTaskInput can put a due date on the new
+  // task, and a task dated today lands on today's schedule (R17.5). A task that
+  // joined the slate touches the wider focus-slate set instead.
+  var cards=slated?['capture'].concat(PLANNER_FOCUS_SLATE_CARDS):['capture','inbox','focus','schedule'];
+  refreshPlannerCards(cards,{includeInputCards:true});
+  // The Inbox tab renders the same capture card under its own root id.
+  renderPlannerInbox();
+}
+
+// Create a task straight into today's slate from the Focus_Chooser's own input,
+// then close the chooser (R14.5, R14.6). The task is pushed first and slated
+// through addFocusTask, so the cap of three is enforced by that one guard rather
+// than a second check here.
+function plannerCreateFocusTask(){
+  var inp=document.getElementById('planner-chooser-add-input');
+  if(!inp)return;
+  var raw=(inp.value||'').trim();
+  if(!raw)return;
+
+  var parsed=(typeof parseTaskInput==='function')?parseTaskInput(raw):{text:raw,dueDate:null};
+  if(!STATE.tasks)STATE.tasks=[];
+  var newId=g();
+  STATE.tasks.push({
+    id:newId,
+    text:parsed.text,
+    done:false,
+    dueDate:parsed.dueDate||null,
+    doneAt:null,
+    createdAt:localDateKey(new Date())
+  });
+  inp.value='';
+  var slated=addFocusTask(newId);   // saves on success
+  if(!slated){
+    // The chooser only renders with room on the slate, so this is the race
+    // rather than the norm. The task keeps its place in the inbox.
+    saveState();
+    if(typeof showCelebrationToast==='function'){
+      showCelebrationToast('Today\'s focus slate is full — this is in your inbox.','\uD83D\uDCE5');
+    }
+  }
+  plannerFocusNote='';
+  plannerFocusChooserOpen=false;    // R14.6 — the chooser closes either way
+  refreshPlannerCards(PLANNER_FOCUS_SLATE_CARDS);
+  // The Inbox tab lists the same tasks and is not part of the Today registry.
+  renderPlannerInbox();
 }
 
 // ============================================================
@@ -893,20 +1952,19 @@ function renderPlannerWeek(){
 
 // Week header card — "This week" + date range + 7-day strip
 function plannerWeekHeaderCard(wkKey){
+  // weekDays(weekKey(d)) is Mon→Sun already — no display reordering needed.
   var days=weekDays(wkKey);
   var todayKey=localDateKey(new Date());
   var dayLabels=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  // Reorder to Mon–Sun for display
-  var displayDays=days.slice(1).concat(days.slice(0,1));
   // Compute date range label (e.g. "20–26 Jul") from Mon to Sun
-  var first=new Date(displayDays[0]+'T12:00:00');
-  var last=new Date(displayDays[6]+'T12:00:00');
+  var first=new Date(days[0]+'T12:00:00');
+  var last=new Date(days[6]+'T12:00:00');
   var rangeStr=first.getDate()+'\u2013'+last.getDate()+' '+last.toLocaleDateString('en-GB',{month:'short'});
 
   var html='<div class="card planner-card pw-week-header-card">';
   html+='<div class="pw-week-header-top"><span class="pw-week-header-title">This week</span><span class="pw-week-header-range">'+rangeStr+'</span></div>';
   html+='<div class="pw-week-daystrip">';
-  displayDays.forEach(function(dk){
+  days.forEach(function(dk){
     var d=new Date(dk+'T12:00:00');
     var dow=d.getDay();
     var isToday=dk===todayKey;
@@ -967,20 +2025,12 @@ function plannerHabitConsistencyCard(wkKey){
     return f==='daily'||/^\d+x\/week$/.test(f)||f==='weekly';
   });
   if(!habits.length)return '';
-  var days=weekDays(wkKey);
-  // Reorder to Mon–Sun for display
-  var displayDays=days.slice(1).concat(days.slice(0,1));
+  var displayDays=habitWeekDays(wkKey);
   var colLabels=['M','T','W','T','F','S','S'];
 
-  // Compute overall consistency
-  var totalCells=0,filledCells=0;
-  habits.forEach(function(h){
-    displayDays.forEach(function(dk){
-      var s=(typeof habitDayStatus==='function')?habitDayStatus(h,dk):'todo';
-      if(s==='done'||s==='todo'){totalCells++;if(s==='done')filledCells++;}
-    });
-  });
-  var pct=totalCells?Math.round((filledCells/totalCells)*100):0;
+  // Target-based totals keep Nx/week denominators stable throughout the week.
+  var consistencyStats=habitStatsForDays(habits,displayDays,displayDays[6]);
+  var pct=consistencyStats.pct;
 
   var html='<div class="card planner-card pw-consistency-card">';
   html+='<div class="pw-consistency-head"><span class="pw-consistency-title">Habit consistency</span><span class="pw-consistency-pct">'+pct+'%</span></div>';
@@ -1008,16 +2058,15 @@ function plannerHabitConsistencyCard(wkKey){
 // Training split card — Mon–Sun schedule for the current week
 function plannerTrainingSplitCard(wkKey){
   if(typeof todaysTrainingSession!=='function')return '';
+  // weekDays(weekKey(d)) is Mon→Sun already — no display reordering needed.
   var days=weekDays(wkKey);
-  // Reorder to Mon–Sun for display
-  var displayDays=days.slice(1).concat(days.slice(0,1));
   var todayKey=localDateKey(new Date());
   var dayLabels=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
   var html='<div class="card planner-card pw-split-card">';
   html+='<div class="pw-split-head">\uD83C\uDFCB\uFE0F Training split</div>';
   html+='<div class="pw-split-list">';
-  displayDays.forEach(function(dk){
+  days.forEach(function(dk){
     var d=new Date(dk+'T12:00:00');
     var dow=d.getDay();
     var isToday=dk===todayKey;
@@ -1041,7 +2090,7 @@ function plannerBlockScheduleCard(wkKey){
   if(typeof todaysTrainingSession!=='function'||typeof weekDays!=='function')return '';
   var ctx=(typeof resolveHmWeek==='function')?resolveHmWeek(localDateKey(new Date())):null;
   if(!ctx)return '';
-  var days=weekDays(wkKey);            // Sun-first date keys
+  var days=weekDays(wkKey);            // Mon→Sun date keys
   var dayShort=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var todayKey=localDateKey(new Date());
   function row(dow,isToday,icon,label,detail){
@@ -1296,5 +2345,8 @@ function plannerWeekMakeFocus(taskId){
   }else{
     plannerWeekNote='';
   }
-  renderPlanner();
+  refreshPlannerCards(PLANNER_FOCUS_SLATE_CARDS);
+  // This mutation is triggered from the week tab, whose cards carry the inline
+  // note and the "★ Today" flag and are not part of the Today registry.
+  if(typeof renderPlannerWeek==='function')renderPlannerWeek();
 }

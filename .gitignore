@@ -3,3 +3,13 @@ Meal Plan
 Meal Plan.html
 .DS_Store
 .kiro/
+
+# Dev-only test tooling — excluded from the deploy path, like lifehub-notifications/
+node_modules/
+package.json
+package-lock.json
+vitest.config.js
+
+# Local scratch files and design artefacts
+.tmp-*
+*.zip

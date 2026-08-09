@@ -1,7 +1,7 @@
 // ============================================================
 // REVISIONED DOMAIN PERSISTENCE
 // ============================================================
-var LIFEHUB_SCHEMA_VERSION=2;
+var LIFEHUB_SCHEMA_VERSION=3;
 var LIFEHUB_QUEUE_KEY='lifehub_sync_queue_v2';
 var LIFEHUB_CONFLICT_KEY='lifehub_sync_conflicts_v2';
 var LIFEHUB_META_KEY='lifehub_local_meta_v2';
@@ -23,7 +23,10 @@ var _capturedUndo=null;
 var _undoRecord=null;
 var _storageIssue=false;
 var _storageMessage='';
-var _cloudIssue='';
+var _cloudIssue=null;
+var _syncRetryTimer=null;
+var _syncRetryAttempt=0;
+var _syncRetryMaxMs=60000;
 var _clientId=_loadClientId();
 
 function _loadClientId(){
@@ -40,11 +43,165 @@ function _same(a,b){return _stable(a)===_stable(b)}
 function _validDomainName(name){return /^[A-Za-z_$][A-Za-z0-9_$-]{0,99}$/.test(name)&&name.indexOf('/')===-1&&name!=='__proto__'&&name!=='prototype'&&name!=='constructor'}
 function _timestampText(value){try{if(value&&typeof value.toDate==='function')return value.toDate().toISOString();if(value)return new Date(value).toISOString()}catch(e){}return null}
 function _domainKeys(state){return state&&typeof state==='object'?Object.keys(state).filter(_validDomainName):[]}
+function _isPlainRecord(value){if(!value||typeof value!=='object'||Array.isArray(value))return false;var proto=Object.getPrototypeOf(value);return proto===Object.prototype||proto===null}
+function _localDayKeyNow(){var d=new Date();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');return d.getFullYear()+'-'+m+'-'+day}
+function _validDateKey(value){
+  if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+  var parts=value.split('-'),date=new Date(+parts[0],+parts[1]-1,+parts[2]);
+  return date.getFullYear()===+parts[0]&&date.getMonth()===+parts[1]-1&&date.getDate()===+parts[2];
+}
+var LIFEHUB_HABIT_INTEGRATIONS={
+  'lifehub.workout.any':true,
+  'lifehub.workout.hyrox':true,
+  'lifehub.run.any':true,
+  'lifehub.skincare.am':true,
+  'lifehub.skincare.pm':true
+};
+function _validHabitSourceKey(value){return typeof value==='string'&&/^(workout|run|skincare):[A-Za-z0-9_-]{1,100}$/.test(value)}
+function _habitProvenancePresent(entry){
+  if(!_isPlainRecord(entry))return false;
+  if(entry.manual===true)return true;
+  return _isPlainRecord(entry.sources)&&Object.keys(entry.sources).some(function(key){return entry.sources[key]===true});
+}
+function _normalizeHabitProvenance(h){
+  var changed=false;
+  if(h.integrationKeys===undefined){h.integrationKeys=[];changed=true}
+  if(Array.isArray(h.integrationKeys)){
+    var unique=[];h.integrationKeys.forEach(function(key){if(unique.indexOf(key)===-1)unique.push(key)});
+    if(!_same(unique,h.integrationKeys)){h.integrationKeys=unique;changed=true}
+  }
+  if(h.logProvenance===undefined){h.logProvenance={};changed=true}
+  if(h.provenanceVersion===undefined){h.provenanceVersion=1;changed=true}
+  if(!_isPlainRecord(h.logs)||!_isPlainRecord(h.logProvenance))return changed;
+  Object.keys(h.logs).forEach(function(dateKey){
+    if(h.logs[dateKey]===false){delete h.logs[dateKey];changed=true;return}
+    if(h.logs[dateKey]===true&&_validDateKey(dateKey)&&!_habitProvenancePresent(h.logProvenance[dateKey])){
+      h.logProvenance[dateKey]={manual:true,sources:{}};changed=true;
+    }
+  });
+  Object.keys(h.logProvenance).forEach(function(dateKey){
+    var entry=h.logProvenance[dateKey];if(!_isPlainRecord(entry))return;
+    if(entry.manual===false){delete entry.manual;changed=true}
+    if(entry.sources===undefined){entry.sources={};changed=true}
+    if(_isPlainRecord(entry.sources))Object.keys(entry.sources).forEach(function(sourceKey){if(entry.sources[sourceKey]===false){delete entry.sources[sourceKey];changed=true}});
+    if(!_habitProvenancePresent(entry)){
+      delete h.logProvenance[dateKey];
+      if(h.logs[dateKey]===true)delete h.logs[dateKey];
+      changed=true;return;
+    }
+    if(h.logs[dateKey]!==true){h.logs[dateKey]=true;changed=true}
+  });
+  return changed;
+}
+function normalizeLifeHubHabits(state){
+  if(!state||!Array.isArray(state.habits))return false;
+  var changed=false,today=_localDayKeyNow();
+  state.habits.forEach(function(h,index){
+    if(!_isPlainRecord(h))return;
+    if(h.id===undefined){h.id=typeof g==='function'?g():'habit-'+Date.now().toString(36)+'-'+index;changed=true}
+    if(typeof h.name==='string'&&h.name!==h.name.trim()){h.name=h.name.trim();changed=true}
+    if(h.freq===undefined){h.freq='daily';changed=true}
+    if(typeof h.freq==='string'&&h.freq!==h.freq.trim().toLowerCase()){h.freq=h.freq.trim().toLowerCase();changed=true}
+    if(h.freq==='bi-monthly'){h.freq='fortnightly';changed=true}
+    if(h.badge===undefined){h.badge='per';changed=true}
+    if(h.icon===undefined){h.icon='';changed=true}
+    if(h.note===undefined){h.note='';changed=true}
+    if(h.anchor===undefined){h.anchor=typeof autoSuggestAnchor==='function'?autoSuggestAnchor(h.name):'anytime';changed=true}
+    if(h.logs===undefined){h.logs={};changed=true}
+    if(h.lifecycle===undefined){h.lifecycle={version:1,inactivePeriods:[]};changed=true}
+    if(_normalizeHabitProvenance(h))changed=true;
+    var trueLogKeys=_isPlainRecord(h.logs)?Object.keys(h.logs).filter(function(key){return h.logs[key]===true&&_validDateKey(key)}).sort():[];
+    if(h.startDate===undefined){h.startDate=trueLogKeys.length?trueLogKeys[0]:today;changed=true}
+    else if(_validDateKey(h.startDate)&&trueLogKeys.length&&trueLogKeys[0]<h.startDate){h.startDate=trueLogKeys[0];changed=true}
+  });
+  return changed;
+}
+function _validateHabitRecords(habits,add){
+  if(!Array.isArray(habits))return;
+  if(habits.length>500)add('state.habits','cannot contain more than 500 habits');
+  var ids=Object.create(null),allowedBadges={fit:true,fin:true,car:true,per:true},allowedAnchors={morning:true,midday:true,evening:true,anytime:true};
+  habits.forEach(function(h,index){
+    var path='state.habits['+index+']';
+    if(!_isPlainRecord(h)){add(path,'must be a plain object');return}
+    if(typeof h.id!=='string'||!/^[A-Za-z0-9_-]{1,80}$/.test(h.id))add(path+'.id','must be 1–80 letters, numbers, underscores, or dashes');
+    else if(ids[h.id])add(path+'.id','must be unique');else ids[h.id]=true;
+    if(typeof h.name!=='string'||!h.name.trim())add(path+'.name','is required');else if(h.name.length>120)add(path+'.name','cannot exceed 120 characters');
+    var freq=typeof h.freq==='string'?h.freq.toLowerCase():'';
+    if(!/^(daily|weekly|fortnightly|monthly|[1-7]x\/week)$/.test(freq))add(path+'.freq','must be daily, weekly, 1–7x/week, fortnightly, or monthly');
+    if(typeof h.badge!=='string'||!allowedBadges[h.badge])add(path+'.badge','has an unknown category');
+    if(typeof h.anchor!=='string'||!allowedAnchors[h.anchor])add(path+'.anchor','has an unknown time anchor');
+    if(typeof h.icon!=='string'||h.icon.length>32)add(path+'.icon','must be text up to 32 characters');
+    if(typeof h.note!=='string'||h.note.length>500)add(path+'.note','must be text up to 500 characters');
+    if(!_isPlainRecord(h.lifecycle))add(path+'.lifecycle','must be an object');
+    else{
+      Object.keys(h.lifecycle).forEach(function(key){if(key!=='version'&&key!=='inactivePeriods')add(path+'.lifecycle.'+key,'is not supported')});
+      if(h.lifecycle.version!==1)add(path+'.lifecycle.version','must be version 1');
+      if(!Array.isArray(h.lifecycle.inactivePeriods))add(path+'.lifecycle.inactivePeriods','must be an array');
+      else{
+        var ranges=h.lifecycle.inactivePeriods,previous=null,openCount=0;
+        if(ranges.length>200)add(path+'.lifecycle.inactivePeriods','cannot contain more than 200 ranges');
+        ranges.forEach(function(range,rangeIndex){
+          var rangePath=path+'.lifecycle.inactivePeriods['+rangeIndex+']';
+          if(!_isPlainRecord(range)){add(rangePath,'must be an object');return}
+          Object.keys(range).forEach(function(key){if(key!=='kind'&&key!=='from'&&key!=='to')add(rangePath+'.'+key,'is not supported')});
+          if(range.kind!=='paused'&&range.kind!=='archived')add(rangePath+'.kind','must be paused or archived');
+          if(!_validDateKey(range.from))add(rangePath+'.from','must be a valid YYYY-MM-DD date');
+          if(range.to!==null&&!_validDateKey(range.to))add(rangePath+'.to','must be null or a valid YYYY-MM-DD date');
+          if(_validDateKey(range.from)&&range.to!==null&&_validDateKey(range.to)&&range.to<=range.from)add(rangePath+'.to','must be after from');
+          if(range.to===null)openCount++;
+          if(previous&&_validDateKey(previous.from)&&_validDateKey(range.from)){
+            if(previous.to===null)add(rangePath+'.from','cannot follow an open range');
+            else if(_validDateKey(previous.to)&&range.from<previous.to)add(rangePath+'.from','must not overlap the previous range');
+          }
+          previous=range;
+        });
+        if(openCount>1)add(path+'.lifecycle.inactivePeriods','can contain at most one open range');
+      }
+    }
+    if(!_validDateKey(h.startDate))add(path+'.startDate','must be a valid YYYY-MM-DD date');
+    if(h.provenanceVersion!==1)add(path+'.provenanceVersion','must be version 1');
+    if(!Array.isArray(h.integrationKeys))add(path+'.integrationKeys','must be an array');
+    else{
+      if(h.integrationKeys.length>5)add(path+'.integrationKeys','cannot contain more than 5 links');
+      h.integrationKeys.forEach(function(key,keyIndex){if(typeof key!=='string'||!LIFEHUB_HABIT_INTEGRATIONS[key])add(path+'.integrationKeys['+keyIndex+']','has an unknown integration')});
+    }
+    if(!_isPlainRecord(h.logs)){add(path+'.logs','must be an object of date completions');return}
+    if(!_isPlainRecord(h.logProvenance)){add(path+'.logProvenance','must be an object');return}
+    var logKeys=Object.keys(h.logs);if(logKeys.length>5000)add(path+'.logs','has too many completion dates');
+    logKeys.forEach(function(key){
+      if(!_validDateKey(key))add(path+'.logs.'+key,'must use a valid YYYY-MM-DD date');
+      else if(_validDateKey(h.startDate)&&key<h.startDate)add(path+'.logs.'+key,'cannot be before the habit start date');
+      if(h.logs[key]!==true)add(path+'.logs.'+key,'must be true or omitted');
+      if(!_habitProvenancePresent(h.logProvenance[key]))add(path+'.logs.'+key,'must have completion provenance');
+    });
+    var provenanceKeys=Object.keys(h.logProvenance);if(provenanceKeys.length>5000)add(path+'.logProvenance','has too many completion dates');
+    provenanceKeys.forEach(function(dateKey){
+      var entry=h.logProvenance[dateKey],entryPath=path+'.logProvenance.'+dateKey;
+      if(!_validDateKey(dateKey))add(entryPath,'must use a valid YYYY-MM-DD date');
+      else if(_validDateKey(h.startDate)&&dateKey<h.startDate)add(entryPath,'cannot be before the habit start date');
+      if(!_isPlainRecord(entry)){add(entryPath,'must be an object');return}
+      Object.keys(entry).forEach(function(key){if(key!=='manual'&&key!=='sources')add(entryPath+'.'+key,'is not supported')});
+      if(entry.manual!==undefined&&entry.manual!==true)add(entryPath+'.manual','must be true or omitted');
+      if(!_isPlainRecord(entry.sources)){add(entryPath+'.sources','must be an object');return}
+      var sourceKeys=Object.keys(entry.sources);if(sourceKeys.length>50)add(entryPath+'.sources','has too many sources');
+      sourceKeys.forEach(function(sourceKey){if(!_validHabitSourceKey(sourceKey))add(entryPath+'.sources.'+sourceKey,'has an invalid source key');else if(entry.sources[sourceKey]!==true)add(entryPath+'.sources.'+sourceKey,'must be true or omitted')});
+      if(!_habitProvenancePresent(entry))add(entryPath,'must contain a manual or source completion');
+      if(h.logs[dateKey]!==true)add(entryPath,'must project to logs');
+    });
+  });
+}
+function validateHabitDomainData(data){
+  var holder={habits:_clone(data)};normalizeLifeHubHabits(holder);var errors=[];
+  function add(path,message){if(errors.length<12)errors.push(path+': '+message)}
+  if(!Array.isArray(holder.habits))add('state.habits','expected array');else _validateHabitRecords(holder.habits,add);
+  return {ok:errors.length===0,errors:errors,data:holder.habits};
+}
 
 function validateLifeHubState(state,options){
   options=options||{};
+  if(state&&typeof state==='object'&&!Array.isArray(state))normalizeLifeHubHabits(state);
   var errors=[];var nodes=0;var stringBytes=0;var dangerous=Object.create(null);dangerous.__proto__=true;dangerous.prototype=true;dangerous.constructor=true;
-  var typeRules={goals:'array',habits:'array',workouts:'array',prs:'object',income:'array',expenses:'array',accounts:'array',debts:'array',savingsGoals:'array',metrics:'object',weeklyPlans:'object',reviews:'object',dailyPriorities:'object',trainingEvents:'array',journal:'object',mood:'object',dailyHighlights:'object',skincare:'object',tasks:'array',relationships:'array',gratitude:'array',wishlist:'array',watchlist:'array',roadmapChecklist:'object',debtPayments:'array',plannedPayments:'array',reminders:'array',water:'object',commitments:'array'};
+  var typeRules={goals:'array',habits:'array',workouts:'array',prs:'object',income:'array',expenses:'array',accounts:'array',debts:'array',savingsGoals:'array',metrics:'object',weeklyPlans:'object',reviews:'object',dailyPriorities:'object',trainingEvents:'array',journal:'object',mood:'object',dailyHighlights:'object',skincare:'object',tasks:'array',relationships:'array',gratitude:'array',wishlist:'array',watchlist:'array',roadmapChecklist:'object',debtPayments:'array',plannedPayments:'array',reminders:'array',water:'object',waterSettings:'object',commitments:'array',netWorthSnapshots:'array',sweep:'object',companion:'object'};
   function add(path,message){if(errors.length<12)errors.push(path+': '+message)}
   function walk(value,path,depth){
     nodes++;if(nodes>100000){add(path,'too many values');return}if(depth>24){add(path,'nesting is too deep');return}
@@ -66,6 +223,7 @@ function validateLifeHubState(state,options){
   else{
     Object.keys(state).forEach(function(key){if(!_validDomainName(key))add('state.'+key,'invalid domain name')});
     Object.keys(typeRules).forEach(function(key){if(state[key]===undefined){if(options.requireCore)add('state.'+key,'required data area is missing');return}var expected=typeRules[key];var actual=Array.isArray(state[key])?'array':(state[key]===null?'null':typeof state[key]);if(actual!==expected)add('state.'+key,'expected '+expected)});
+    _validateHabitRecords(state.habits,add);
     if(options.requireCore&&state.trainingPlan===undefined)add('state.trainingPlan','required data area is missing');
     if(options.requireCore&&state.weeklyIntention===undefined)add('state.weeklyIntention','required data area is missing');
     if(state.trainingPlan!==undefined&&state.trainingPlan!==null&&(typeof state.trainingPlan!=='object'||Array.isArray(state.trainingPlan)))add('state.trainingPlan','expected object or null');
@@ -80,27 +238,67 @@ function validateLifeHubState(state,options){
 
 function _ensureTrustBanner(){
   var el=document.getElementById('lifehub-data-notice');if(el)return el;
-  el=document.createElement('div');el.id='lifehub-data-notice';el.className='data-trust-banner';el.setAttribute('role','status');el.style.display='none';
+  el=document.createElement('div');el.id='lifehub-data-notice';el.className='data-trust-banner';el.setAttribute('role','status');el.setAttribute('aria-live','polite');el.style.display='none';
   var text=document.createElement('span');text.className='data-trust-message';el.appendChild(text);
-  var action=document.createElement('button');action.type='button';action.className='btn btn-sm';action.style.display='none';el.appendChild(action);
-  document.body.appendChild(el);return el;
+  var actions=document.createElement('div');actions.className='data-trust-actions';
+  var primary=document.createElement('button');primary.type='button';primary.className='btn btn-sm data-trust-primary';primary.style.display='none';actions.appendChild(primary);
+  var secondary=document.createElement('button');secondary.type='button';secondary.className='btn btn-sm btn-ghost data-trust-secondary';secondary.style.display='none';actions.appendChild(secondary);
+  el.appendChild(actions);document.body.appendChild(el);return el;
 }
-function _showTrustNotice(message,actionLabel,actionFn){
+function _showTrustNotice(message,actionLabel,actionFn,secondaryLabel,secondaryFn){
   var el=_ensureTrustBanner();el.querySelector('.data-trust-message').textContent=message;
-  var button=el.querySelector('button');button.style.display=actionLabel?'inline-flex':'none';button.textContent=actionLabel||'';button.onclick=actionFn||null;el.style.display='flex';
+  var primary=el.querySelector('.data-trust-primary');primary.style.display=actionLabel?'inline-flex':'none';primary.textContent=actionLabel||'';primary.onclick=actionFn||null;
+  var secondary=el.querySelector('.data-trust-secondary');secondary.style.display=secondaryLabel?'inline-flex':'none';secondary.textContent=secondaryLabel||'';secondary.onclick=secondaryFn||null;
+  el.style.display='flex';
 }
 function _hideTrustNotice(){var el=document.getElementById('lifehub-data-notice');if(el)el.style.display='none'}
+function _safeCloudCode(error){
+  var source=error&&error.error?error.error:error;var code=source&&source.code?String(source.code).toLowerCase():'unknown';
+  code=code.replace(/^firestore\//,'').replace(/[^a-z0-9_\/-]/g,'').slice(0,80);return code||'unknown';
+}
+function _classifyCloudError(error,operation,options){
+  options=options||{};var code=_safeCloudCode(error);var offline=typeof navigator!=='undefined'&&navigator.onLine===false;var category='unknown';
+  if(operation==='auth-persistence')category='auth-persistence';
+  else if(code==='unauthenticated'||code.indexOf('auth/')===0&&code!=='auth/network-request-failed')category='auth';
+  else if(code==='permission-denied')category='rules';
+  else if(['invalid-argument','data-loss','failed-precondition','data-validation','invalid-data'].indexOf(code)!==-1)category='data';
+  else if(offline||['unavailable','deadline-exceeded','cancelled','aborted','resource-exhausted','auth/network-request-failed'].indexOf(code)!==-1)category='network';
+  var copy={
+    network:{message:'Cloud sync is waiting for a connection. Your changes remain queued on this device.',guidance:'Check the connection, then retry. Life Hub will also retry automatically with a short backoff.'},
+    auth:{message:'Sign in is required before cloud sync can continue.',guidance:'Sign in again. Queued changes will remain on this device until authentication succeeds.'},
+    'auth-persistence':{message:'This browser could not keep the Firebase session between visits.',guidance:'Sync can continue for this session. Retry session storage or review browser privacy and storage settings.'},
+    rules:{message:'Cloud sync does not have permission to read or write this data.',guidance:'Confirm the deployed Firestore rules allow this signed-in account and the users/kai/domains collection.'},
+    data:{message:'A cloud data check stopped sync to protect your saved information.',guidance:'Review the error code and failing area. Do not clear local data or the offline queue.'},
+    unknown:{message:'Cloud sync needs attention. Your changes remain queued on this device.',guidance:'Retry once. If the issue continues, use the code below when reviewing Firebase configuration or logs.'}
+  }[category];
+  return {category:category,code:code,operation:operation||'sync',domain:options.domain&&_validDomainName(options.domain)?options.domain:null,message:copy.message,guidance:copy.guidance,retryable:category==='network'||category==='auth-persistence'||category==='unknown',autoRetry:category==='network',occurredAt:new Date().toISOString()};
+}
+function _issuePriority(issue){return {auth:5,rules:4,data:4,'auth-persistence':3,unknown:2,network:1}[issue&&issue.category]||0}
+function _setCloudIssue(error,operation,options){
+  var issue=_classifyCloudError(error,operation,options);var pending=Object.keys(_pendingDomains).length;
+  if(_cloudIssue&&(_issuePriority(_cloudIssue)>_issuePriority(issue)||(_cloudIssue.operation==='write'&&issue.operation==='read'&&pending)))return _cloudIssue;
+  _cancelSyncRetry(false);_cloudIssue=issue;_updateSyncPresentation();if(issue.autoRetry)_scheduleSyncRetry();return issue;
+}
+function _clearCloudIssue(operation){
+  if(!_cloudIssue||operation&&_cloudIssue.operation!==operation)return false;
+  _cloudIssue=null;_cancelSyncRetry(true);_updateSyncPresentation();return true;
+}
 function _localMetadata(){return {schemaVersion:LIFEHUB_SCHEMA_VERSION,savedAt:new Date().toISOString(),clientId:_clientId,domainRevisions:_clone(_domainRevisions),domainExists:_clone(_domainExists)}}
 function _persistRevisionMetadata(){try{localStorage.setItem(LIFEHUB_META_KEY,JSON.stringify(_localMetadata()));return true}catch(e){console.warn('Local sync metadata save failed:',e);return false}}
 function _persistLocalState(){
+  var previousRaw=null,previousMeta=null,hadRaw=false,hadMeta=false;
+  try{previousRaw=localStorage.getItem(KEY);previousMeta=localStorage.getItem(LIFEHUB_META_KEY);hadRaw=previousRaw!==null;hadMeta=previousMeta!==null}catch(readError){}
   try{
     var raw=JSON.stringify(STATE);localStorage.setItem(KEY,raw);
     localStorage.setItem(LIFEHUB_META_KEY,JSON.stringify(_localMetadata()));
     _storageIssue=false;_storageMessage='';return true;
-  }catch(e){console.error('Local state save failed:',e);_storageIssue=true;_storageMessage='This device could not save locally. Keep this tab open while storage is checked.';setSyncStatus('storage');_showTrustNotice(_storageMessage);return false}
+  }catch(e){
+    try{if(hadRaw)localStorage.setItem(KEY,previousRaw);else localStorage.removeItem(KEY);if(hadMeta)localStorage.setItem(LIFEHUB_META_KEY,previousMeta);else localStorage.removeItem(LIFEHUB_META_KEY)}catch(restoreError){console.warn('Previous local state could not be restored:',restoreError)}
+    console.error('Local state save failed:',e);_storageIssue=true;_storageMessage='This device could not save locally. Keep this tab open while storage is checked.';setSyncStatus('storage');_showTrustNotice(_storageMessage);return false;
+  }
 }
 function _persistQueue(){try{localStorage.setItem(LIFEHUB_QUEUE_KEY,JSON.stringify(_pendingDomains));return true}catch(e){console.warn('Sync queue could not be stored:',e);_storageIssue=true;_storageMessage='Changes are syncing from memory, but this device could not store the offline queue.';setSyncStatus('storage');_showTrustNotice(_storageMessage);return false}}
-function _persistConflicts(){try{localStorage.setItem(LIFEHUB_CONFLICT_KEY,JSON.stringify(_syncConflicts))}catch(e){console.warn('Conflict details could not be stored:',e)}}
+function _persistConflicts(){try{localStorage.setItem(LIFEHUB_CONFLICT_KEY,JSON.stringify(_syncConflicts));return true}catch(e){console.warn('Conflict details could not be stored:',e);_storageIssue=true;_storageMessage='A sync choice is held in this tab, but this device could not store it for reload.';return false}}
 function _restorePersistenceMetadata(){
   try{var meta=JSON.parse(localStorage.getItem(LIFEHUB_META_KEY)||'{}');if(meta&&typeof meta==='object'){if(meta.domainRevisions&&typeof meta.domainRevisions==='object')_domainRevisions=meta.domainRevisions;if(meta.domainExists&&typeof meta.domainExists==='object')_domainExists=meta.domainExists}}catch(e){_domainRevisions={};_domainExists={}}
   try{var queued=JSON.parse(localStorage.getItem(LIFEHUB_QUEUE_KEY)||'{}');if(queued&&typeof queued==='object'&&!Array.isArray(queued))_pendingDomains=queued}catch(e){_pendingDomains={}}
@@ -108,10 +306,126 @@ function _restorePersistenceMetadata(){
 }
 _restorePersistenceMetadata();
 
+function emitLifeHubChange(detail){
+  detail=detail||{};
+  var payload=Object.assign({},detail,{
+    changeId:detail.changeId||('change-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8)),
+    timestamp:detail.timestamp||new Date().toISOString(),
+    domains:Array.isArray(detail.domains)?detail.domains.slice():[]
+  });
+  document.dispatchEvent(new CustomEvent('lifehub:change',{detail:payload}));
+  return payload.changeId;
+}
+function _slot(present,value){return {present:!!present,value:present?_clone(value):undefined}}
+function _sameSlot(a,b){return a.present===b.present&&(!a.present||_same(a.value,b.value))}
+function _mergeSlot(base,local,remote){
+  if(_sameSlot(local,remote))return {conflict:false,result:local};
+  if(_sameSlot(local,base))return {conflict:false,result:remote};
+  if(_sameSlot(remote,base))return {conflict:false,result:local};
+  return {conflict:true,local:local,cloud:remote};
+}
+function _assignSlot(target,key,slot){if(slot.present)target[key]=_clone(slot.value)}
+function _projectMergedHabit(habit){
+  habit.provenanceVersion=1;habit.logs={};
+  Object.keys(habit.logProvenance||{}).forEach(function(dateKey){if(_habitProvenancePresent(habit.logProvenance[dateKey]))habit.logs[dateKey]=true});
+  return habit;
+}
+function _mergeHabitSets(baseKeys,localKeys,remoteKeys){
+  var all={};(baseKeys||[]).concat(localKeys||[],remoteKeys||[]).forEach(function(key){all[key]=true});
+  var localResult=[],cloudResult=[],clean=true;
+  Object.keys(all).sort().forEach(function(key){
+    var merged=_mergeSlot(_slot((baseKeys||[]).indexOf(key)!==-1,true),_slot((localKeys||[]).indexOf(key)!==-1,true),_slot((remoteKeys||[]).indexOf(key)!==-1,true));
+    if(merged.conflict){clean=false;if(merged.local.present)localResult.push(key);if(merged.cloud.present)cloudResult.push(key)}
+    else{if(merged.result.present)localResult.push(key);if(merged.result.present)cloudResult.push(key)}
+  });
+  return {clean:clean,local:localResult,cloud:cloudResult};
+}
+function _mergeHabitProvenance(base,local,remote){
+  base=base||{};local=local||{};remote=remote||{};var dates={};
+  Object.keys(base).concat(Object.keys(local),Object.keys(remote)).forEach(function(key){dates[key]=true});
+  var localResult={},cloudResult={},clean=true;
+  Object.keys(dates).sort().forEach(function(dateKey){
+    var b=base[dateKey]||{},l=local[dateKey]||{},r=remote[dateKey]||{};
+    var localEntry={sources:{}},cloudEntry={sources:{}};
+    var manual=_mergeSlot(_slot(b.manual===true,true),_slot(l.manual===true,true),_slot(r.manual===true,true));
+    if(manual.conflict){clean=false;if(manual.local.present)localEntry.manual=true;if(manual.cloud.present)cloudEntry.manual=true}
+    else{if(manual.result.present)localEntry.manual=true;if(manual.result.present)cloudEntry.manual=true}
+    var sourceKeys={};Object.keys(b.sources||{}).concat(Object.keys(l.sources||{}),Object.keys(r.sources||{})).forEach(function(key){sourceKeys[key]=true});
+    Object.keys(sourceKeys).sort().forEach(function(sourceKey){
+      var source=_mergeSlot(_slot(!!(b.sources&&b.sources[sourceKey]),true),_slot(!!(l.sources&&l.sources[sourceKey]),true),_slot(!!(r.sources&&r.sources[sourceKey]),true));
+      if(source.conflict){clean=false;if(source.local.present)localEntry.sources[sourceKey]=true;if(source.cloud.present)cloudEntry.sources[sourceKey]=true}
+      else{if(source.result.present)localEntry.sources[sourceKey]=true;if(source.result.present)cloudEntry.sources[sourceKey]=true}
+    });
+    if(_habitProvenancePresent(localEntry))localResult[dateKey]=localEntry;
+    if(_habitProvenancePresent(cloudEntry))cloudResult[dateKey]=cloudEntry;
+  });
+  return {clean:clean,local:localResult,cloud:cloudResult};
+}
+function _mergeExistingHabit(base,local,remote){
+  var localResult={},cloudResult={},clean=true,conflicts=[];var fields={};
+  Object.keys(base).concat(Object.keys(local),Object.keys(remote)).forEach(function(key){if(key!=='logs'&&key!=='logProvenance'&&key!=='provenanceVersion'&&key!=='integrationKeys')fields[key]=true});
+  Object.keys(fields).sort().forEach(function(key){
+    var merged=_mergeSlot(_slot(Object.prototype.hasOwnProperty.call(base,key),base[key]),_slot(Object.prototype.hasOwnProperty.call(local,key),local[key]),_slot(Object.prototype.hasOwnProperty.call(remote,key),remote[key]));
+    if(merged.conflict){clean=false;conflicts.push(key);_assignSlot(localResult,key,merged.local);_assignSlot(cloudResult,key,merged.cloud)}
+    else{_assignSlot(localResult,key,merged.result);_assignSlot(cloudResult,key,merged.result)}
+  });
+  var integrations=_mergeHabitSets(base.integrationKeys,local.integrationKeys,remote.integrationKeys);
+  if(!integrations.clean){clean=false;conflicts.push('integrationKeys')}
+  localResult.integrationKeys=integrations.local;cloudResult.integrationKeys=integrations.cloud;
+  var provenance=_mergeHabitProvenance(base.logProvenance,local.logProvenance,remote.logProvenance);
+  if(!provenance.clean){clean=false;conflicts.push('logProvenance')}
+  localResult.logProvenance=provenance.local;cloudResult.logProvenance=provenance.cloud;
+  return {clean:clean,local:_projectMergedHabit(localResult),cloud:_projectMergedHabit(cloudResult),conflicts:conflicts};
+}
+function _habitMap(items){var map={};(items||[]).forEach(function(h){map[h.id]=h});return map}
+function _mergeHabitArrays(base,local,remote){
+  var bMap=_habitMap(base),lMap=_habitMap(local),rMap=_habitMap(remote),ids={};
+  Object.keys(bMap).concat(Object.keys(lMap),Object.keys(rMap)).forEach(function(id){ids[id]=true});
+  var order=[];(remote||[]).concat(local||[],base||[]).forEach(function(h){if(order.indexOf(h.id)===-1)order.push(h.id)});
+  var localOut=[],cloudOut=[],clean=true,conflicts=[];
+  order.forEach(function(id){if(!ids[id])return;var b=bMap[id],l=lMap[id],r=rMap[id];
+    if(b&&l&&r){
+      var habitMerge=_mergeExistingHabit(b,l,r);if(!habitMerge.clean){clean=false;conflicts.push({habitId:id,fields:habitMerge.conflicts})}
+      localOut.push(habitMerge.local);cloudOut.push(habitMerge.cloud);return;
+    }
+    var slotMerge=_mergeSlot(_slot(!!b,b),_slot(!!l,l),_slot(!!r,r));
+    if(slotMerge.conflict){clean=false;conflicts.push({habitId:id,fields:['record']});if(slotMerge.local.present)localOut.push(_clone(slotMerge.local.value));if(slotMerge.cloud.present)cloudOut.push(_clone(slotMerge.cloud.value));return}
+    if(slotMerge.result.present){localOut.push(_clone(slotMerge.result.value));cloudOut.push(_clone(slotMerge.result.value))}
+  });
+  return {clean:clean,merged:clean?localOut:null,localCandidate:localOut,cloudCandidate:cloudOut,conflicts:conflicts};
+}
+function _mergeHabitDomainChange(pending,remote){
+  if(!pending||pending.baseKnown!==true)return {clean:false,reason:'missing-base'};
+  var baseSlot=_slot(!pending.baseDeleted,pending.baseData),localSlot=_slot(!pending.deleted,pending.data),remoteSlot=_slot(!remote.deleted,remote.data);
+  if(baseSlot.present&&localSlot.present&&remoteSlot.present){
+    var baseCheck=validateHabitDomainData(baseSlot.value),localCheck=validateHabitDomainData(localSlot.value),remoteCheck=validateHabitDomainData(remoteSlot.value);
+    if(!baseCheck.ok||!localCheck.ok||!remoteCheck.ok)return {clean:false,reason:'invalid-candidate'};
+    var arrayMerge=_mergeHabitArrays(baseCheck.data,localCheck.data,remoteCheck.data);
+    if(arrayMerge.clean){
+      var mergedCheck=validateHabitDomainData(arrayMerge.merged);
+      if(mergedCheck.ok&&_same(mergedCheck.data,arrayMerge.merged)){arrayMerge.merged=mergedCheck.data;arrayMerge.localCandidate=mergedCheck.data;arrayMerge.cloudCandidate=mergedCheck.data;return arrayMerge}
+      return {clean:false,reason:mergedCheck.ok?'normalized-merged-result':'invalid-merged-result',localCandidate:localCheck.data,localDeleted:false,cloudCandidate:remoteCheck.data,cloudDeleted:false,conflicts:[{habitId:'domain',fields:['validation']}]};
+    }
+    var localCandidateCheck=validateHabitDomainData(arrayMerge.localCandidate),cloudCandidateCheck=validateHabitDomainData(arrayMerge.cloudCandidate);
+    if(!localCandidateCheck.ok||!cloudCandidateCheck.ok)return {clean:false,reason:'invalid-merged-candidate',localCandidate:localCheck.data,localDeleted:false,cloudCandidate:remoteCheck.data,cloudDeleted:false,conflicts:arrayMerge.conflicts};
+    arrayMerge.localCandidate=localCandidateCheck.data;arrayMerge.cloudCandidate=cloudCandidateCheck.data;return arrayMerge;
+  }
+  var merged=_mergeSlot(baseSlot,localSlot,remoteSlot);
+  if(!merged.conflict)return {clean:true,merged:merged.result.present?_clone(merged.result.value):null,deleted:!merged.result.present,localCandidate:merged.result.present?_clone(merged.result.value):null,cloudCandidate:merged.result.present?_clone(merged.result.value):null};
+  return {clean:false,reason:'delete-vs-edit',localCandidate:merged.local.present?_clone(merged.local.value):null,localDeleted:!merged.local.present,cloudCandidate:merged.cloud.present?_clone(merged.cloud.value):null,cloudDeleted:!merged.cloud.present,conflicts:[{habitId:'domain',fields:['record']}]};
+}
+
 function _queueDomain(domain,value,deleted,force){
   if(!_validDomainName(domain))return;
-  var existing=_pendingDomains[domain];
-  var item={domain:domain,data:deleted?null:_clone(value),deleted:!!deleted,baseRevision:existing?Number(existing.baseRevision||0):Number(_domainRevisions[domain]||0),queuedAt:new Date().toISOString(),clientId:_clientId};
+  var existing=_pendingDomains[domain];var cloudHas=Object.prototype.hasOwnProperty.call(_cloudData,domain);
+  var item={
+    domain:domain,data:deleted?null:_clone(value),deleted:!!deleted,
+    baseRevision:existing?Number(existing.baseRevision||0):Number(_domainRevisions[domain]||0),
+    baseKnown:existing?existing.baseKnown===true:!!_domainSnapshotLoaded,
+    baseData:existing?_clone(existing.baseData):(cloudHas?_clone(_cloudData[domain]):null),
+    baseDeleted:existing?!!existing.baseDeleted:!cloudHas,
+    queuedAt:new Date().toISOString(),clientId:_clientId
+  };
   if(!force&&existing&&existing.deleted===item.deleted&&_same(existing.data,item.data))return;
   _pendingDomains[domain]=item;
 }
@@ -126,13 +440,21 @@ function saveState(options){
   if(!validation.ok){console.error('State was not saved:',validation.errors);setSyncStatus('storage');_showTrustNotice('A data check stopped this save: '+validation.errors[0]);return false}
   var previous=_clone(_localSnapshots||{});
   var changed=_changedDomains(previous,STATE,!!options.forceAll);
+  if(!_persistLocalState())return false;
   if(!_syncReady)changed.forEach(function(domain){_bootstrapDirtyDomains[domain]=true});
-  _persistLocalState();
   if(_capturedUndo&&!options.suppressUndo&&changed.length){_undoRecord={label:_capturedUndo.label||options.undoLabel||'Change',state:_capturedUndo.state,createdAt:Date.now()};_capturedUndo=null;showUndoToast(_undoRecord.label)}else if(options.suppressUndo){_capturedUndo=null}
   _localSnapshots=_clone(STATE);
-  if(!_syncReady||!_firebaseReady||!syncDoc||!_authUser)return true;
+  if(!_syncReady)return true;
   changed.forEach(function(domain){var has=Object.prototype.hasOwnProperty.call(STATE,domain);_queueDomain(domain,STATE[domain],!has,!!options.forceAll)});
-  _persistQueue();_updateSyncPresentation();_scheduleCloudFlush();return true;
+  _persistQueue();_updateSyncPresentation();
+  if(_firebaseReady&&syncDoc&&_authUser)_scheduleCloudFlush();
+  else if(!_firebaseReady||!syncDoc)_setCloudIssue({code:'firebase-unavailable'},'write');
+  else if(!_authUser)_setCloudIssue({code:'unauthenticated'},'auth');
+  return true;
+}
+function saveStateOrRollback(snapshot,options){
+  if(saveState(options))return true;
+  STATE=_clone(snapshot);_capturedUndo=null;return false;
 }
 function captureUndoSnapshot(label){_capturedUndo={label:label||'Deleted item',state:_clone(STATE)}}
 function showUndoToast(label){
@@ -148,19 +470,60 @@ function undoLastChange(){
   if(typeof showCelebrationToast==='function')showCelebrationToast('Restored previous data','↩️');
 }
 function _updateSyncPresentation(){
+  if(!_cloudIssue&&typeof _authPersistenceError!=='undefined'&&_authPersistenceError)_cloudIssue=_classifyCloudError(_authPersistenceError,'auth-persistence');
   var conflicts=Object.keys(_syncConflicts).length;var pending=Object.keys(_pendingDomains).length;
-  var status=document.getElementById('sync-status');if(status){status.onclick=conflicts?openSyncReview:null;status.style.cursor=conflicts?'pointer':''}
+  var status=document.getElementById('sync-status');if(status){status.onclick=conflicts?openSyncReview:_cloudIssue?openSyncDetails:null;status.style.cursor=conflicts||_cloudIssue?'pointer':''}
   if(conflicts){setSyncStatus('conflict');_showTrustNotice(conflicts+' area'+(conflicts===1?'':'s')+' need'+(conflicts===1?'s':'')+' a sync choice.','Review sync',openSyncReview)}
   else if(_storageIssue){setSyncStatus('storage');_showTrustNotice(_storageMessage||'This device needs a storage check.')}
-  else if(_cloudIssue){setSyncStatus('error');_showTrustNotice(_cloudIssue)}
-  else if(pending){setSyncStatus(navigator.onLine?'saving':'queued');_hideTrustNotice()}
-  else{setSyncStatus('saved');_hideTrustNotice();setTimeout(function(){if(!Object.keys(_pendingDomains).length&&!Object.keys(_syncConflicts).length)setSyncStatus('idle')},1800)}
+  else if(_cloudIssue){
+    var issue=_cloudIssue;var statusName=issue.category==='auth'?'auth':issue.category==='auth-persistence'?'authPersistence':issue.category==='rules'?'rules':issue.category==='data'?'data':issue.category==='network'&&typeof navigator!=='undefined'&&!navigator.onLine?'queued':_syncRetryTimer?'retrying':'error';
+    var primaryLabel='',primaryFn=null;if(issue.category==='auth'){primaryLabel='Sign in';primaryFn=_showSignIn}else if(issue.retryable){primaryLabel='Retry';primaryFn=retryCloudSync}
+    setSyncStatus(statusName);_showTrustNotice(issue.message,primaryLabel,primaryFn,'Details',openSyncDetails);
+  }
+  else if(pending){setSyncStatus(typeof navigator!=='undefined'&&navigator.onLine?'saving':'queued');_hideTrustNotice()}
+  else{setSyncStatus('saved');_hideTrustNotice();setTimeout(function(){if(!Object.keys(_pendingDomains).length&&!Object.keys(_syncConflicts).length&&!_cloudIssue)setSyncStatus('idle')},1800)}
 }
-function _scheduleCloudFlush(){if(!_syncReady)return;clearTimeout(_syncTimeout);_syncTimeout=setTimeout(function(){_syncTimeout=null;_flushPendingWrites()},700)}
+function _cancelSyncRetry(resetAttempt){if(_syncRetryTimer){clearTimeout(_syncRetryTimer);_syncRetryTimer=null}if(resetAttempt)_syncRetryAttempt=0}
+function _scheduleSyncRetry(){
+  if(_syncRetryTimer||!_cloudIssue||!_cloudIssue.autoRetry||typeof navigator!=='undefined'&&!navigator.onLine)return;
+  var base=Math.min(_syncRetryMaxMs,1000*Math.pow(2,Math.min(_syncRetryAttempt,6)));var jitter=0.8+Math.random()*0.4;var delay=Math.min(_syncRetryMaxMs,Math.round(base*jitter));_syncRetryAttempt++;
+  _syncRetryTimer=setTimeout(function(){_syncRetryTimer=null;_attemptCloudRecovery(false)},delay);_updateSyncPresentation();
+}
+function _attemptCloudRecovery(manual){
+  if(manual)_cancelSyncRetry(true);
+  if(typeof navigator!=='undefined'&&!navigator.onLine){_updateSyncPresentation();return Promise.resolve(false)}
+  var issue=_cloudIssue;if(!issue)return Promise.resolve(true);
+  if(issue.category==='auth'){_showSignIn();return Promise.resolve(false)}
+  if(issue.operation==='auth-persistence'&&typeof configureLifeHubAuthPersistence==='function')return configureLifeHubAuthPersistence();
+  if(issue.operation==='write')return _flushPendingWrites();
+  if(issue.operation==='read'||issue.operation==='bootstrap')return _refreshFromCloud(issue.operation);
+  return Promise.all([_flushPendingWrites(),_refreshFromCloud()]);
+}
+function retryCloudSync(){return _attemptCloudRecovery(true)}
+function _scheduleCloudFlush(){if(!_syncReady||_syncRetryTimer)return;clearTimeout(_syncTimeout);_syncTimeout=setTimeout(function(){_syncTimeout=null;_flushPendingWrites()},700)}
 
-function _recordConflict(domain,pending,remote){
-  _syncConflicts[domain]={domain:domain,localData:_clone(pending.data),localDeleted:!!pending.deleted,localQueuedAt:pending.queuedAt||null,baseRevision:Number(pending.baseRevision||0),cloudData:remote.deleted?null:_clone(remote.data),cloudDeleted:!!remote.deleted,cloudRevision:Number(remote.revision||0),cloudUpdatedAt:remote.updatedAt||null};
-  delete _pendingDomains[domain];_persistQueue();_persistConflicts();_updateSyncPresentation();
+function _recordConflict(domain,pending,remote,merge){
+  merge=merge||{};
+  var hasLocalCandidate=Object.prototype.hasOwnProperty.call(merge,'localCandidate');
+  var hasCloudCandidate=Object.prototype.hasOwnProperty.call(merge,'cloudCandidate');
+  _syncConflicts[domain]={
+    domain:domain,
+    localData:hasLocalCandidate?_clone(merge.localCandidate):_clone(pending.data),
+    localDeleted:hasLocalCandidate?!!merge.localDeleted:!!pending.deleted,
+    localQueuedAt:pending.queuedAt||null,
+    baseRevision:Number(pending.baseRevision||0),
+    cloudData:hasCloudCandidate?_clone(merge.cloudCandidate):(remote.deleted?null:_clone(remote.data)),
+    cloudDeleted:hasCloudCandidate?!!merge.cloudDeleted:!!remote.deleted,
+    remoteData:remote.deleted?null:_clone(remote.data),
+    remoteDeleted:!!remote.deleted,
+    cloudRevision:Number(remote.revision||0),
+    cloudUpdatedAt:remote.updatedAt||null,
+    mergeReason:merge.reason||null,
+    conflictCount:Array.isArray(merge.conflicts)?merge.conflicts.length:0
+  };
+  var persisted=_persistConflicts();
+  if(persisted){delete _pendingDomains[domain];_persistQueue()}
+  _updateSyncPresentation();return persisted;
 }
 function _writeOneDomain(domain){
   var pending=_pendingDomains[domain];if(!pending||_syncConflicts[domain])return Promise.resolve();
@@ -168,26 +531,52 @@ function _writeOneDomain(domain){
   return db.runTransaction(function(tx){
     return tx.get(ref).then(function(snap){
       var remote=snap.exists?snap.data():{};var revision=Number(remote.revision||0);
-      if(revision!==Number(pending.baseRevision||0))return {conflict:true,remote:{data:remote.data,deleted:!!remote.deleted,revision:revision,updatedAt:_timestampText(remote.updatedAt)}};
-      tx.set(ref,{data:pending.deleted?null:pending.data,deleted:!!pending.deleted,revision:revision+1,schemaVersion:LIFEHUB_SCHEMA_VERSION,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedBy:_clientId});
-      return {conflict:false,revision:revision+1};
+      var writeData=pending.data,writeDeleted=!!pending.deleted,merge=null;
+      if(revision!==Number(pending.baseRevision||0)){
+        var remoteInfo={data:remote.data,deleted:!!remote.deleted,revision:revision,updatedAt:_timestampText(remote.updatedAt)};
+        if(domain!=='habits')return {conflict:true,remote:remoteInfo};
+        merge=_mergeHabitDomainChange(pending,remoteInfo);
+        if(!merge.clean)return {conflict:true,remote:remoteInfo,merge:merge};
+        writeDeleted=merge.deleted===true;writeData=writeDeleted?null:_clone(merge.merged);
+      }
+      tx.set(ref,{data:writeDeleted?null:writeData,deleted:writeDeleted,revision:revision+1,schemaVersion:LIFEHUB_SCHEMA_VERSION,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedBy:_clientId});
+      return {conflict:false,revision:revision+1,data:_clone(writeData),deleted:writeDeleted,merged:!!merge};
     });
   }).then(function(result){
-    if(result&&result.conflict){_recordConflict(domain,_pendingDomains[domain]||pending,result.remote);return}
+    if(result&&result.conflict){_recordConflict(domain,_pendingDomains[domain]||pending,result.remote,result.merge);return}
     _domainRevisions[domain]=result.revision;_domainExists[domain]=true;_persistRevisionMetadata();
-    if(pending.deleted)delete _cloudData[domain];else _cloudData[domain]=_clone(pending.data);
-    if(_pendingDomains[domain]!==pending){_pendingDomains[domain].baseRevision=result.revision;_persistQueue();return}
+    if(result.deleted)delete _cloudData[domain];else _cloudData[domain]=_clone(result.data);
+    if(_pendingDomains[domain]!==pending){
+      if(domain!=='habits'){
+        _pendingDomains[domain].baseRevision=result.revision;_pendingDomains[domain].baseKnown=true;_pendingDomains[domain].baseData=result.deleted?null:_clone(result.data);_pendingDomains[domain].baseDeleted=!!result.deleted;
+      }
+      _persistQueue();return;
+    }
+    if(result.merged){
+      _applyDomain(STATE,domain,{data:result.data,deleted:result.deleted});_localSnapshots=_clone(STATE);_persistLocalState();
+      emitLifeHubChange({action:'merge',domains:[domain],source:'sync'});
+    }
     delete _pendingDomains[domain];_persistQueue();
   });
 }
 function _flushPendingWrites(){
-  if(_syncWriting||!_syncReady||!_firebaseReady||!db||!syncDoc||!_authUser)return Promise.resolve();
-  var domains=Object.keys(_pendingDomains).filter(function(domain){return !_syncConflicts[domain]});if(!domains.length){_updateSyncPresentation();return Promise.resolve()}
-  _syncWriting=true;setSyncStatus('saving');
-  var chain=Promise.resolve();domains.forEach(function(domain){chain=chain.then(function(){return _writeOneDomain(domain)})});
+  if(_syncWriting||!_syncReady)return Promise.resolve(false);
+  if(!_firebaseReady||!db||!syncDoc||!_authUser){if(!_authUser&&Object.keys(_pendingDomains).length)_setCloudIssue({code:'unauthenticated'},'auth');return Promise.resolve(false)}
+  var domains=Object.keys(_pendingDomains).filter(function(domain){return !_syncConflicts[domain]});
+  if(!domains.length){_clearCloudIssue('write');_updateSyncPresentation();return Promise.resolve(true)}
+  _syncWriting=true;setSyncStatus('saving');var activeDomain=null;
+  var chain=Promise.resolve();domains.forEach(function(domain){chain=chain.then(function(){activeDomain=domain;return _writeOneDomain(domain)})});
   return chain.then(function(){
-    return syncDoc.set({schemaVersion:LIFEHUB_SCHEMA_VERSION,domainStorage:true,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedBy:_clientId},{merge:true}).catch(function(e){console.warn('Root sync metadata update failed:',e)});
-  }).then(function(){_cloudIssue=''}).catch(function(e){console.warn('Domain sync paused:',e);_cloudIssue='Cloud sync is paused. Your changes remain queued on this device.';setSyncStatus(navigator.onLine?'error':'queued')}).then(function(){_syncWriting=false;_updateSyncPresentation();if(Object.keys(_pendingDomains).length&&navigator.onLine)setTimeout(_flushPendingWrites,4000)});
+    // Domain documents are authoritative. Root metadata is legacy discovery data,
+    // so a metadata-only failure is logged without re-queuing successful domains.
+    return syncDoc.set({schemaVersion:LIFEHUB_SCHEMA_VERSION,domainStorage:true,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedBy:_clientId},{merge:true}).catch(function(e){console.warn('Non-critical root sync metadata update failed:',e)});
+  }).then(function(){_clearCloudIssue('write');return true}).catch(function(e){
+    console.warn('Domain sync paused:',e);_setCloudIssue(e,'write',{domain:activeDomain});return false;
+  }).then(function(ok){
+    _syncWriting=false;_updateSyncPresentation();
+    if(ok&&Object.keys(_pendingDomains).length&&!_cloudIssue)_scheduleCloudFlush();
+    return ok;
+  });
 }
 function _parseLegacyState(root){
   if(!root||!root.state)return null;
@@ -197,22 +586,22 @@ function _applyDomain(target,domain,record){if(record.deleted)delete target[doma
 function loadFromCloud(onDone){
   var called=false;function done(){if(called)return;called=true;if(onDone)onDone()}
   var localCandidate=_clone(STATE);var localCheck=validateLifeHubState(localCandidate,{importMode:false});if(!localCheck.ok){console.warn('Local state failed validation:',localCheck.errors);localCandidate=_clone(DEFAULT_STATE);_showTrustNotice('Local data failed a safety check. A safe copy was loaded instead while cloud recovery is attempted.')}
-  if(!_firebaseReady||!syncDoc){_cloudIssue='Cloud sync is unavailable. Changes will stay on this device.';STATE=localCandidate;_localSnapshots=_clone(STATE);setSyncStatus('error');done();return}
+  if(!_firebaseReady||!syncDoc){_setCloudIssue({code:'firebase-unavailable'},'bootstrap');STATE=localCandidate;_localSnapshots=_clone(STATE);done();return}
   _ensureSignedIn(function(user){
-    if(!user){_cloudIssue='Sign in is required before cloud sync can resume.';STATE=localCandidate;_localSnapshots=_clone(STATE);done();return}
-    var rootPromise=syncDoc.get().catch(function(e){console.warn('Legacy state load failed:',e);_cloudIssue='Cloud data could not be loaded. Changes remain local until sync recovers.';return null});
-    var domainsPromise=syncDoc.collection('domains').get().catch(function(e){console.warn('Domain state load failed:',e);_cloudIssue='Cloud data could not be loaded. Changes remain local until sync recovers.';return null});
+    if(!user){_setCloudIssue({code:'unauthenticated'},'auth');STATE=localCandidate;_localSnapshots=_clone(STATE);done();return}
+    var rootPromise=syncDoc.get().catch(function(e){console.warn('Non-critical legacy state load failed:',e);return null});
+    var domainsPromise=syncDoc.collection('domains').get();
     Promise.all([rootPromise,domainsPromise]).then(function(results){
-      var rootSnap=results[0];var query=results[1];_domainSnapshotLoaded=!!query;if(!query)throw new Error('Domain snapshot unavailable');var root=rootSnap&&rootSnap.exists?rootSnap.data():null;var legacy=_parseLegacyState(root);
+      var rootSnap=results[0];var query=results[1];_domainSnapshotLoaded=true;var root=rootSnap&&rootSnap.exists?rootSnap.data():null;var legacy=_parseLegacyState(root);
       _lastCloudUpdatedAt=root?_timestampText(root.updatedAt):null;
       var cloudBase=_clone(legacy||localCandidate||DEFAULT_STATE);_domainRevisions={};_domainExists={};
-      if(query)query.forEach(function(doc){var record=doc.data()||{};if(!_validDomainName(doc.id))return;_domainExists[doc.id]=true;_domainRevisions[doc.id]=Number(record.revision||0);_applyDomain(cloudBase,doc.id,record)});
+      query.forEach(function(doc){var record=doc.data()||{};if(!_validDomainName(doc.id))return;_domainExists[doc.id]=true;_domainRevisions[doc.id]=Number(record.revision||0);_applyDomain(cloudBase,doc.id,record)});
       var effective=_clone(cloudBase);
       Object.keys(_pendingDomains).forEach(function(domain){var item=_pendingDomains[domain];_applyDomain(effective,domain,item)});
       Object.keys(_syncConflicts).forEach(function(domain){var conflict=_syncConflicts[domain];_applyDomain(effective,domain,{data:conflict.localData,deleted:conflict.localDeleted})});
-      var check=validateLifeHubState(effective,{importMode:false});if(!check.ok)throw new Error('Combined cloud data failed validation: '+check.errors[0]);
-      STATE=effective;_cloudData=_clone(cloudBase);_localSnapshots=_clone(effective);_persistLocalState();_updateSyncPresentation();done();
-    }).catch(function(e){console.warn('Cloud bootstrap failed:',e);_cloudIssue='Cloud data could not be loaded. Changes remain local until sync recovers.';STATE=localCandidate;_localSnapshots=_clone(STATE);setSyncStatus('error');done()});
+      var check=validateLifeHubState(effective,{importMode:false});if(!check.ok){var validationError=new Error('Combined cloud data failed validation: '+check.errors[0]);validationError.code='data-validation';throw validationError}
+      STATE=effective;_cloudData=_clone(cloudBase);_localSnapshots=_clone(effective);_persistLocalState();_clearCloudIssue('bootstrap');_updateSyncPresentation();done();
+    }).catch(function(e){console.warn('Cloud bootstrap failed:',e);_setCloudIssue(e,'bootstrap');STATE=localCandidate;_localSnapshots=_clone(STATE);done()});
   });
 }
 function finishDataBootstrap(){
@@ -233,27 +622,94 @@ function finishDataBootstrap(){
 function _rerenderCurrentPage(){
   try{var active=document.querySelector('.page.active');var page=active?active.id.replace(/^page-/,''):'planner';if(typeof renderPage==='function')renderPage(page);else if(typeof renderPlanner==='function')renderPlanner();if(typeof updateAppBadge==='function')updateAppBadge()}catch(e){console.warn('Re-render failed:',e)}
 }
-function _refreshFromCloud(){
-  if(!_syncReady||!_firebaseReady||!syncDoc||!_authUser||_syncWriting)return;
-  syncDoc.collection('domains').get().then(function(query){_cloudIssue='';var changed=false;query.forEach(function(doc){
-    var domain=doc.id;if(!_validDomainName(domain))return;var record=doc.data()||{};var revision=Number(record.revision||0);if(revision<=Number(_domainRevisions[domain]||0))return;
-    var pending=_pendingDomains[domain];if(pending){_domainRevisions[domain]=revision;_domainExists[domain]=true;_applyDomain(_cloudData,domain,record);if(Number(pending.baseRevision||0)!==revision)_recordConflict(domain,pending,{data:record.data,deleted:!!record.deleted,revision:revision,updatedAt:_timestampText(record.updatedAt)});return}
-    if(_syncConflicts[domain])return;_domainRevisions[domain]=revision;_domainExists[domain]=true;_applyDomain(STATE,domain,record);_applyDomain(_cloudData,domain,record);changed=true;
-  });_domainSnapshotLoaded=true;_domainKeys(STATE).forEach(function(domain){if(!_domainExists[domain]&&!_pendingDomains[domain]&&!_syncConflicts[domain])_queueDomain(domain,STATE[domain],false,false)});_persistQueue();if(changed){_localSnapshots=_clone(STATE);_persistLocalState();_rerenderCurrentPage()}_updateSyncPresentation();_scheduleCloudFlush()}).catch(function(e){console.warn('Cloud refresh failed:',e);_cloudIssue='Cloud refresh is paused. Local changes remain safe on this device.';_updateSyncPresentation()});
+function _refreshFromCloud(recoveryOperation){
+  var operation=recoveryOperation||'read';
+  if(!_syncReady||!_firebaseReady||!syncDoc||!_authUser||_syncWriting)return Promise.resolve(false);
+  return syncDoc.collection('domains').get().then(function(query){
+    var incoming=[];
+    // Validate and normalize every incoming Habit domain before applying any
+    // remote changes, so one malformed record cannot partially mutate state.
+    query.forEach(function(doc){
+      var domain=doc.id;if(!_validDomainName(domain))return;
+      var record=doc.data()||{},revision=Number(record.revision||0);
+      if(revision<=Number(_domainRevisions[domain]||0))return;
+      if(domain==='habits'&&!record.deleted){
+        var habitCheck=validateHabitDomainData(record.data);
+        if(!habitCheck.ok){var error=new Error('Synced habits failed validation: '+habitCheck.errors[0]);error.code='data-validation';throw error}
+        record.data=habitCheck.data;
+      }
+      incoming.push({domain:domain,record:record,revision:revision});
+    });
+    var changed=false,changedDomains=[];
+    incoming.forEach(function(item){
+      var domain=item.domain,record=item.record,revision=item.revision;
+      var remoteInfo={data:record.data,deleted:!!record.deleted,revision:revision,updatedAt:_timestampText(record.updatedAt)};
+      var pending=_pendingDomains[domain];
+      if(pending){
+        if(domain==='habits'){
+          var merge=_mergeHabitDomainChange(pending,remoteInfo);
+          if(merge.clean){
+            pending.data=merge.deleted?null:_clone(merge.merged);pending.deleted=merge.deleted===true;
+            pending.baseRevision=revision;pending.baseKnown=true;pending.baseData=record.deleted?null:_clone(record.data);pending.baseDeleted=!!record.deleted;pending.queuedAt=new Date().toISOString();
+            _applyDomain(STATE,domain,{data:pending.data,deleted:pending.deleted});changed=true;changedDomains.push(domain);
+          }else{
+            _recordConflict(domain,pending,remoteInfo,merge);
+            var conflict=_syncConflicts[domain];if(conflict){_applyDomain(STATE,domain,{data:conflict.localData,deleted:conflict.localDeleted});changed=true;changedDomains.push(domain)}
+          }
+        }else _recordConflict(domain,pending,remoteInfo);
+        _domainRevisions[domain]=revision;_domainExists[domain]=true;_applyDomain(_cloudData,domain,record);return;
+      }
+      if(_syncConflicts[domain])return;
+      _domainRevisions[domain]=revision;_domainExists[domain]=true;_applyDomain(STATE,domain,record);_applyDomain(_cloudData,domain,record);changed=true;changedDomains.push(domain);
+    });
+    _domainSnapshotLoaded=true;_domainKeys(STATE).forEach(function(domain){if(!_domainExists[domain]&&!_pendingDomains[domain]&&!_syncConflicts[domain])_queueDomain(domain,STATE[domain],false,false)});_persistQueue();
+    if(changed){
+      var stateCheck=validateLifeHubState(STATE,{importMode:false});if(!stateCheck.ok){var stateError=new Error('Synced data failed validation: '+stateCheck.errors[0]);stateError.code='data-validation';throw stateError}
+      _localSnapshots=_clone(STATE);_persistLocalState();_rerenderCurrentPage();emitLifeHubChange({action:'remote-apply',domains:changedDomains,source:'sync'});
+    }
+    _persistRevisionMetadata();_clearCloudIssue(operation);_updateSyncPresentation();_scheduleCloudFlush();return true;
+  }).catch(function(e){console.warn('Cloud refresh failed:',e);_setCloudIssue(e,operation);return false});
 }
 document.addEventListener('visibilitychange',function(){if(!document.hidden)_refreshFromCloud()});
-window.addEventListener('focus',_refreshFromCloud);
-window.addEventListener('online',function(){_updateSyncPresentation();_flushPendingWrites();_refreshFromCloud()});
-window.addEventListener('offline',_updateSyncPresentation);
+window.addEventListener('focus',function(){_refreshFromCloud()});
+window.addEventListener('online',function(){_cancelSyncRetry(true);if(_cloudIssue)_attemptCloudRecovery(false);else{_updateSyncPresentation();_flushPendingWrites();_refreshFromCloud()}});
+window.addEventListener('offline',function(){_cancelSyncRetry(false);_updateSyncPresentation()});
+
+function handleLifeHubAuthPersistenceResult(error){
+  if(error)_setCloudIssue(error,'auth-persistence');
+  else{if(typeof _authPersistenceError!=='undefined')_authPersistenceError=null;_clearCloudIssue('auth-persistence');_updateSyncPresentation()}
+}
+function handleLifeHubSyncAuthState(user,error){
+  if(user){_clearCloudIssue('auth');_updateSyncPresentation();if(_syncReady){_flushPendingWrites();_refreshFromCloud()}}
+  else{_cancelSyncRetry(false);_setCloudIssue(error||{code:'unauthenticated'},'auth')}
+}
+
+function openSyncDetails(){
+  var issue=_cloudIssue;if(!issue)return;
+  var modal=document.getElementById('modal');var content=document.getElementById('modal-content');if(!modal||!content)return;content.textContent='';
+  var title=document.createElement('h2');title.textContent='Cloud sync details';content.appendChild(title);
+  var sub=document.createElement('div');sub.className='modal-sub';sub.textContent=issue.guidance;content.appendChild(sub);
+  var details=document.createElement('dl');details.className='sync-detail-list';
+  [['Category',issue.category],['Code',issue.code],['Operation',issue.operation],['Area',issue.domain||'Not specified'],['Queued areas',String(Object.keys(_pendingDomains).length)],['Recorded',new Date(issue.occurredAt).toLocaleString()]].forEach(function(pair){var dt=document.createElement('dt');dt.textContent=pair[0];var dd=document.createElement('dd');dd.textContent=pair[1];details.appendChild(dt);details.appendChild(dd)});content.appendChild(details);
+  var note=document.createElement('p');note.className='sync-detail-note';note.textContent='Local data and queued changes have not been deleted.';content.appendChild(note);
+  var actions=document.createElement('div');actions.className='modal-btns';
+  if(issue.category==='auth'){var signIn=document.createElement('button');signIn.type='button';signIn.className='btn btn-accent';signIn.textContent='Sign in';signIn.onclick=function(){closeModal();_showSignIn()};actions.appendChild(signIn)}
+  else if(issue.retryable){var retry=document.createElement('button');retry.type='button';retry.className='btn btn-accent';retry.textContent='Retry now';retry.onclick=function(){closeModal();retryCloudSync()};actions.appendChild(retry)}
+  var close=document.createElement('button');close.type='button';close.className='btn';close.textContent='Close';close.onclick=closeModal;actions.appendChild(close);content.appendChild(actions);modal.style.display='flex';
+}
 
 function openSyncReview(){
   var modal=document.getElementById('modal');var content=document.getElementById('modal-content');if(!modal||!content)return;content.textContent='';
   var title=document.createElement('h2');title.textContent='Review sync choices';content.appendChild(title);
-  var sub=document.createElement('div');sub.className='modal-sub';sub.textContent='Another device changed the same area. Choose which version to keep for each area.';content.appendChild(sub);
+  var sub=document.createElement('div');sub.className='modal-sub';sub.textContent='Independent habit changes are combined automatically. These choices contain only overlapping edits or changes without a reliable merge base.';content.appendChild(sub);
   var list=document.createElement('div');list.className='sync-conflict-list';content.appendChild(list);
   var domains=Object.keys(_syncConflicts);domains.forEach(function(domain){var item=_syncConflicts[domain];var row=document.createElement('section');row.className='sync-conflict-item';
     var name=document.createElement('strong');name.textContent=domain.replace(/^__/,'').replace(/([A-Z])/g,' $1');row.appendChild(name);
-    var detail=document.createElement('div');detail.className='sync-conflict-meta';detail.textContent='This device started at revision '+item.baseRevision+'; synced version is revision '+item.cloudRevision+'.';row.appendChild(detail);
+    var detail=document.createElement('div');detail.className='sync-conflict-meta';
+    detail.textContent=item.mergeReason==='missing-base'
+      ?'This queued change predates merge-base tracking, so an explicit choice is safest.'
+      :(item.conflictCount?item.conflictCount+' overlapping change'+(item.conflictCount===1?'':'s')+' remain after combining everything else.':'This device started at revision '+item.baseRevision+'; synced version is revision '+item.cloudRevision+'.');
+    row.appendChild(detail);
     var actions=document.createElement('div');actions.className='sync-conflict-actions';
     var keep=document.createElement('button');keep.type='button';keep.className='btn btn-sm btn-accent';keep.textContent='Keep this device';keep.onclick=function(){resolveSyncConflict(domain,'local')};actions.appendChild(keep);
     var cloud=document.createElement('button');cloud.type='button';cloud.className='btn btn-sm';cloud.textContent='Use synced version';cloud.onclick=function(){resolveSyncConflict(domain,'cloud')};actions.appendChild(cloud);row.appendChild(actions);list.appendChild(row);
@@ -263,11 +719,34 @@ function openSyncReview(){
 }
 function resolveSyncConflict(domain,choice){
   var item=_syncConflicts[domain];if(!item)return;
-  if(choice==='cloud'){
-    _applyDomain(STATE,domain,{data:item.cloudData,deleted:item.cloudDeleted});_applyDomain(_cloudData,domain,{data:item.cloudData,deleted:item.cloudDeleted});_domainRevisions[domain]=item.cloudRevision;_domainExists[domain]=true;delete _syncConflicts[domain];_localSnapshots=_clone(STATE);_persistLocalState();_persistConflicts();_rerenderCurrentPage();_updateSyncPresentation();openSyncReview();return;
+  var chosenData=choice==='cloud'?item.cloudData:item.localData;
+  var chosenDeleted=choice==='cloud'?item.cloudDeleted:item.localDeleted;
+  if(domain==='habits'&&!chosenDeleted){
+    var habitCheck=validateHabitDomainData(chosenData);
+    if(!habitCheck.ok){_setCloudIssue({code:'data-validation'},'conflict',{domain:domain});return}
+    chosenData=habitCheck.data;
   }
-  _domainRevisions[domain]=item.cloudRevision;_domainExists[domain]=true;_applyDomain(_cloudData,domain,{data:item.cloudData,deleted:item.cloudDeleted});
-  _pendingDomains[domain]={domain:domain,data:_clone(item.localData),deleted:!!item.localDeleted,baseRevision:item.cloudRevision,queuedAt:new Date().toISOString(),clientId:_clientId};delete _syncConflicts[domain];_persistConflicts();_persistQueue();_updateSyncPresentation();openSyncReview();_flushPendingWrites();
+  var snapshot=_clone(STATE),pendingSnapshot=_clone(_pendingDomains),revisionSnapshot=_domainRevisions[domain],existsSnapshot=_domainExists[domain];
+  var cloudHad=Object.prototype.hasOwnProperty.call(_cloudData,domain),cloudSnapshot=cloudHad?_clone(_cloudData[domain]):null;
+  var remoteData=Object.prototype.hasOwnProperty.call(item,'remoteData')?item.remoteData:item.cloudData;
+  var remoteDeleted=Object.prototype.hasOwnProperty.call(item,'remoteDeleted')?item.remoteDeleted:item.cloudDeleted;
+  var matchesRemote=chosenDeleted===remoteDeleted&&(chosenDeleted||_same(chosenData,remoteData));
+  _applyDomain(STATE,domain,{data:chosenData,deleted:chosenDeleted});_domainRevisions[domain]=item.cloudRevision;_domainExists[domain]=true;_applyDomain(_cloudData,domain,{data:remoteData,deleted:remoteDeleted});
+  if(matchesRemote)delete _pendingDomains[domain];
+  else _pendingDomains[domain]={domain:domain,data:chosenDeleted?null:_clone(chosenData),deleted:!!chosenDeleted,baseRevision:item.cloudRevision,baseKnown:true,baseData:remoteDeleted?null:_clone(remoteData),baseDeleted:!!remoteDeleted,queuedAt:new Date().toISOString(),clientId:_clientId};
+  if(!_persistLocalState()||!_persistQueue()){
+    STATE=snapshot;_pendingDomains=pendingSnapshot;
+    if(revisionSnapshot===undefined)delete _domainRevisions[domain];else _domainRevisions[domain]=revisionSnapshot;
+    if(existsSnapshot===undefined)delete _domainExists[domain];else _domainExists[domain]=existsSnapshot;
+    if(cloudHad)_cloudData[domain]=cloudSnapshot;else delete _cloudData[domain];
+    _persistLocalState();_persistQueue();_updateSyncPresentation();return;
+  }
+  delete _syncConflicts[domain];
+  if(!_persistConflicts()){
+    _syncConflicts[domain]=item;_updateSyncPresentation();return;
+  }
+  _localSnapshots=_clone(STATE);_persistRevisionMetadata();_updateSyncPresentation();_rerenderCurrentPage();
+  emitLifeHubChange({action:'conflict-resolved',domains:[domain],source:'local',choice:choice,rendered:true});openSyncReview();if(!matchesRemote)_flushPendingWrites();
 }
 
 function _downloadJson(payload,name){var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},0)}

@@ -2,6 +2,17 @@
 // ============================================================
 var finCharts={};
 function destroyFC(id){if(finCharts[id]){finCharts[id].destroy();delete finCharts[id]}}
+
+// The single definition of the planned monthly money figures. Extracted from the
+// inline computation that used to live in buildDashboardViewModel so the
+// Dashboard view model and the numbers surface read the same numbers.
+// Requirements 12.4, 12.9.
+function financeTotals(){
+  var income=(STATE.income||[]).reduce(function(sum,item){return sum+Number(item.amount||0)},0);
+  var expenses=(STATE.expenses||[]).reduce(function(sum,item){return sum+Number(item.amount||0)},0);
+  var savings=(STATE.accounts||[]).filter(function(account){return /sav/i.test(String(account.type||''))}).reduce(function(sum,account){return sum+Number(account.balance||0)},0);
+  return {income:income,expenses:expenses,margin:income-expenses,savings:savings};
+}
 function renderFinance(tab){if(tab==='plan'||!tab)renderFinancePlan();if(tab==='progress')renderFinanceProgress();
 // Legacy tab names — still called from other places
 if(tab==='overview')renderFinancePlan();if(tab==='budget')renderFinancePlan();if(tab==='accounts')renderFinanceProgress();if(tab==='debts')renderFinanceProgress();if(tab==='savings')renderFinanceProgress()}
@@ -118,6 +129,7 @@ function setDebtMonthlyTarget(id,val){
   d.monthlyTarget=Number(val)||0;
   saveState();
   renderFinanceMathHero();
+  renderDebts();
 }
 function setSavingsMonthlyContribution(id,val){
   var sg=(STATE.savingsGoals||[]).find(function(x){return x.id===id});
@@ -411,7 +423,6 @@ function renderDebtPlan(){
   el.innerHTML=h;
 }
 function renderDebtPayoffPlanner(){renderDebtPlan()}
-function renderDebtPaymentHistory(){}
 function togglePlannedPayment(id){var pp=(STATE.plannedPayments||[]).find(function(p){return p.id===id});if(!pp)return;pp.paid=!pp.paid;if(pp.paid&&!pp.wasPaid){pp.wasPaid=true;var debt=(STATE.debts||[]).find(function(d){return d.id===pp.debtId});if(debt){debt.balance=Math.max(0,Number(debt.balance)-Number(pp.amount));if(!STATE.debtPayments)STATE.debtPayments=[];STATE.debtPayments.push({id:g(),debtId:pp.debtId,amount:Number(pp.amount),date:localDateKey(new Date()),note:'Planned: '+(pp.note||'')})}}else if(!pp.paid&&pp.wasPaid){pp.wasPaid=false;var debt2=(STATE.debts||[]).find(function(d){return d.id===pp.debtId});if(debt2)debt2.balance=Number(debt2.balance)+Number(pp.amount);STATE.debtPayments=(STATE.debtPayments||[]).filter(function(p){return !(p.debtId===pp.debtId&&p.note&&p.note.startsWith('Planned:')&&Number(p.amount)===Number(pp.amount))})}saveState();renderDebts();refreshRoadmapLiveCards()}
 function deletePlannedPayment(id){confirmDelete('Remove this planned payment?',function(){STATE.plannedPayments=(STATE.plannedPayments||[]).filter(function(p){return p.id!==id});saveState();renderDebts()})}
 function savePlannedPayment(){var debtId=(document.getElementById('m-ppdebt')||{}).value;var amount=Number((document.getElementById('m-ppamount')||{}).value)||0;if(!debtId||!amount)return;var date=(document.getElementById('m-ppdate')||{}).value||'';var note=(document.getElementById('m-ppnote')||{}).value||'';var month=new Date().toISOString().slice(0,7);if(date)month=date.slice(0,7);if(!STATE.plannedPayments)STATE.plannedPayments=[];STATE.plannedPayments.push({id:g(),debtId:debtId,amount:amount,date:date,note:note,month:month,paid:false});saveState();closeModal();renderDebts()}

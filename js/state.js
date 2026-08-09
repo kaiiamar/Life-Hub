@@ -6,17 +6,35 @@ var db = null, auth = null, syncDoc = null, _syncTimeout = null, _firebaseReady 
 // Authentication is shared by Firestore sync and the protected notification API.
 // Revisioned domain sync, offline queuing and conflicts live in persistence.js.
 var _authUser = null, _lastCloudUpdatedAt = null, _bootCb = null, _bootDone = false;
+var _authPersistenceReady=Promise.resolve(false),_authPersistenceError=null;
 
-function setSyncStatus(s){var el=document.getElementById('sync-status');if(!el)return;var m={saving:{text:'Syncing...',color:'var(--amber)'},queued:{text:'Queued offline',color:'var(--amber)'},saved:{text:'Synced \u2713',color:'var(--mint)'},conflict:{text:'Review sync',color:'var(--accent)'},storage:{text:'Storage needs attention',color:'var(--amber)'},error:{text:'Offline \u2014 queued',color:'var(--text3)'},idle:{text:'',color:'transparent'}};var x=m[s]||m.idle;el.textContent=x.text;el.style.color=x.color;el.setAttribute('aria-live','polite')}
+function setSyncStatus(s){var el=document.getElementById('sync-status');if(!el)return;var m={saving:{text:'Syncing...',color:'var(--amber)'},retrying:{text:'Waiting to retry',color:'var(--amber)'},queued:{text:'Queued offline',color:'var(--amber)'},saved:{text:'Synced \u2713',color:'var(--mint)'},conflict:{text:'Review sync',color:'var(--accent)'},storage:{text:'Storage needs attention',color:'var(--amber)'},auth:{text:'Sign in required',color:'var(--amber)'},authPersistence:{text:'Session storage limited',color:'var(--amber)'},rules:{text:'Sync permission blocked',color:'var(--clay)'},data:{text:'Sync data needs attention',color:'var(--clay)'},error:{text:'Sync needs attention',color:'var(--text3)'},idle:{text:'',color:'transparent'}};var x=m[s]||m.idle;el.textContent=x.text;el.style.color=x.color;el.setAttribute('aria-live','polite')}
+
+function configureLifeHubAuthPersistence(){
+  if(!auth||typeof firebase==='undefined'||!firebase.auth){_authPersistenceReady=Promise.resolve(false);return _authPersistenceReady}
+  var request;try{request=auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)}catch(error){request=Promise.reject(error)}
+  _authPersistenceReady=Promise.resolve(request).then(function(){
+    _authPersistenceError=null;
+    if(typeof handleLifeHubAuthPersistenceResult==='function')handleLifeHubAuthPersistenceResult(null);
+    return true;
+  }).catch(function(error){
+    _authPersistenceError=error||new Error('Auth persistence unavailable');
+    console.warn('Firebase auth persistence is unavailable:',error);
+    setSyncStatus('authPersistence');
+    if(typeof handleLifeHubAuthPersistenceResult==='function')handleLifeHubAuthPersistenceResult(_authPersistenceError);
+    return false;
+  });
+  return _authPersistenceReady;
+}
 
 try{
   var firebaseConfig={apiKey:"AIzaSyB8SO0TemJ-D-9bktrmRTVjQrY5CIHdlRQ",authDomain:"kai-life-hub.firebaseapp.com",projectId:"kai-life-hub",storageBucket:"kai-life-hub.firebasestorage.app",messagingSenderId:"82635096592",appId:"1:82635096592:web:bccea46147417eb2fe8095"};
   firebase.initializeApp(firebaseConfig);
   db=firebase.firestore();
   auth=firebase.auth();
-  try{auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)}catch(e){}
   syncDoc=db.collection('users').doc('kai');
   _firebaseReady=true;
+  configureLifeHubAuthPersistence();
 }catch(e){console.warn('Firebase init failed:',e);setSyncStatus('error')}
 
 function loadState(){try{var v=localStorage.getItem(KEY);return v?JSON.parse(v):null}catch(e){return null}}
@@ -61,15 +79,22 @@ function lifeHubApiFetch(url,options){
 function _ensureSignedIn(cb){
   if(!auth){cb(null);return}
   _bootCb=cb;
-  auth.onAuthStateChanged(function(user){
-    _authUser=user||null;
-    if(user){
-      try{console.log('LifeHub signed in as',user.email,'uid:',user.uid)}catch(e){}
-      _hideSignIn();
-      if(!_bootDone){_bootDone=true;if(_bootCb)_bootCb(user)}
-    }else{
+  Promise.resolve(_authPersistenceReady).then(function(){
+    auth.onAuthStateChanged(function(user){
+      _authUser=user||null;
+      if(typeof handleLifeHubSyncAuthState==='function')handleLifeHubSyncAuthState(_authUser);
+      if(user){
+        try{console.log('LifeHub signed in as',user.email,'uid:',user.uid)}catch(e){}
+        _hideSignIn();
+        if(!_bootDone){_bootDone=true;if(_bootCb)_bootCb(user)}
+      }else{
+        _showSignIn();
+      }
+    },function(error){
+      console.warn('Firebase auth state could not be read:',error);
+      if(typeof handleLifeHubSyncAuthState==='function')handleLifeHubSyncAuthState(null,error);
       _showSignIn();
-    }
+    });
   });
 }
 
@@ -103,12 +128,13 @@ function lhSignIn(){
   if(!em||!pw){if(err)err.textContent='Enter your email and password.';return}
   if(err)err.textContent='';
   var btn=document.getElementById('lh-signin-btn');if(btn){btn.disabled=true;btn.textContent='Signing in\u2026'}
-  auth.signInWithEmailAndPassword(em,pw).catch(function(e){
+  Promise.resolve(_authPersistenceReady).then(function(){return auth.signInWithEmailAndPassword(em,pw)}).catch(function(e){
     if(err)err.textContent=(e&&e.message)?e.message:'Sign-in failed.';
-  }).finally(function(){if(btn){btn.disabled=false;btn.textContent='Sign in'}});
+  }).then(function(){if(btn){btn.disabled=false;btn.textContent='Sign in'}});
 }
 
 function g(){return Math.random().toString(36).slice(2,9)}
+var DEFAULT_HABIT_START=(function(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')})();
 
 // NOTE: This is generic placeholder/seed data only. It is what a brand-new
 // user sees before any real data exists. Real personal data is never stored
@@ -121,9 +147,9 @@ var DEFAULT_STATE = {
     {id:g(),name:'Sample finance goal',cat:'Finance',badge:'fin',desc:'Edit or replace this example goal',target:1000,unit:'\u00a3',direction:'up',deadline:'2026-12-31',progress:0,subGoals:[]},
   ],
   habits:[
-    {id:g(),name:'Daily steps',freq:'daily',badge:'fit',logs:{}},
-    {id:g(),name:'Skincare AM',freq:'daily',badge:'per',logs:{}},
-    {id:g(),name:'Skincare PM',freq:'daily',badge:'per',logs:{}},
+    {id:g(),name:'Daily steps',freq:'daily',badge:'fit',icon:'👟',note:'',anchor:'anytime',startDate:DEFAULT_HABIT_START,lifecycle:{version:1,inactivePeriods:[]},integrationKeys:[],provenanceVersion:1,logProvenance:{},logs:{}},
+    {id:g(),name:'Skincare AM',freq:'daily',badge:'per',icon:'☀️',note:'',anchor:'morning',startDate:DEFAULT_HABIT_START,lifecycle:{version:1,inactivePeriods:[]},integrationKeys:['lifehub.skincare.am'],provenanceVersion:1,logProvenance:{},logs:{}},
+    {id:g(),name:'Skincare PM',freq:'daily',badge:'per',icon:'🌙',note:'',anchor:'evening',startDate:DEFAULT_HABIT_START,lifecycle:{version:1,inactivePeriods:[]},integrationKeys:['lifehub.skincare.pm'],provenanceVersion:1,logProvenance:{},logs:{}},
   ],
   workouts:[],
   prs:{},
@@ -145,7 +171,7 @@ var DEFAULT_STATE = {
   savingsGoals:[
     {id:'sg1',name:'Emergency Fund',target:0,current:0,priority:'Medium',icon:'\ud83d\udea8',color:'#f59e0b',deadline:'2026-12-31',note:''},
   ],
-  metrics:{weight:[],bodyFat:[],steps:[],runs:[],moneySaved:[],projectsDone:[]},
+  metrics:{weight:[],bodyFat:[],steps:[],run:[],moneySaved:[],projectsDone:[]},
   weeklyPlans:{},reviews:{monthly:{},quarterly:{}},
   dailyPriorities:{},
   trainingEvents:[],
@@ -161,11 +187,25 @@ var DEFAULT_STATE = {
   roadmapChecklist:{},
   debtPayments:[],
   plannedPayments:[],
+  // Dated net-worth snapshots, one per day: {date:'YYYY-MM-DD', value:Number}.
+  netWorthSnapshots:[],
   reminders:[],
   water:{},
+  // Hydration preferences: {target:glasses, glassMl:size}.
+  waterSettings:{},
   commitments:[],
   weeklyIntentions:{},
-  weeklyIntention:null
+  weeklyIntention:null,
+  // Per-day evening sweep progress, keyed by YYYY-MM-DD.
+  sweep:{},
+  // Single record of daily-loop bookkeeping: acknowledgements shown, the last
+  // badge value written, push registration status and the net-worth prompt month.
+  companion:{
+    acks:{dayComplete:null,focusSlate:null},
+    badge:{value:0,writtenAt:null},
+    push:{registeredAt:null,endpointHash:null,lastAttemptAt:null,lastError:null},
+    netWorthPromptMonth:null
+  }
 };
 
 var STATE = loadState() || JSON.parse(JSON.stringify(DEFAULT_STATE));

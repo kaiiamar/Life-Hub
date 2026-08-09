@@ -14,27 +14,173 @@ var qEl=document.getElementById('sidebar-quote');if(qEl)qEl.textContent=quotes[M
   }
 })();
 
+function _lifeHubPageActive(page){var el=document.getElementById('page-'+page);return !!(el&&el.classList.contains('active'))}
+document.addEventListener('lifehub:change',function(event){
+  var detail=event.detail||{};if(detail.rendered||detail.source==='sync')return;
+  var domains=detail.domains||[],habitsChanged=domains.indexOf('habits')!==-1;
+  var movementChanged=domains.indexOf('workouts')!==-1||domains.indexOf('metrics')!==-1;
+  if(habitsChanged&&_lifeHubPageActive('habits')&&typeof renderHabits==='function')renderHabits();
+  if((habitsChanged||movementChanged)&&_lifeHubPageActive('planner')&&typeof renderPlanner==='function')renderPlanner();
+  if((habitsChanged||movementChanged)&&typeof refreshDashboardIfActive==='function')refreshDashboardIfActive();
+  if(habitsChanged&&_lifeHubPageActive('skincare')&&typeof renderSkincareToday==='function')renderSkincareToday();
+  if(movementChanged&&_lifeHubPageActive('workout')&&typeof renderWorkout==='function')renderWorkout();
+});
+
+// ---- MONDAY WEEK KEY REMAP (body of the __mondayWeeksV1 migration) --------
+// weekKey() is Monday-anchored (Design Decision 2), so every weekly key an older
+// client wrote points at the Sunday that started its week. A Sunday week S…S+6
+// overlaps the Monday week S+1…S+7 in six of its seven days and the previous
+// Monday week in one, so majority overlap gives S → S+1 — mondayKeyForWeekKey()
+// in js/navigation.js.
+//
+// Called once from the loadFromCloud callback below, after the migrateKeys
+// backfill and before the first render; a named function rather than an inline
+// block so Property 15 can drive it directly instead of only as a side effect of
+// load. Returns true when it changed something.
+//
+// Every key is checked with isMondayKey() and skipped when it already is one, so
+// a second run is a no-op whatever the __mondayWeeksV1 flag says. A key that is
+// not a valid date key is left exactly where it is.
+//
+// STATE.weeklyPlans is deliberately not remapped: it is pre-migration legacy read
+// only by __tasksMigrated, which has already run (Data Models → "Migrations").
+function migrateMondayWeekKeys(state){
+  if(!state||typeof state!=='object')return false;
+  if(typeof isMondayKey!=='function'||typeof mondayKeyForWeekKey!=='function')return false;
+  var changed=false;
+  function remappable(key){return typeof key==='string'&&(typeof _validDateKey==='function'?_validDateKey(key):/^\d{4}-\d{2}-\d{2}$/.test(key))}
+  function isPlainMap(value){return !!value&&typeof value==='object'&&!Array.isArray(value)}
+  // The losing record of a collision, parked verbatim where no UI reads it. Never
+  // overwrites an entry already there — a taken slot gets a #n suffix — so this
+  // store only ever accumulates.
+  function legacyPut(label,key,record){
+    if(!isPlainMap(state.weeklyIntentionsLegacy))state.weeklyIntentionsLegacy={};
+    var base=label?label+':'+key:key,slot=base,n=2;
+    while(Object.prototype.hasOwnProperty.call(state.weeklyIntentionsLegacy,slot)){slot=base+'#'+n;n++}
+    state.weeklyIntentionsLegacy[slot]=record;
+  }
+  // Rebuild `map` with Sunday keys moved onto their Monday keys. A target that is
+  // already occupied keeps its own value; the source record goes to the legacy
+  // store rather than being dropped.
+  function remapMap(map,label,stampWeekKey){
+    var keys=Object.keys(map),moving=keys.filter(function(k){return remappable(k)&&!isMondayKey(k)});
+    if(!moving.length)return map;
+    var next={};
+    keys.forEach(function(k){if(moving.indexOf(k)===-1)next[k]=map[k]});
+    moving.sort().forEach(function(k){
+      var target=mondayKeyForWeekKey(k),record=map[k];
+      if(Object.prototype.hasOwnProperty.call(next,target)){legacyPut(label,k,record);return}
+      if(stampWeekKey&&isPlainMap(record)&&typeof record.weekKey==='string')record.weekKey=target;
+      next[target]=record;
+    });
+    changed=true;
+    return next;
+  }
+  if(isPlainMap(state.weeklyIntentions))state.weeklyIntentions=remapMap(state.weeklyIntentions,'',true);
+  var intention=state.weeklyIntention;
+  if(isPlainMap(intention)&&remappable(intention.weekKey)&&!isMondayKey(intention.weekKey)){
+    intention.weekKey=mondayKeyForWeekKey(intention.weekKey);changed=true;
+  }
+  (Array.isArray(state.tasks)?state.tasks:[]).forEach(function(t){
+    if(!t||typeof t!=='object')return;
+    if(!remappable(t.weekPriority)||isMondayKey(t.weekPriority))return;
+    t.weekPriority=mondayKeyForWeekKey(t.weekPriority);changed=true;
+  });
+  var raceBlock=state.trainingPlan&&state.trainingPlan.raceBlock;
+  if(isPlainMap(raceBlock)&&isPlainMap(raceBlock.weekOverrides))raceBlock.weekOverrides=remapMap(raceBlock.weekOverrides,'weekOverrides',false);
+  return changed;
+}
+
 if(_firebaseReady)setSyncStatus('saving');
 loadFromCloud(function(){
-  var migrateKeys=['goals','habits','workouts','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','relationships','gratitude','wishlist','watchlist','debtPayments','reminders','water','dailyPriorities','trainingEvents','trainingPlan','tasks','commitments','weeklyIntentions','weeklyIntention'];
+  // Backfills any domain a stored payload predates. `sweep` and `companion` are
+  // new; `netWorthSnapshots` and `waterSettings` are written by live code but
+  // were never registered here (Data Models → "Registration is required in
+  // three places").
+  var migrateKeys=['goals','habits','workouts','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','relationships','gratitude','wishlist','watchlist','debtPayments','reminders','water','dailyPriorities','trainingEvents','trainingPlan','tasks','commitments','weeklyIntentions','weeklyIntention','sweep','companion','netWorthSnapshots','waterSettings'];
   migrateKeys.forEach(function(k){if(!STATE[k])STATE[k]=JSON.parse(JSON.stringify(DEFAULT_STATE[k]||(k==='tasks'?[]:{})))});
   if(!STATE.tasks)STATE.tasks=[];
   if(!STATE.metrics.projectsDone)STATE.metrics.projectsDone=[];
   if(!STATE.reviews.monthly)STATE.reviews.monthly={};
+
+  // ---- MONDAY WEEK KEYS (one-shot) ----------------------------------------
+  // Move Sunday-keyed weekly data onto Monday keys. Snapshot first and restore it
+  // if the save is refused, so a rejected write leaves neither the remap nor the
+  // flag behind (__habitIntegrationsV1 pattern). The remap is self-checking
+  // through isMondayKey, so a restored-and-retried run is safe.
+  if(!STATE.__mondayWeeksV1){
+    var mondayWeeksSnapshot=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
+    migrateMondayWeekKeys(STATE);
+    STATE.__mondayWeeksV1=true;
+    if(!saveState({suppressUndo:true}))STATE=mondayWeeksSnapshot;
+  }
+
+  // ---- HABIT INTEGRATIONS + RUN STORAGE MIGRATION (one-shot) ------------
+  // Keep legacy boolean completions as manual provenance, infer a stable link
+  // only when exactly one habit matches, and canonicalize metrics.run without
+  // discarding duplicate-free history from the former metrics.runs key.
+  if(!STATE.__habitIntegrationsV1){
+    var integrationSnapshot=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
+    var integrationChanged=false;if(!STATE.metrics)STATE.metrics={};
+    var sourceRuns=(Array.isArray(STATE.metrics.run)?STATE.metrics.run:[]).concat(Array.isArray(STATE.metrics.runs)?STATE.metrics.runs:[]);
+    var legacyRuns=Array.isArray(STATE.metrics.runs)?STATE.metrics.runs:[];var runSeen={},canonicalRuns=[];
+    sourceRuns.forEach(function(run){
+      if(!run||typeof run!=='object')return;
+      var signature=['run',run.id||'',run.date||'',run.distance,run.time||'',run.note||''].join('|');
+      if(runSeen[signature])return;runSeen[signature]=true;canonicalRuns.push(run);
+    });
+    var canonicalRunIds={};canonicalRuns.forEach(function(run){
+      if(typeof run.id!=='string'||!/^[A-Za-z0-9_-]{1,80}$/.test(run.id)||canonicalRunIds[run.id]){run.id=g();integrationChanged=true}
+      canonicalRunIds[run.id]=true;
+    });
+    if(!Array.isArray(STATE.metrics.run)||!_same(STATE.metrics.run,canonicalRuns)){STATE.metrics.run=canonicalRuns;integrationChanged=true}
+    if(Object.prototype.hasOwnProperty.call(STATE.metrics,'runs')){delete STATE.metrics.runs;integrationChanged=true}
+    if(typeof normalizeLifeHubHabits==='function'&&normalizeLifeHubHabits(STATE))integrationChanged=true;
+    var rules=[
+      {key:'lifehub.skincare.am',match:function(name){return /\bskincare\b.*\bam\b|\bmorning\s+skincare\b/i.test(name)}},
+      {key:'lifehub.skincare.pm',match:function(name){return /\bskincare\b.*\bpm\b|\bevening\s+skincare\b/i.test(name)}},
+      {key:'lifehub.workout.hyrox',match:function(name){return /\bhyrox\b/i.test(name)}},
+      {key:'lifehub.workout.any',match:function(name){return /\b(gym|workout|strength)\b/i.test(name)&&!/\bhyrox\b/i.test(name)}},
+      {key:'lifehub.run.any',match:function(name){return /\brun(?:ning)?\b/i.test(name)}}
+    ];
+    rules.forEach(function(rule){
+      var already=(STATE.habits||[]).some(function(h){return Array.isArray(h.integrationKeys)&&h.integrationKeys.indexOf(rule.key)!==-1});if(already)return;
+      var matches=(STATE.habits||[]).filter(function(h){return rule.match(h.name||'')});
+      if(matches.length===1){ensureHabitProvenance(matches[0]);matches[0].integrationKeys.push(rule.key);integrationChanged=true}
+    });
+    var workoutIds={};(STATE.workouts||[]).forEach(function(workout){
+      if(typeof workout.id!=='string'||!/^[A-Za-z0-9_-]{1,80}$/.test(workout.id)||workoutIds[workout.id]){workout.id=g();integrationChanged=true}
+      workoutIds[workout.id]=true;
+      if((workout.type||'')==='Rest'||typeof _validDateKey==='function'&&!_validDateKey(workout.date))return;
+      if(applyHabitSource('lifehub.workout.any',workout.date,'workout',workout.id).length)integrationChanged=true;
+      var isHyrox=String(workout.type||workout.name||'').toLowerCase()==='hyrox'||(workout.muscleGroups||[]).some(function(group){return String(group).toLowerCase()==='hyrox'});
+      if(isHyrox&&applyHabitSource('lifehub.workout.hyrox',workout.date,'workout',workout.id).length)integrationChanged=true;
+    });
+    canonicalRuns.forEach(function(run){if((typeof _validDateKey!=='function'||_validDateKey(run.date))&&applyHabitSource('lifehub.run.any',run.date,'run',run.id).length)integrationChanged=true});
+    STATE.__habitIntegrationsV1=true;integrationChanged=true;
+    if(integrationChanged&&!saveState({suppressUndo:true}))STATE=integrationSnapshot;
+  }
   (STATE.debts||[]).forEach(function(d){if(!d.startingBalance){var dPaid=(STATE.debtPayments||[]).filter(function(p){return p.debtId===d.id}).reduce(function(s,p){return s+Number(p.amount)},0);d.startingBalance=Number(d.balance)+dPaid}});
-  // Backfill startDate on existing habits — use earliest log date, or today if no logs
+  // Normalize legacy habit cadence and remove old false tombstones. Preserve
+  // every true completion and derive missing start dates from those logs.
+  var habitDataChanged=false;
+  if(typeof normalizeLifeHubHabits==='function'&&normalizeLifeHubHabits(STATE))habitDataChanged=true;
   (STATE.habits||[]).forEach(function(h){
-    if(h.startDate)return;
-    var logKeys=h.logs?Object.keys(h.logs):[];
-    if(logKeys.length){logKeys.sort();h.startDate=logKeys[0]}
-    else h.startDate=localDateKey(new Date());
+    if(h.freq==='bi-monthly'){h.freq='fortnightly';habitDataChanged=true}
+    if(!h.logs||typeof h.logs!=='object'){h.logs={};habitDataChanged=true}
+    Object.keys(h.logs).forEach(function(key){if(h.logs[key]===false){delete h.logs[key];habitDataChanged=true}});
+    if(!h.startDate){
+      var logKeys=Object.keys(h.logs).filter(function(key){return !!h.logs[key]}).sort();
+      h.startDate=logKeys.length?logKeys[0]:localDateKey(new Date());
+      habitDataChanged=true;
+    }
+    if(!h.anchor){
+      if(typeof autoSuggestAnchor==='function')h.anchor=autoSuggestAnchor(h.name);
+      else h.anchor='anytime';
+      habitDataChanged=true;
+    }
   });
-  // Backfill anchor on existing habits — auto-suggest from name
-  (STATE.habits||[]).forEach(function(h){
-    if(h.anchor)return;
-    if(typeof autoSuggestAnchor==='function')h.anchor=autoSuggestAnchor(h.name);
-    else h.anchor='anytime';
-  });
+  if(habitDataChanged)saveState({suppressUndo:true});
 
   // ---- TRAINING PLAN MIGRATION (one-shot) ---------------------------------
   // Move gym/running out of the habit tracker into the dedicated training plan.
@@ -165,18 +311,12 @@ loadFromCloud(function(){
     STATE.__plannerMigrated=true;
     saveState();
   }
-  // Daily hygiene (runs every load — NOT guarded): focus is a per-day thing, so
-  // clear any focusDate left over from a previous day. The task itself stays in
-  // the inbox / week list; only the "today's focus" stamp resets, so yesterday's
-  // focus never lingers as clutter (auto-cleanup, no manual tidying).
-  (function(){
-    var _today=localDateKey(new Date());
-    var _changed=false;
-    (STATE.tasks||[]).forEach(function(t){
-      if(t.focusDate&&t.focusDate<_today){delete t.focusDate;_changed=true}
-    });
-    if(_changed)saveState();
-  })();
+  // `focusDate` is a PERMANENT record of the day a task was slated for, so there
+  // is deliberately no daily sweep clearing past stamps (Design Decision 7).
+  // Historical Focus_Slates are reconstructed from these stamps alone, and every
+  // reader compares `focusDate` for exact equality with a specific day, so a
+  // stale stamp changes nothing they render. `doneAt` stays the field that
+  // decides which day a completion counts toward.
   // Auto-correct "debt free" type goals: target should be 0, startProgress = initial debt total
   (STATE.goals||[]).forEach(function(go){
     var name=(go.name||'').toLowerCase();
@@ -258,13 +398,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
 
 function setupReminders(){
   if(!('Notification' in window)){return}
-  if(Notification.permission==='default'){
-    var el=document.getElementById('dash-notification-prompt');
-    if(el)el.innerHTML='<div style="background:var(--accent-dim);border:1.5px solid var(--accent);border-radius:var(--radius-sm);padding:12px 16px;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="requestNotifPermission()"><span style="font-size:20px">\uD83D\uDD14</span><div style="flex:1"><div style="font-size:13px;font-weight:500">Enable push reminders</div><div style="font-size:11px;color:var(--text2)">Get notifications even when the app is closed</div></div><button class="btn btn-accent btn-sm" onclick="event.stopPropagation();requestNotifPermission()">Enable</button></div>'
-  }
   if(Notification.permission==='granted'){
-    var el2=document.getElementById('dash-notification-prompt');
-    if(el2)el2.innerHTML='';
     subscribeToPush();
     setupInAppReminders()
   }
@@ -372,7 +506,8 @@ frame()}
 function showCelebrationToast(msg,emoji){
 var toast=document.createElement('div');
 toast.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#314836;color:#fff;padding:12px 24px;border-radius:14px;font-family:var(--sans);font-size:14px;font-weight:600;z-index:10000;box-shadow:0 8px 32px rgba(63,90,68,0.28);animation:floatIn .3s ease;display:flex;align-items:center;gap:8px';
-toast.innerHTML='<span style="font-size:20px">'+(emoji||'\uD83C\uDF89')+'</span> '+msg;
+var icon=document.createElement('span');icon.style.fontSize='20px';icon.textContent=emoji||'🎉';toast.appendChild(icon);
+var text=document.createElement('span');text.textContent=String(msg||'');toast.appendChild(text);
 document.body.appendChild(toast);
 setTimeout(function(){toast.style.transition='opacity .4s,transform .4s';toast.style.opacity='0';toast.style.transform='translateX(-50%) translateY(-10px)';setTimeout(function(){toast.remove()},400)},2800)}
 

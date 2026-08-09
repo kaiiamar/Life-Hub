@@ -76,8 +76,17 @@ function _skinState(){
 }
 
 function _findSkincareHabit(period){
+  var integrationKey='lifehub.skincare.'+period.toLowerCase();
+  var linked=(STATE.habits||[]).find(function(h){return Array.isArray(h.integrationKeys)&&h.integrationKeys.indexOf(integrationKey)!==-1});
+  if(linked||STATE.__habitIntegrationsV1)return linked||null;
+  // Temporary fallback for data loaded before the one-shot integration migration.
   var needle='skincare '+period.toLowerCase();
   return (STATE.habits||[]).find(function(h){return h.name.toLowerCase().indexOf(needle)!==-1});
+}
+function _skincareSourceDone(habit,period,dateKey){
+  if(!habit)return false;ensureHabitProvenance(habit);
+  var entry=habit.logProvenance[dateKey],sourceKey='skincare:routine-'+period.toLowerCase()+'-'+dateKey;
+  return !!(entry&&entry.sources&&entry.sources[sourceKey]);
 }
 function _activeById(id){
   var s=_skinState();
@@ -102,9 +111,13 @@ function renderSkincareToday(){
   var pmHabit=_findSkincareHabit('PM');
   var amDone=amHabit&&amHabit.logs&&amHabit.logs[todayKey];
   var pmDone=pmHabit&&pmHabit.logs&&pmHabit.logs[todayKey];
+  var amSourceDone=_skincareSourceDone(amHabit,'AM',todayKey);
+  var pmSourceDone=_skincareSourceDone(pmHabit,'PM',todayKey);
 
   if((amDone||pmDone)&&!s.startedOn){
-    s.startedOn=todayKey;saveState();
+    var startSnapshot=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
+    s.startedOn=todayKey;
+    if(!saveStateOrRollback(startSnapshot))s=_skinState();
   }
 
   // Tonight's active from schedule
@@ -161,8 +174,8 @@ function renderSkincareToday(){
 
   // AM + PM tick cards
   html+='<div class="sk-today-grid">';
-  html+=_skincareTickCard('AM','☀️','Morning routine','Protect · Brighten · Hydrate',amDone,amHabit);
-  html+=_skincareTickCard('PM','🌙','Evening routine','Cleanse · Hydrate · Recover',pmDone,pmHabit);
+  html+=_skincareTickCard('AM','☀️','Morning routine','Protect · Brighten · Hydrate',amSourceDone,amHabit);
+  html+=_skincareTickCard('PM','🌙','Evening routine','Cleanse · Hydrate · Recover',pmSourceDone,pmHabit);
   html+='</div>';
 
   // Tonight's plan (adaptive to schedule)
@@ -204,40 +217,33 @@ function renderSkincareToday(){
 }
 
 function _skincareTickCard(period,icon,title,sub,done,habit){
-  var action=habit?'onclick="toggleSkincareToday(\''+period+'\')"':'';
-  var h='<div class="sk-tick-card'+(done?' done':'')+'" '+action+'>';
-  h+='<div class="sk-tick-emoji">'+icon+'</div>';
-  h+='<div class="sk-tick-body"><div class="sk-tick-title">'+title+'</div><div class="sk-tick-sub">'+sub+'</div></div>';
-  h+='<div class="sk-tick-check">'+(done?'✓':'')+'</div>';
-  h+='</div>';
-  if(!habit){
-    h='<div class="sk-tick-card sk-tick-missing"><div class="sk-tick-emoji">'+icon+'</div><div class="sk-tick-body"><div class="sk-tick-title">'+title+'</div><div class="sk-tick-sub">No "Skincare '+period+'" habit yet. <a href="#" onclick="nav(\'habits\');return false" style="color:var(--accent-dark)">Add it →</a></div></div></div>';
+  if(habit){
+    var h='<button type="button" class="sk-tick-card'+(done?' done':'')+'" data-skincare-period="'+period+'" aria-pressed="'+(done?'true':'false')+'" aria-label="'+escapeHtml((done?'Undo ':'Complete ')+title)+'" onclick="toggleSkincareToday(\''+period+'\')">';
+    h+='<span class="sk-tick-emoji" aria-hidden="true">'+icon+'</span>';
+    h+='<span class="sk-tick-body"><span class="sk-tick-title">'+title+'</span><span class="sk-tick-sub">'+sub+'</span></span>';
+    h+='<span class="sk-tick-check" aria-hidden="true">'+(done?'✓':'')+'</span>';
+    return h+'</button>';
   }
-  return h;
+  return '<div class="sk-tick-card sk-tick-missing"><div class="sk-tick-emoji">'+icon+'</div><div class="sk-tick-body"><div class="sk-tick-title">'+title+'</div><div class="sk-tick-sub">No "Skincare '+period+'" habit yet. <a href="#" onclick="nav(\'habits\');return false" style="color:var(--accent-dark)">Add it →</a></div></div></div>';
 }
+function _restoreSkincareTickFocus(period){var control=document.querySelector('[data-skincare-period="'+period+'"]');if(control)control.focus()}
 
 function toggleSkincareToday(period){
-  var habit=_findSkincareHabit(period);
-  if(!habit)return;
-  var todayKey=localDateKey(new Date());
-  if(!habit.logs)habit.logs={};
-  var wasDone=habit.logs[todayKey];
-  habit.logs[todayKey]=!wasDone;
-  var s=_skinState();
-  if(!wasDone&&!s.startedOn)s.startedOn=todayKey;
-  saveState();
-  renderSkincareToday();
-  // Cross-page sync — habits and dashboard pages may be in DOM
-  if(typeof renderHabits==='function'&&document.getElementById('page-habits'))renderHabits();
-  if(typeof renderDashboard==='function'&&document.getElementById('page-dashboard'))renderDashboard();
-  if(!wasDone){
+  var habit=_findSkincareHabit(period);if(!habit)return false;
+  var snapshot=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
+  var todayKey=localDateKey(new Date()),integrationKey='lifehub.skincare.'+period.toLowerCase();
+  var recordKey='routine-'+period.toLowerCase()+'-'+todayKey,sourceKey='skincare:'+recordKey;ensureHabitProvenance(habit);
+  var entry=habit.logProvenance[todayKey],wasSource=!!(entry&&entry.sources&&entry.sources[sourceKey]);
+  var habitIds=wasSource?removeHabitSource('skincare',recordKey):applyHabitSource(integrationKey,todayKey,'skincare',recordKey);
+  var s=_skinState();if(!wasSource&&!s.startedOn)s.startedOn=todayKey;
+  if(!saveStateOrRollback(snapshot)){renderSkincareToday();_restoreSkincareTickFocus(period);return false}
+  emitLifeHubChange({action:wasSource?'skincare-source-remove':'skincare-source-add',entityId:recordKey,dateKeys:[todayKey],habitIds:habitIds,domains:['skincare','habits'],source:'skincare',period:period.toLowerCase()});
+  if(!wasSource){
     var streak=typeof habitStreak==='function'?habitStreak(habit):0;
-    if(streak===7||streak===14||streak===21||streak===30){
-      fireConfetti();
-      showCelebrationToast(habit.name+' — '+streak+' day streak!','🔥');
-    }
+    if(streak===7||streak===14||streak===21||streak===30){fireConfetti();showCelebrationToast(habit.name+' — '+streak+' day streak!','🔥')}
     if(typeof checkAllDoneToday==='function')checkAllDoneToday();
   }
+  return true;
 }
 
 function toggleGuaShaToday(){
