@@ -3,6 +3,22 @@
 function renderGratitude(){var entries=(STATE.gratitude||[]).slice().sort(function(a,b){return b.date.localeCompare(a.date)});var thisWeekStart=weekKey(new Date());var thisWeek=entries.filter(function(e){return e.date>=thisWeekStart});var streak=0;var checkDate=new Date();for(var i=0;i<365;i++){var k=localDateKey(checkDate);if(entries.some(function(e){return e.date===k}))streak++;else if(i>0)break;checkDate.setDate(checkDate.getDate()-1)}var gwEl=document.getElementById('gratitude-wins');if(gwEl)gwEl.innerHTML=thisWeek.length?thisWeek.map(function(e){return '<div style="padding:9px 0;border-bottom:1px solid var(--border)"><div style="font-size:11px;color:var(--text3);margin-bottom:3px">'+fmtDate(e.date)+'</div>'+(e.wins?'<div style="font-size:13px;font-weight:500;margin-bottom:3px;color:var(--accent)">&#127942; '+e.wins+'</div>':'')+(e.gratitude?'<div style="font-size:12px;color:var(--text2)">'+e.gratitude.split('\n').filter(function(l){return l.trim()}).map(function(l){return '&#128591; '+l.replace(/^\d+.\s*/,'')}).join(' &#183; ')+'</div>':'')+'</div>'}).join(''):'<div style="font-size:13px;color:var(--text3);padding:12px 0;text-align:center">No entries this week yet</div>';var gsEl=document.getElementById('gratitude-stats');if(gsEl)gsEl.innerHTML='<div style="text-align:center;padding:16px 0"><div style="font-size:44px;font-family:var(--serif);font-weight:600;color:var(--gold)">'+streak+'</div><div style="font-size:13px;color:var(--text2);margin-top:3px">day gratitude streak</div><div style="font-size:12px;color:var(--text3);margin-top:6px">'+entries.length+' total entries</div></div>';var gaEl=document.getElementById('gratitude-all');if(gaEl)gaEl.innerHTML=entries.length?entries.slice(0,20).map(function(e){return '<div style="padding:11px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><span style="font-size:12px;font-weight:600">'+fmtDate(e.date)+'</span><button class="btn btn-sm btn-danger" onclick="confirmDelete(\'Delete?\',function(){deleteGratitudeEntry(\''+e.id+'\')})">&#215;</button></div>'+(e.wins?'<div style="font-size:12px;font-weight:500;margin-bottom:3px;color:var(--accent)">&#127942; '+e.wins+'</div>':'')+(e.gratitude?'<div style="font-size:12px;color:var(--text2)">'+e.gratitude.split('\n').filter(function(l){return l.trim()}).map(function(l){return '&#128591; '+l.replace(/^\d+.\s*/,'')}).join('<br>')+'</div>':'')+'</div>'}).join(''):'<div class="empty"><div class="empty-icon">&#128591;</div>No entries yet.</div>';renderGratitudeFlashback();renderGratitudeHeatmap()}
 function deleteGratitudeEntry(id){STATE.gratitude=(STATE.gratitude||[]).filter(function(e){return e.id!==id});saveState();renderGratitude()}
 function saveGratitudeEntry(){var date=(document.getElementById('m-gdate')||{}).value||localDateKey(new Date());var wins=(document.getElementById('m-gwins')||{}).value||'';var gratitude=(document.getElementById('m-ggratitude')||{}).value||'';if(!wins&&!gratitude)return;if(!STATE.gratitude)STATE.gratitude=[];var isFirstEver=STATE.gratitude.length===0;STATE.gratitude.push({id:g(),date:date,wins:wins,gratitude:gratitude});saveState();closeModal();renderGratitude();if(document.getElementById('page-dashboard').classList.contains('active'))renderDashboard();celebrateGratitudeMilestone(date,isFirstEver)}
+// Single write path for gratitude captured outside the Gratitude page — the
+// evening sweep step (js/planner.js sweepSubmitGratitude) and the planner's
+// evening gratitude card both delegate here through a typeof guard. Returns
+// true only when the entry was persisted; a refused save is rolled back so
+// the caller can leave the input intact for another try.
+function sweepSaveGratitude(text){
+  var t=String(text||'').trim();
+  if(!t)return false;
+  if(!STATE.gratitude)STATE.gratitude=[];
+  var isFirstEver=STATE.gratitude.length===0;
+  var today=localDateKey(new Date());
+  STATE.gratitude.push({id:g(),date:today,wins:'',gratitude:t});
+  if(!saveState()){STATE.gratitude.pop();return false}
+  try{celebrateGratitudeMilestone(today,isFirstEver)}catch(e){}
+  return true;
+}
 function celebrateGratitudeMilestone(entryDate,isFirstEver){
   if(entryDate!==localDateKey(new Date()))return;
   if(isFirstEver){fireConfetti({count:80});showCelebrationToast('First gratitude entry — welcome in.','🙏');return}

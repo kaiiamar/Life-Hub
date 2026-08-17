@@ -280,11 +280,13 @@ var PLANNER_CARDS={
   schedule:   {host:'planner-schedule-card', build:function(todayKey){return plannerScheduleCard(todayKey)}},
   capture:    {host:'planner-capture-card',  build:function(){return plannerCaptureCard('planner-capture-card')}},
   waterweight:{host:'planner-water-card',    build:function(){return plannerWaterCard()}},
+  gratitude:  {host:'planner-gratitude-card',build:function(todayKey){return plannerGratitudeCard(todayKey)}},
+  monthreview:{host:'planner-monthreview-card',build:function(todayKey){return plannerMonthReviewCard(todayKey)}},
   sweep:      {host:'planner-sweep-card',    build:function(todayKey){return plannerCloseDayCard(todayKey)}},
   inbox:      {host:'planner-inbox-card',    build:function(){return plannerInboxCard()}},
   short:      {host:'pc-short',              build:function(todayKey){return plannerShortVersionCard(todayKey)}}
 },
-PLANNER_INPUT_CARDS=['capture','sweep'];
+PLANNER_INPUT_CARDS=['capture','sweep','gratitude'];
 
 // The cards that change when a task joins or leaves today's focus slate — one
 // row of the mutation table in Components §C, shared by every handler that
@@ -305,7 +307,7 @@ var PLANNER_FOCUS_SLATE_CARDS=['focus','welcome','inbox','suggested','schedule']
 // interrupts them and the Inbox last as the quiet sorting surface.
 function plannerTodayOrder(){
   if(plannerViewMode==='short')return ['reentry','short'];
-  return ['reentry','welcome','training','habits','focus','suggested','schedule','capture','waterweight','sweep','inbox'];
+  return ['reentry','welcome','monthreview','training','habits','focus','suggested','schedule','capture','waterweight','gratitude','sweep','inbox'];
 }
 
 // ── Quiet-day re-entry ─────────────────────────────────────
@@ -1137,6 +1139,90 @@ function sweepLogHabit(dateKey,hid){
   if(!sweepRecord(dateKey,'habits',list))return false;
   if(typeof refreshPlannerCards==='function')refreshPlannerCards(['sweep'],{includeInputCards:true});
   return true;
+}
+
+// ── Evening gratitude prompt ───────────────────────────────
+// A standalone card from GRATITUDE_CARD_HOUR onward, so the day's gratitude is
+// asked for visibly rather than only inside the close-the-day sweep. Gone the
+// moment today has an entry — from this card, the sweep, the Gratitude page or
+// another device — so it never nags past the first write. The textarea means
+// this card is in PLANNER_INPUT_CARDS: an in-place patch that did not originate
+// here must not rebuild it mid-typing.
+var GRATITUDE_CARD_HOUR=18;
+function plannerGratitudeCard(todayKey){
+  var today=todayKey||localDateKey(new Date());
+  if(new Date().getHours()<GRATITUDE_CARD_HOUR)return '';
+  if((STATE.gratitude||[]).some(function(e){return e&&e.date===today}))return '';
+  return ''
+    +'<div class="card planner-card" id="planner-gratitude-card">'
+      +'<div class="planner-card-head"><span class="planner-card-title"><span class="section-rule-bar"></span>\uD83D\uDE4F Gratitude</span></div>'
+      +'<div style="font-size:13px;color:var(--text3);margin-bottom:8px">One thing from today worth keeping.</div>'
+      +'<textarea id="planner-gratitude-input" class="planner-capture-input" rows="2"'
+        +' placeholder="e.g. Long run in the evening sun"'
+        +' aria-label="Gratitude for today"'
+        +' style="width:100%;font:inherit;font-size:13px;color:var(--text2);resize:vertical"></textarea>'
+      +'<div style="display:flex;gap:8px;margin-top:8px">'
+        +'<button type="button" class="btn btn-sm btn-accent" onclick="plannerSubmitGratitude()">Save \u2713</button>'
+      +'</div>'
+    +'</div>';
+}
+
+// Delegates to sweepSaveGratitude() — the single write path for gratitude
+// captured outside the Gratitude page — then rebuilds the day, since a saved
+// entry means this card no longer applies and has to leave the page.
+function plannerSubmitGratitude(){
+  var el=document.getElementById('planner-gratitude-input');
+  var text=el?String(el.value||'').trim():'';
+  if(!text)return;
+  if(typeof sweepSaveGratitude!=='function'||!sweepSaveGratitude(text))return;
+  renderPlannerToday();
+}
+
+// ── Monthly review prompt ──────────────────────────────────
+// The monthly review kept getting lost: nothing on the planner ever pointed at
+// it. This card appears during the last three days of the month while the
+// month's review is unwritten, and holds over into the first three days of the
+// next month while last month's is still open. It disappears the moment the
+// review exists, and "Later" quiets it for the session (per prompted month, so
+// a new month prompts again).
+var MONTHREVIEW_DISMISS_KEY='lh_monthreview_dismissed';
+function plannerMonthReviewCard(todayKey){
+  var now=new Date();
+  var monthly=(STATE.reviews&&STATE.reviews.monthly)||{};
+  var day=now.getDate();
+  var daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+  var thisKey=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  var prevDate=new Date(now.getFullYear(),now.getMonth()-1,1);
+  var prevKey=prevDate.getFullYear()+'-'+String(prevDate.getMonth()+1).padStart(2,'0');
+
+  var promptKey=null,line='';
+  if(day>=daysInMonth-2&&!monthly[thisKey]){
+    promptKey=thisKey;
+    var left=daysInMonth-day;
+    line=left===0?'Today is the last day of the month.':(left+' '+(left===1?'day':'days')+' left in the month.');
+  }else if(day<=3&&!monthly[prevKey]){
+    promptKey=prevKey;
+    line='Last month is still open for its review.';
+  }
+  if(!promptKey)return '';
+  try{if(sessionStorage.getItem(MONTHREVIEW_DISMISS_KEY)===promptKey)return ''}catch(e){}
+
+  var label=(typeof getMonthLabel==='function')?getMonthLabel(promptKey):promptKey;
+  return ''
+    +'<div class="card planner-card" id="planner-monthreview-card">'
+      +'<div class="planner-card-head"><span class="planner-card-title"><span class="section-rule-bar"></span>\uD83D\uDCD3 Monthly review</span></div>'
+      +'<div style="font-size:14px;font-weight:600;color:var(--text2)">'+escapeHtml(String(label))+' is ready to close.</div>'
+      +'<div style="font-size:13px;color:var(--text3);margin-top:4px">'+escapeHtml(line)+' A few sliders and a couple of lines \u2014 the AI draft does the heavy lifting.</div>'
+      +'<div style="display:flex;gap:8px;margin-top:12px">'
+        +'<button type="button" class="btn btn-sm btn-accent" onclick="nav(\'review\')">Write the review</button>'
+        +'<button type="button" class="btn btn-sm btn-ghost" onclick="plannerDismissMonthReview(\''+escapeHtml(promptKey)+'\')">Later</button>'
+      +'</div>'
+    +'</div>';
+}
+
+function plannerDismissMonthReview(key){
+  try{sessionStorage.setItem(MONTHREVIEW_DISMISS_KEY,String(key))}catch(e){}
+  renderPlannerToday();
 }
 
 // Evening sweep (AI): after ~5pm, a single generated sentence reflecting the

@@ -346,9 +346,35 @@ loadFromCloud(function(){
   finishDataBootstrap();
   try{renderPlanner()}catch(e){console.error('Render error:',e)}
   try{updateAppBadge()}catch(e){}
+  try{maybePromptMorningMood()}catch(e){}
   setupReminders();
 });
 startClock();
+
+// ============================================================
+// MORNING CHECK-IN
+// ============================================================
+// On the first open of each day, offer the mood log once. The localStorage
+// guard is written before the modal opens, so later opens (and other tabs on
+// this device) stay quiet even if the modal is closed without logging; if
+// today's mood is already logged — from any device, via sync — nothing shows.
+// The delay lets the first planner paint land before the modal appears, and an
+// already-open modal is never stolen.
+var MOOD_PROMPT_KEY='lh_mood_prompted';
+function maybePromptMorningMood(){
+  var today=localDateKey(new Date());
+  var m=(STATE.mood||{})[today]||{};
+  if(m.mood)return;
+  try{
+    if(localStorage.getItem(MOOD_PROMPT_KEY)===today)return;
+    localStorage.setItem(MOOD_PROMPT_KEY,today);
+  }catch(e){return}
+  setTimeout(function(){
+    var modal=document.getElementById('modal');
+    if(modal&&modal.style.display==='flex')return;
+    openModal('logMood',today);
+  },700);
+}
 
 // ============================================================
 // PWA APP-ICON BADGE (3.5)

@@ -296,17 +296,22 @@ function moodLoggedDates(){
   return Object.keys(mood).filter(function(d){return mood[d]&&mood[d].mood});
 }
 
-// The four activity buckets the correlations card has always used, as date-key
-// lookups: gym days, run days, days a task was completed, days gratitude was
-// logged. Read exactly as before — runs come from `metrics.run`, task days from
-// `doneAt` on the unified task store.
+// The activity buckets the correlations card uses, as date-key lookups: gym
+// days, run days, days a task was completed, days gratitude was logged, and
+// days the water goal was hit. Read exactly as before — runs come from
+// `metrics.run`, task days from `doneAt` on the unified task store. Hydrated
+// days are measured against the current daily target (the same fallback of 8
+// every water reader uses); past days are judged by today's target since
+// target history isn't tracked.
 function moodActivityDateSets(){
-  var gymDates={},runDates={},taskDates={},gratitudeDates={};
+  var gymDates={},runDates={},taskDates={},gratitudeDates={},hydratedDates={};
   (STATE.workouts||[]).forEach(function(w){if(w.date&&(w.type||'').toLowerCase()!=='rest')gymDates[w.date]=true});
   (((STATE.metrics||{}).run)||[]).forEach(function(r){if(r.date)runDates[r.date]=true});
   (STATE.tasks||[]).forEach(function(t){if(t.done&&t.doneAt)taskDates[t.doneAt]=true});
   (STATE.gratitude||[]).forEach(function(g){if(g.date)gratitudeDates[g.date]=true});
-  return {gym:gymDates,run:runDates,task:taskDates,gratitude:gratitudeDates};
+  var waterTarget=Number((STATE.waterSettings&&STATE.waterSettings.target)||8);
+  Object.keys(STATE.water||{}).forEach(function(d){if(Number(STATE.water[d])>=waterTarget)hydratedDates[d]=true});
+  return {gym:gymDates,run:runDates,task:taskDates,gratitude:gratitudeDates,hydrated:hydratedDates};
 }
 
 // Mean logged mood across the days in `dateSet`, or null below two days — the
@@ -349,7 +354,8 @@ function renderMoodCorrelations(){
     {label:'gym days',emoji:'💪',data:bucketMean(gymDates),color:'var(--accent-dark)'},
     {label:'run days',emoji:'🏃',data:bucketMean(runDates),color:'var(--blue)'},
     {label:'days you completed a task',emoji:'✅',data:bucketMean(taskDates),color:'var(--mint)'},
-    {label:'days you logged gratitude',emoji:'🙏',data:bucketMean(gratitudeDates),color:'var(--gold)'}
+    {label:'days you logged gratitude',emoji:'🙏',data:bucketMean(gratitudeDates),color:'var(--gold)'},
+    {label:'days you hit your water goal',emoji:'💧',data:bucketMean(_buckets.hydrated),color:'var(--sky)'}
   ].filter(function(b){return b.data});
 
   // Energy bucket
