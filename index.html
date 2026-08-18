@@ -12,7 +12,7 @@
 <title>Kai's Life Hub 🤎</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style-new.css?v=42">
+<link rel="stylesheet" href="style-new.css?v=43">
 <!-- Chart.js is lazy-loaded on first visit to a chart page — see ensureChartJs() in js/navigation.js (Part 5.3) -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -356,6 +356,7 @@
       <div class="page-tabs">
         <button class="page-tab active" onclick="subNav('workout','overview')">Overview</button>
         <button class="page-tab" onclick="subNav('workout','myplan')">🏃 HM Plan</button>
+        <button class="page-tab" onclick="subNav('workout','fuel')">🍽️ Fuel</button>
         <button class="page-tab" onclick="subNav('workout','body')">💪 Body</button>
         <button class="page-tab" onclick="subNav('workout','history')">📖 History</button>
       </div>
@@ -421,6 +422,14 @@
           </div>
           <div id="myplan-schedule"></div>
         </div>
+      </div>
+
+      <!-- Fuel tab: nutrition plan for the training block -->
+      <div class="sub-page" id="workout-fuel">
+        <div class="page-intro" style="margin-bottom:16px">
+          <div style="font-size:13px;color:var(--text2)">Fuelling for the final block. Calories cycle with the training day — hardest days eat the most.</div>
+        </div>
+        <div id="training-fuel"></div>
       </div>
 
       <!-- Body tab: weight, photos, measurements -->
@@ -822,20 +831,20 @@
 
 
 
-<script src="js/state.js?v=42"></script>
-<script src="js/persistence.js?v=42"></script>
-<script src="js/navigation.js?v=42"></script>
-<script src="js/dashboard.js?v=42"></script>
-<script src="js/habits.js?v=42"></script>
-<script src="js/workouts.js?v=42"></script>
-<script src="js/finance.js?v=42"></script>
-<script src="js/reviews.js?v=42"></script>
-<script src="js/relationships.js?v=42"></script>
-<script src="js/gratitude.js?v=42"></script>
-<script src="js/insights.js?v=42"></script>
-<script src="js/skincare.js?v=42"></script>
-<script src="js/modals.js?v=42"></script>
-<script src="js/planner.js?v=42"></script>
-<script src="js/init.js?v=42"></script>
+<script src="js/state.js?v=43"></script>
+<script src="js/persistence.js?v=43"></script>
+<script src="js/navigation.js?v=43"></script>
+<script src="js/dashboard.js?v=43"></script>
+<script src="js/habits.js?v=43"></script>
+<script src="js/workouts.js?v=43"></script>
+<script src="js/finance.js?v=43"></script>
+<script src="js/reviews.js?v=43"></script>
+<script src="js/relationships.js?v=43"></script>
+<script src="js/gratitude.js?v=43"></script>
+<script src="js/insights.js?v=43"></script>
+<script src="js/skincare.js?v=43"></script>
+<script src="js/modals.js?v=43"></script>
+<script src="js/planner.js?v=43"></script>
+<script src="js/init.js?v=43"></script>
 </body>
 </html>

@@ -9,78 +9,153 @@ function getBestPrevSet(){return null}
 // Knee-friendly (isometric quad hold, single-leg work) and shin-aware (tib
 // raises, eccentric calf raises). Upper day is machine-led with two row
 // variations for upright running posture.
+// Tuesday — Legs. The physio's full rehab block: knee block (six) then the
+// calf + PTT block. Sits four days clear of the long run. Progression is weight,
+// never extra exercises.
 var STRENGTH_A={
   id:'strength-a',
-  title:'Strength A — Lower Body & Running Focus',
-  emoji:'🏋️',
+  title:'Gym — Legs (Knee + Calf Rehab)',
+  emoji:'🦵',
   duration:'~55 min',
   warmup:'Glute bridges x15 · Banded lateral walks x15 each · Heel-to-toe walks 20m',
-  note:'3 rounds · 60 sec rest between rounds. Finish with your recovery run.',
+  note:'Add weight when the last rep is still controlled — never add exercises. Full rehab lives inside this session.',
   exercises:[
-    {name:'Hip Thrust',scheme:'3 x 12',note:'Main glute driver — load progressively'},
-    {name:'Leg Press (full range)',scheme:'3 x 15',note:'Knee feeling good — full ROM, slow & controlled'},
-    {name:'Spanish Squat / Wall Sit (isometric)',scheme:'3 x 30-45 sec',note:'Builds quad & knee tolerance'},
-    {name:'Single-Leg RDL',scheme:'3 x 10 each',note:'DB in hand, 3 sec lower'},
-    {name:'Eccentric Calf Raise (single leg)',scheme:'3 x 12 each',note:'3 sec down, push up on two legs'},
-    {name:'Tibialis Raises',scheme:'3 x 20',note:'Heels on a step, raise toes — shin-splint insurance'},
-    {name:'Dead Bug',scheme:'3 x 10 each side',note:'Lower back flat on the floor throughout'}
+    {name:'Knee extension (machine)',scheme:'3 x 10',note:'Knee block #1'},
+    {name:'Leg press',scheme:'3 x 10',note:'Knee block #2 — full range, controlled'},
+    {name:'Hip abductor (machine)',scheme:'3 x 10',note:'Knee block #3'},
+    {name:'Hip adduction (machine)',scheme:'3 x 10',note:'Knee block #4'},
+    {name:'Seated hamstring curl',scheme:'3 x 10',note:'Knee block #5'},
+    {name:'Goblet squat',scheme:'3 x 10',note:'Knee block #6'},
+    {name:'Heel raises, ball squeezed between heels',scheme:'3 x 15 slow',note:'Calf + PTT block'},
+    {name:'Banded inversion (foot turns inward)',scheme:'3 x 15 each side',note:'PTT — tibialis posterior'},
+    {name:'Eccentric calf raise, straight knee',scheme:'3 x 12',note:'3 sec lower'},
+    {name:'Eccentric calf raise, bent knee',scheme:'3 x 12',note:'3 sec lower — soleus'},
+    {name:'Single-leg balance',scheme:'3 x 30-45 sec each',note:'Proprioception — no wobble'}
   ]
 };
+// Friday — Upper + core (lunch). Machine-led for upright running posture, plus
+// core and single-leg balance. Add weight, never exercises.
 var STRENGTH_B={
   id:'strength-b',
-  title:'Strength B — Upper Body & Core',
-  emoji:'🏋️',
-  duration:'~55 min',
+  title:'Gym — Upper + Core',
+  emoji:'💪',
+  duration:'~45 min',
   warmup:'Arm circles · Thoracic rotations · Inchworms x5',
-  note:'3 rounds · 60 sec rest between rounds. Finish with your recovery run.',
+  note:'Add weight when the last rep is still controlled. Never add exercises.',
   exercises:[
-    {name:'Lat Pulldown (machine)',scheme:'3 x 10',note:'Upper back for upright running posture'},
-    {name:'Seated Cable Row (machine)',scheme:'3 x 10',note:'Row #1 — squeeze shoulder blades, flat back'},
-    {name:'Chest Press (machine)',scheme:'3 x 12',note:'Controlled, full range'},
-    {name:'Chest-Supported / T-Bar Row',scheme:'3 x 10',note:'Row #2 — no lower-back load, pure upper back'},
-    {name:'Shoulder Press (machine)',scheme:'3 x 10',note:'Arm drive matters over 21K'},
-    {name:'Pallof Press (cable or band)',scheme:'3 x 12 each side',note:'Anti-rotation core stability'},
-    {name:'Copenhagen Plank',scheme:'3 x 20 sec each',note:'Inner thigh & knee stability'},
-    {name:'Plank',scheme:'3 x 40 sec',note:"Hips level, don't let them sag"}
+    {name:'Lat pulldown or seated row',scheme:'3 x 10',note:'Upper back for upright running posture'},
+    {name:'Chest press',scheme:'3 x 10',note:'Controlled, full range'},
+    {name:'Shoulder press',scheme:'3 x 10',note:'Arm drive matters over 21k'},
+    {name:'Dead bugs',scheme:'3 x 10 each side',note:'Lower back flat on the floor throughout'},
+    {name:'Plank',scheme:'3 x 30-45 sec',note:"Hips level, don't let them sag"},
+    {name:'Side plank',scheme:'3 x 30 sec each side',note:'Lateral core'},
+    {name:'Single-leg balance',scheme:'2 x 30 sec each side',note:'Ankle stability'}
   ]
 };
 // Weekly template — Mon→Sun. session: 'strength-a'|'strength-b'|'run'|'rest'.
-// Kai's layout: Mon easy run · Tue strength & mobility · Wed rest · Thu quality
-// · Fri rest · Sat long run · Sun rest. Runs map to easy=Mon, quality=Thu,
-// long=Sat via HM_RACE_BLOCK.runDays.
+// Final-5-week layout: Mon easy run · Tue gym (legs) · Wed rest/cross-train ·
+// Thu quality · Fri gym (upper+core) · Sat long run · Sun rest. Two gym days now.
+// Runs map to easy=Mon, quality=Thu, long=Sat via HM_RACE_BLOCK.runDays. `kcal`
+// is the day's calorie target from the nutrition plan (shown on the Fuel tab).
 var TRAINING_TEMPLATE=[
-  {day:'Mon',session:'run',label:'Easy run',sub:'Easy pace',run:false},
-  {day:'Tue',session:'strength-a',label:'Strength & mobility',sub:'Knee-safe lower + mobility',run:false},
-  {day:'Wed',session:'rest',label:'Rest',sub:'Recover',run:false},
-  {day:'Thu',session:'run',label:'Quality run',sub:'Tempo / intervals',run:false},
-  {day:'Fri',session:'rest',label:'Rest',sub:'Recover',run:false},
-  {day:'Sat',session:'run',label:'Long run',sub:'Build the distance',run:false},
-  {day:'Sun',session:'rest',label:'Rest',sub:'Recover',run:false}
+  {day:'Mon',session:'run',label:'Easy run',sub:'Easy pace · 06:30',run:false,kcal:2100},
+  {day:'Tue',session:'strength-a',label:'Gym — Legs',sub:'Knee + calf rehab block',run:false,kcal:2100},
+  {day:'Wed',session:'rest',label:'Rest',sub:'Optional cross-train',run:false,kcal:2000},
+  {day:'Thu',session:'run',label:'Quality run',sub:'Tempo / race pace · 06:30',run:false,kcal:2300},
+  {day:'Fri',session:'strength-b',label:'Gym — Upper + core',sub:'Machine-led · lunch',run:false,kcal:2100},
+  {day:'Sat',session:'run',label:'Long run',sub:'Build the distance · 07:00',run:false,kcal:2700},
+  {day:'Sun',session:'rest',label:'Rest',sub:'Recover + stretch',run:false,kcal:1900}
 ];
 
-// ── HALF MARATHON RACE BLOCK (13 Jul – 20 Sep 2026, sub-2:30) ────────────────
+// ── HALF MARATHON — FINAL 5 WEEKS (17 Aug – 20 Sep 2026, sub-2:30) ───────────
 // Dated, week-aware plan seeded into STATE.trainingPlan.raceBlock via a guarded
-// one-shot migration (__hmBlockSeeded) in init.js. runDays maps easy/quality/
-// long to JS getDay() weekdays and is user-editable (addendum §2.3).
+// one-shot migration in init.js. runDays maps easy/quality/long to JS getDay()
+// weekdays and is user-editable. Peak long run 19k. Fuel from the 17k up.
 var HM_RACE_BLOCK={
   race:{name:'Half Marathon',date:'2026-09-20',goal:'Sub 2:30',goalPace:'7:06/km',
-    strategy:'First 5k @ 7:15 · settle 7:05 · checkpoints: 10k by 1:11, 15k by 1:47'},
-  paces:{easy:'7:45–8:15 /km',race:'7:00–7:10 /km',tempo:'6:45–7:00 /km',interval:'6:20–6:35 /km'},
-  birthday:'2026-08-12',
+    strategy:'First 5k @ 7:15 · 5–15k @ 7:05 · final 6k on feel · checkpoints: 10k by 1:11, 15k by 1:47'},
+  paces:{easy:'8:00+ /km (nothing faster)',race:'7:05–7:15 /km',tempo:'7:00–7:06 /km',interval:'7:00 /km'},
   runDays:{easy:1,quality:4,long:6},
   weeks:[
-    {n:1,start:'2026-07-13',phase:'base',easy:'5k easy',quality:'Tempo 4k — 1k easy · 2k @ 6:50–7:00 · 1k easy',long:'10k all easy'},
-    {n:2,start:'2026-07-20',phase:'build',easy:'5k easy',quality:'Intervals — 1k WU · 5×800m @ 6:25–6:35, 90s walk rec · 1k CD',long:'12k easy'},
-    {n:3,start:'2026-07-27',phase:'build',easy:'6k easy',quality:'Tempo 5k — 1k easy · 3k @ 6:50 · 1k easy',long:'13k easy'},
-    {n:4,start:'2026-08-03',phase:'cutback',easy:'5k easy',quality:'Intervals — 1k WU · 4×1k @ 6:30, 2min walk rec · 1k CD',long:'11k easy — recovery week'},
-    {n:5,start:'2026-08-10',phase:'build',easy:'6k easy',quality:'Tempo 6k — 1k easy · 4k @ 6:50–7:00 · 1k easy',long:'14k — last 3k @ race pace 7:06'},
-    {n:6,start:'2026-08-17',phase:'build',easy:'6k easy',quality:'Intervals — 1k WU · 6×800m @ 6:25–6:35, 90s rec · 1k CD',long:'16k easy',fuel:true},
-    {n:7,start:'2026-08-24',phase:'build',easy:'6k easy',quality:'7k session — 1k easy · 5k @ race pace 7:06 · 1k easy',long:'17k — last 4k @ race pace',fuel:true},
-    {n:8,start:'2026-08-31',phase:'peak',easy:'6k easy',quality:'Tempo 6k — 1k easy · 4k @ 6:45–6:55 · 1k easy',long:'19k easy — the confidence builder',fuel:true},
-    {n:9,start:'2026-09-07',phase:'taper',easy:'5k easy',quality:'5k — 1k easy · 3k @ race pace · 1k easy',long:'12k easy',fuel:true},
-    {n:10,start:'2026-09-14',phase:'race week',easy:'4k easy (Tue)',quality:'3k — 2k easy + 4×30s strides @ race pace (Thu)',long:'RACE DAY — Sun 20 Sep 🏁',fuel:true}
+    {n:1,start:'2026-08-17',phase:'re-entry',easy:'6k easy — first run back, deliberately slow',quality:'1k easy · 3k @ 7:05 · 1k easy',long:'14k all easy'},
+    {n:2,start:'2026-08-24',phase:'build',easy:'6k easy',quality:'1k easy · 4k @ 7:00 · 1k easy',long:'17k easy',fuel:true},
+    {n:3,start:'2026-08-31',phase:'peak',easy:'6k easy',quality:'1k easy · 5k @ race pace 7:06 · 1k easy',long:'19k — last 3k at race pace',fuel:true},
+    {n:4,start:'2026-09-07',phase:'taper',easy:'6k easy',quality:'Easy 6k in Lisbon — travel week, no hard session',long:'12k with the group (Lisbon)',fuel:true},
+    {n:5,start:'2026-09-14',phase:'race week',easy:'4k easy (Mon, Lisbon)',quality:'3k — 2k easy + 4×30s strides @ race pace (Fri)',long:'RACE DAY — Sun 20 Sep 🏁',fuel:true}
   ]
 };
+// ── NUTRITION PLAN ───────────────────────────────────────────────────────────
+// Static reference for the Fuel tab (renderTrainingFuel). Data-driven so the
+// meal lists stay maintainable rather than living in one long HTML string. Pure
+// content — no state, no writes. Calorie targets per day come from the training
+// template's `kcal` field so the two never disagree.
+var NUTRITION_PLAN={
+  targets:{protein:'150–180g',fibre:'30–35g',water:'3L+',avg:'~2,170 kcal/day average — roughly 0.5kg/week'},
+  fibreNote:'If you\'re currently well under 30g, ramp up over 2–3 weeks rather than jumping straight there. A sudden increase causes bloating you don\'t want mid-long-run.',
+  noLegumes:'No beans, lentils or cottage cheese in the meals below. Fibre comes from oats, chia, berries, avocado, wholegrains, veg, nuts and seeds instead.',
+  heroes:[
+    {food:'Chia seeds',fibre:'10g / 2 tbsp',use:'Stir into yoghurt or overnight oats. Tasteless. The single biggest lever you have.'},
+    {food:'Raspberries',fibre:'6.5g / 100g',use:'Highest-fibre fruit by a distance. Frozen is fine and cheaper.'},
+    {food:'Avocado',fibre:'7g / half',use:'Toast, salads, burrito bowls.'}
+  ],
+  formula:{
+    line:'Every main meal = protein (150–180g) + carb + two veg. Whatever\'s reduced becomes the protein; the rest stays the same.',
+    protein:['Chicken breast/thigh','Beef mince','Steak','Turkey mince/breast','Diced beef','Eggs'],
+    carb:['Bulgur wheat','Brown rice','Sweet potato (skin on)','Wholewheat pasta','Wholemeal wrap'],
+    veg:['Broccoli','Peppers','Courgette','Spinach','Green beans','Peas','Cauliflower','Red onion','Mushrooms','Sweetcorn','Carrots']
+  },
+  meals:{
+    breakfast:{target:'35–45g protein · 8–12g fibre',items:[
+      {meal:'Greek yoghurt (200g) + oats (40g) + raspberries + 2 tbsp chia + honey',p:'30g',f:'18g'},
+      {meal:'3 eggs scrambled + 2 slices wholegrain toast + spinach + avocado',p:'28g',f:'11g'},
+      {meal:'Overnight oats: oats 50g, milk, scoop protein, banana, chia',p:'38g',f:'14g'},
+      {meal:'Skyr (200g) + granola + raspberries + flaxseed',p:'28g',f:'10g'},
+      {meal:'2 poached eggs + wholegrain toast + avocado + grilled tomatoes + spinach',p:'24g',f:'12g'}
+    ],note:'Long-run days: add a banana and extra toast before heading out.'},
+    lunch:{target:'45–55g protein · 10–12g fibre',items:[
+      {meal:'Chicken + bulgur salad + roasted peppers, courgette, red onion + feta',p:'48g',f:'13g'},
+      {meal:'Chicken burrito bowl: chicken 150g, brown rice, sweetcorn, avocado, salsa, spinach',p:'48g',f:'13g'},
+      {meal:'Beef strips + bulgur + tomato, cucumber, parsley, lemon (tabbouleh-style)',p:'46g',f:'12g'},
+      {meal:'Turkey wrap (wholemeal) + avocado + spinach + sweetcorn + side salad',p:'44g',f:'12g'},
+      {meal:'Leftovers from last night\'s dinner + extra veg',p:'—',f:'—'}
+    ]},
+    dinner:{target:'45–55g protein · 10–12g fibre',items:[
+      {meal:'Chilli con carne (extra beef mince, no beans) + peppers + brown rice',p:'52g',f:'9g'},
+      {meal:'Chicken stir fry: 180g chicken, broccoli, peppers, mangetout, brown rice noodles',p:'50g',f:'11g'},
+      {meal:'Turkey meatballs + wholewheat pasta + tomato sauce + large side salad',p:'50g',f:'12g'},
+      {meal:'Beef + bulgur pilaf + roasted Mediterranean veg',p:'48g',f:'13g'},
+      {meal:'Chicken traybake: thighs, sweet potato, peppers, red onion, courgette',p:'46g',f:'12g'},
+      {meal:'Steak + sweet potato wedges + broccoli + peas',p:'48g',f:'11g'},
+      {meal:'Chicken curry + brown rice + spinach + cauliflower',p:'46g',f:'10g'}
+    ],note:'Fish kept out of shared meals. Eating alone? Salmon and cod are the easiest protein to cook and good for recovery.'},
+    snacks:{target:'Pick 1–2 daily',items:[
+      {meal:'Protein shake + banana',p:'28g',f:'3g'},
+      {meal:'Greek yoghurt + raspberries + 1 tbsp chia',p:'20g',f:'11g'},
+      {meal:'Apple or pear + 2 tbsp peanut butter',p:'8g',f:'6g'},
+      {meal:'Handful almonds (30g)',p:'6g',f:'4g'},
+      {meal:'Boiled eggs (2) + oatcakes',p:'15g',f:'4g'},
+      {meal:'Biltong or beef jerky (50g)',p:'25g',f:'0g'},
+      {meal:'Homemade popcorn (30g)',p:'3g',f:'4g'}
+    ]}
+  },
+  sampleDay:{summary:'~2,100 kcal · 158g protein · 38g fibre',rows:[
+    ['08:00','Greek yoghurt + oats + raspberries + 2 tbsp chia'],
+    ['11:00','Protein shake + banana'],
+    ['13:30','Chicken burrito bowl (rice, sweetcorn, avocado, salsa)'],
+    ['16:30','Apple + peanut butter'],
+    ['19:30','Chicken traybake — thighs, sweet potato, peppers, red onion, courgette']
+  ]},
+  rules:[
+    'Protein at every meal — protects muscle in a deficit and supports tendon repair.',
+    'Fibre from chia, oats, raspberries, avocado, wholegrains and veg — no legumes required.',
+    'Eating window 8am–9pm. Don\'t run 12k+ fasted.',
+    'Batch-cook chilli, curry and stir-fry base on Sundays — three lunches sorted.',
+    'Never cut Saturday. The deficit lives on the other six days.',
+    'Weigh weekly, same day, same time.'
+  ],
+  floors:'Don\'t go below 1,900 on any day. If long runs feel heavy, sleep gets poor, or a niggle reappears — eat more, not less. The deficit is the first thing to relax.'
+};
+
 function workoutDef(id){return id==='strength-a'?STRENGTH_A:id==='strength-b'?STRENGTH_B:null}
 
 function getTrainingPlan(){
@@ -676,6 +751,132 @@ function renderMyPlanSchedule(){
   });
   html+='</div>';
   html+='<div class="train-plan-hint">Tap a strength day to see the full session. Tick exercises as you go — they reset each week.</div>';
+  el.innerHTML=html;
+}
+
+// ── Fuel tab ──
+// Static nutrition reference from NUTRITION_PLAN. Today's calorie target is read
+// from the training template so the number matches the plan. Escapes every
+// interpolated string — it's reference data, but the escape keeps the pattern
+// consistent with the rest of the app and safe if the plan is ever user-edited.
+function renderTrainingFuel(){
+  var el=document.getElementById('training-fuel');if(!el)return;
+  var esc=(typeof escapeHtml==='function')?escapeHtml:function(s){return String(s)};
+  var n=NUTRITION_PLAN;
+  var plan=getTrainingPlan();
+  var dayNames={Mon:'Monday',Tue:'Tuesday',Wed:'Wednesday',Thu:'Thursday',Fri:'Friday',Sat:'Saturday',Sun:'Sunday'};
+  var todayIdx=(new Date().getDay()+6)%7;
+  var todayRow=(plan.template||[])[todayIdx]||null;
+
+  var html='';
+
+  // Today's fuel target — the one number that changes day to day.
+  if(todayRow&&todayRow.kcal){
+    html+='<div class="card" style="margin-bottom:16px;padding:20px 24px;border-left:4px solid var(--sky)">'
+      +'<div class="card-label" style="margin:0 0 4px">Today · '+esc(dayNames[todayRow.day]||todayRow.day)+'</div>'
+      +'<div style="font-family:var(--mono,var(--serif));font-size:30px;font-weight:600;letter-spacing:-0.02em;color:var(--ink,var(--text))">'+todayRow.kcal.toLocaleString()+' <span style="font-size:14px;color:var(--text3);font-weight:400">kcal</span></div>'
+      +'<div style="font-size:13px;color:var(--text2);margin-top:2px">'+esc(todayRow.label)+' — '+esc(todayRow.sub)+'</div>'
+    +'</div>';
+  }
+
+  // Daily targets
+  html+='<div class="card" style="margin-bottom:16px">'
+    +'<div class="card-label">Daily targets</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-top:10px">'
+    +[['Protein',n.targets.protein,'var(--clay)'],['Fibre',n.targets.fibre,'var(--moss,var(--mint))'],['Water',n.targets.water,'var(--sky)']].map(function(t){
+      return '<div style="text-align:center;padding:12px;background:var(--paper2,var(--bg3));border-radius:12px">'
+        +'<div style="font-family:var(--mono,var(--serif));font-size:20px;font-weight:600;color:'+t[2]+'">'+esc(t[1])+'</div>'
+        +'<div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">'+esc(t[0])+'</div>'
+      +'</div>';
+    }).join('')
+    +'</div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-top:12px">'+esc(n.targets.avg)+'</div>'
+  +'</div>';
+
+  // Calorie cycle by day
+  html+='<div class="card" style="margin-bottom:16px">'
+    +'<div class="card-label">Calories by day</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:10px">'
+    +(plan.template||[]).map(function(d,i){
+      var on=i===todayIdx;
+      return '<div style="text-align:center;padding:10px 4px;background:'+(on?'var(--moss-dim,var(--accent-dim))':'var(--paper2,var(--bg3))')+';border-radius:10px'+(on?';outline:2px solid var(--moss,var(--accent))':'')+'">'
+        +'<div style="font-size:10px;color:var(--text3);text-transform:uppercase">'+esc(d.day)+'</div>'
+        +'<div style="font-family:var(--mono,var(--serif));font-size:14px;font-weight:600;color:var(--text);margin-top:3px">'+(d.kcal?d.kcal.toLocaleString():'—')+'</div>'
+      +'</div>';
+    }).join('')
+    +'</div>'
+  +'</div>';
+
+  // Fibre heroes + notes
+  html+='<div class="card" style="margin-bottom:16px">'
+    +'<div class="card-label">The three fibre heroes</div>'
+    +'<div style="font-size:12px;color:var(--text3);margin:4px 0 12px">No legumes needed.</div>'
+    +n.heroes.map(function(h){
+      return '<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">'
+        +'<div style="flex:0 0 auto;min-width:100px"><div style="font-size:14px;font-weight:600;color:var(--text)">'+esc(h.food)+'</div><div style="font-family:var(--mono,var(--serif));font-size:12px;color:var(--moss,var(--mint))">'+esc(h.fibre)+'</div></div>'
+        +'<div style="font-size:13px;color:var(--text2)">'+esc(h.use)+'</div>'
+      +'</div>';
+    }).join('')
+    +'<div class="train-plan-painrule" style="margin-top:12px">'+esc(n.fibreNote)+'</div>'
+    +'<div style="font-size:12px;color:var(--text2);margin-top:8px">'+esc(n.noLegumes)+'</div>'
+  +'</div>';
+
+  // The formula
+  html+='<div class="card" style="margin-bottom:16px">'
+    +'<div class="card-label">The formula (for reduced-section shopping)</div>'
+    +'<div style="font-size:13px;color:var(--text2);margin:8px 0 12px">'+esc(n.formula.line)+'</div>'
+    +[['Protein',n.formula.protein],['Carb',n.formula.carb],['Veg',n.formula.veg]].map(function(g){
+      return '<div style="margin-bottom:8px"><span style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3)">'+esc(g[0])+'</span><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">'
+        +g[1].map(function(x){return '<span style="font-size:12px;padding:3px 9px;background:var(--paper2,var(--bg3));border-radius:20px;color:var(--text2)">'+esc(x)+'</span>'}).join('')
+      +'</div></div>';
+    }).join('')
+  +'</div>';
+
+  // Meal lists
+  [['breakfast','Breakfast'],['lunch','Lunch'],['dinner','Dinner'],['snacks','Snacks']].forEach(function(m){
+    var slot=n.meals[m[0]];if(!slot)return;
+    html+='<div class="card" style="margin-bottom:16px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">'
+        +'<div class="card-label" style="margin:0">'+esc(m[1])+'</div>'
+        +'<div style="font-size:11px;color:var(--text3)">'+esc(slot.target)+'</div>'
+      +'</div>'
+      +'<div style="margin-top:8px">'
+      +slot.items.map(function(it){
+        return '<div style="display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)">'
+          +'<div style="font-size:13px;color:var(--text2);flex:1">'+esc(it.meal)+'</div>'
+          +'<div style="font-family:var(--mono,var(--serif));font-size:11px;color:var(--text3);white-space:nowrap;text-align:right">'+esc(it.p)+' P<br>'+esc(it.f)+' F</div>'
+        +'</div>';
+      }).join('')
+      +'</div>'
+      +(slot.note?'<div style="font-size:12px;color:var(--text3);font-style:italic;margin-top:8px">'+esc(slot.note)+'</div>':'')
+    +'</div>';
+  });
+
+  // Sample day
+  html+='<div class="card" style="margin-bottom:16px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">'
+      +'<div class="card-label" style="margin:0">A sample day</div>'
+      +'<div style="font-family:var(--mono,var(--serif));font-size:11px;color:var(--moss,var(--mint))">'+esc(n.sampleDay.summary)+'</div>'
+    +'</div>'
+    +'<div style="margin-top:8px">'
+    +n.sampleDay.rows.map(function(r){
+      return '<div style="display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)">'
+        +'<div style="font-family:var(--mono,var(--serif));font-size:12px;color:var(--text3);flex:0 0 46px">'+esc(r[0])+'</div>'
+        +'<div style="font-size:13px;color:var(--text2)">'+esc(r[1])+'</div>'
+      +'</div>';
+    }).join('')
+    +'</div>'
+  +'</div>';
+
+  // Rules + floors
+  html+='<div class="card" style="margin-bottom:16px">'
+    +'<div class="card-label">Practical</div>'
+    +'<ul style="margin:8px 0 0;padding-left:18px">'
+    +n.rules.map(function(r){return '<li style="font-size:13px;color:var(--text2);margin-bottom:6px">'+esc(r)+'</li>'}).join('')
+    +'</ul>'
+    +'<div class="train-plan-painrule" style="margin-top:12px">'+esc(n.floors)+'</div>'
+  +'</div>';
+
   el.innerHTML=html;
 }
 

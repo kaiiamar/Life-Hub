@@ -234,6 +234,22 @@ loadFromCloud(function(){
     saveState();
   }
 
+  // ---- FINAL 5-WEEK HM PLAN (one-shot) ------------------------------------
+  // The plan was revised to the final 5-week block (17 Aug – 20 Sep): a second
+  // gym day on Friday (upper+core), physio's full knee+calf rehab on Tuesday,
+  // and A–E weeks with a 19k peak. Force the saved template + race block to the
+  // current constants once, guarded by a new flag. Exercise-tick history in
+  // trainingPlan.checks is untouched; stale per-week run-day overrides inside
+  // the old raceBlock are dropped with it (the layout changed).
+  if(!STATE.__hmBlock5wkV3){
+    if(!STATE.trainingPlan)STATE.trainingPlan={template:[],checks:{}};
+    if(typeof TRAINING_TEMPLATE!=='undefined')STATE.trainingPlan.template=JSON.parse(JSON.stringify(TRAINING_TEMPLATE));
+    if(typeof HM_RACE_BLOCK!=='undefined')STATE.trainingPlan.raceBlock=JSON.parse(JSON.stringify(HM_RACE_BLOCK));
+    if(!STATE.trainingPlan.checks)STATE.trainingPlan.checks={};
+    STATE.__hmBlock5wkV3=true;
+    saveState();
+  }
+
   // ---- TASKS MIGRATION (one-shot) -----------------------------------------
   // Old data: STATE.dailyPriorities[date] = [{text,done}]
   //           STATE.weeklyPlans[wkKey].priorities = [3 strings]
