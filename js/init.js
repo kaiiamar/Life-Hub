@@ -282,6 +282,28 @@ loadFromCloud(function(){
     if(!saveState({suppressUndo:true}))STATE=_rehabSnap;
   }
 
+  // ---- RETIRE RUNNING FROM HABITS (one-shot) ------------------------------
+  // Running now lives in the training plan (logged per session with pace/detail),
+  // so any running habit is retired from the active list. Archived, not deleted:
+  // the lifecycle model keeps every completion and the habit can be restored
+  // from the Archive view. Targets habits linked to runs (integration key) or
+  // named for running. Snapshot/rollback on a refused save.
+  if(!STATE.__runHabitRetiredV1){
+    var _runSnap=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
+    var _runToday=localDateKey(new Date());
+    (STATE.habits||[]).forEach(function(h){
+      if(!h)return;
+      var linked=Array.isArray(h.integrationKeys)&&h.integrationKeys.indexOf('lifehub.run.any')!==-1;
+      var named=/\brun(ning)?\b/i.test(h.name||'');
+      if(!linked&&!named)return;
+      if(typeof habitLifecycleStatus==='function'&&habitLifecycleStatus(h,new Date())==='archived')return;
+      if(typeof ensureHabitLifecycle==='function')ensureHabitLifecycle(h);
+      if(typeof _setHabitLifecycleKind==='function')_setHabitLifecycleKind(h,'archived',_runToday);
+    });
+    STATE.__runHabitRetiredV1=true;
+    if(!saveState({suppressUndo:true}))STATE=_runSnap;
+  }
+
   // ---- TASKS MIGRATION (one-shot) -----------------------------------------
   // Old data: STATE.dailyPriorities[date] = [{text,done}]
   //           STATE.weeklyPlans[wkKey].priorities = [3 strings]
@@ -395,6 +417,7 @@ loadFromCloud(function(){
   try{renderPlanner()}catch(e){console.error('Render error:',e)}
   try{updateAppBadge()}catch(e){}
   try{maybePromptMorningMood()}catch(e){}
+  try{maybePromptCloseDay()}catch(e){}
   setupReminders();
 });
 startClock();
@@ -422,6 +445,29 @@ function maybePromptMorningMood(){
     if(modal&&modal.style.display==='flex')return;
     openModal('logMood',today);
   },700);
+}
+
+// Close-the-day pop-up. On the first open of the evening (from CLOSE_DAY_HOUR),
+// surface the sweep as a modal once — unless today's sweep is already complete
+// or a modal is already up. The guard is written only once the modal actually
+// opens, so a session where another modal was in the way retries on the next
+// open rather than being silently spent. Without background scheduling (the
+// Telegram bot is gone) the pop-up can only appear when the app is opened, which
+// is the honest behaviour for a PWA.
+var CLOSE_DAY_PROMPT_KEY='lh_closeday_prompted';
+function maybePromptCloseDay(){
+  var hour=(typeof CLOSE_DAY_HOUR==='number')?CLOSE_DAY_HOUR:21;
+  if(new Date().getHours()<hour)return;
+  var today=localDateKey(new Date());
+  var st=(typeof sweepState==='function')?sweepState(today):null;
+  if(st&&st.step==='summary')return;
+  try{if(localStorage.getItem(CLOSE_DAY_PROMPT_KEY)===today)return}catch(e){return}
+  setTimeout(function(){
+    var modal=document.getElementById('modal');
+    if(modal&&modal.style.display==='flex')return;   // busy — retry next open
+    try{localStorage.setItem(CLOSE_DAY_PROMPT_KEY,today)}catch(e){}
+    if(typeof openCloseDayModal==='function')openCloseDayModal();
+  },900);
 }
 
 // ============================================================

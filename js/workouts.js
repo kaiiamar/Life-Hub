@@ -652,6 +652,10 @@ function saveRunFromWorkout(){
   if(distNum>=10){fireConfetti({count:110,duration:2600,colors:['#5A8FB0','#7CA5C2','#6b9e7a','#d4845a']});showCelebrationToast(distNum+'km run — beast mode.','🏃')}
   else if(distNum>=5){fireConfetti({count:70,duration:2000,colors:['#5A8FB0','#7CA5C2','#6b9e7a']});showCelebrationToast(distNum+'km logged — nice one.','🏃')}
   else{showCelebrationToast(distNum+'km run logged','🏃')}
+  // Reflect the new run on the plan (done line + pace) when the Training page is
+  // showing. Other surfaces refresh through the lifehub:change listener.
+  var _wp=document.getElementById('page-workout');
+  if(_wp&&_wp.classList.contains('active')&&typeof renderWorkout==='function')renderWorkout();
   return true;
 }
 
@@ -665,10 +669,25 @@ function deleteRunFromWorkout(id){
   });
 }
 
+// Pace (mm:ss per km) derived from a run record's distance and mm:ss time, or ''
+// when either is missing/unparseable. Speed the user cares about is worked out
+// here rather than stored, so it can never disagree with the logged figures.
+function trainingRunPace(r){
+  if(!r||!r.time||r.distance==null)return '';
+  var parts=String(r.time).split(':');if(parts.length<2)return '';
+  var secs=Number(parts[0])*60+Number(parts[1]),dist=Number(r.distance);
+  if(!isFinite(secs)||!secs||!isFinite(dist)||!dist)return '';
+  var pace=secs/dist,m=Math.floor(pace/60),s=Math.round(pace%60);
+  if(s===60){m++;s=0}
+  return m+':'+('0'+s).slice(-2);
+}
+
 // ── Weekly training plan (half marathon) ──
 // Renders the Mon→Sun template. Strength days expand to show the full exercise
-// list with per-week checkboxes. Checks are keyed by ISO week so each week
-// starts fresh but history is preserved.
+// list with per-week checkboxes. Run days show a log affordance — a "Log this
+// run" button prefilled to that day's date, replaced by a done line with
+// distance · time · pace once a run is recorded. Checks are keyed by ISO week so
+// each week starts fresh but history is preserved.
 function renderMyPlanSchedule(){
   var el=document.getElementById('myplan-schedule');if(!el)return;
   var plan=getTrainingPlan();
@@ -731,6 +750,26 @@ function renderMyPlanSchedule(){
     html+='</div>';
     html+='<div class="train-plan-head-right">'+progressBadge+(def?'<span class="train-plan-chevron" id="chev-'+d.session+'">▸</span>':'')+'</div>';
     html+='</div>';
+    // Run days: tick the session off by logging it, with speed/time/detail. The
+    // date is this week's slot for that weekday (wdays is Sun-first, template is
+    // Mon-first, so shift by one). Once a run exists for that date the row shows
+    // distance · time · pace; before then, a Log button on today or past days.
+    if(d.session==='run'&&wdays){
+      var runDate=wdays[(i+1)%7];
+      var loggedRuns=((STATE.metrics||{}).run||[]).filter(function(r){return r.date===runDate});
+      if(loggedRuns.length){
+        var lr=loggedRuns[loggedRuns.length-1];
+        var pace=trainingRunPace(lr);
+        html+='<div class="train-plan-runlog done">'
+          +'<span>\u2713 '+(lr.distance!=null?escapeHtml(String(lr.distance))+'km':'Run logged')+(lr.time?' \u00B7 '+escapeHtml(String(lr.time)):'')+(pace?' \u00B7 '+pace+'/km':'')+'</span>'
+          +'<button class="btn btn-sm btn-ghost" onclick="openModal(\'logRun\',\''+runDate+'\')">+ Add</button>'
+        +'</div>';
+      }else if(runDate<=localDateKey(new Date())){
+        html+='<div class="train-plan-runlog">'
+          +'<button class="btn btn-sm btn-accent" onclick="openModal(\'logRun\',\''+runDate+'\')">Log this run \u2713</button>'
+        +'</div>';
+      }
+    }
     if(def){
       var checks2=(plan.checks[wk]&&plan.checks[wk][d.session])||{};
       html+='<div class="train-plan-body" id="trainbody-'+d.session+'">';

@@ -606,11 +606,17 @@ function refreshPlannerCards(keys,opts){
   // R17.2 and R17.3 — the caret snapshot is taken before any markup moves, and
   // the scroll guard spans the patch and every escalation inside it.
   var focused=capturePlannerFocus();
-  return preservePlannerScroll(function(){
-    var patched=plannerPatchCards(keys||[],opts||{});
+  var patched=preservePlannerScroll(function(){
+    var p=plannerPatchCards(keys||[],opts||{});
     restorePlannerFocus(focused);
-    return patched;
+    return p;
   });
+  // The sweep also renders inside the close-day pop-up. When a step control
+  // there fires one of the sweep* handlers, the handler repaints the `sweep`
+  // card through here; mirror that repaint into the open modal so the pop-up
+  // advances in lock-step with the write it just made.
+  if((keys||[]).indexOf('sweep')!==-1&&typeof renderCloseDayModal==='function')renderCloseDayModal();
+  return patched;
 }
 
 // ── Focus, caret and scroll preservation (R17.2, R17.3) ────
@@ -893,45 +899,81 @@ var plannerOpenTarget=null;
 // Neutral_Palette only — --text2, --text3, --gold, --mint, --sky, --clay,
 // --accent — and no --red anywhere, including the skipped-step affordances, since
 // a skipped step is a legitimate outcome and not a failure (R8.18).
+// The hour the close-the-day flow becomes available and auto-prompts. The sweep
+// used to surface from 17:00 as an inline card; it now waits until 21:00 and
+// runs as a pop-up (openCloseDayModal / maybePromptCloseDay in init.js), so this
+// card is only a launcher and status line.
+var CLOSE_DAY_HOUR=21;
+
+// The Close_The_Day launcher card. From CLOSE_DAY_HOUR it offers a button that
+// opens the sweep as a modal; once the sweep is complete it shows a done line
+// with a reopen affordance. The step-by-step flow itself lives in
+// closeDayModalBody so there is exactly one place the sweep inputs are rendered
+// (no duplicate element ids across a hidden page and an open modal).
 function plannerCloseDayCard(todayKey){
   var today=todayKey||localDateKey(new Date());
   var forced=(typeof plannerOpenTarget!=='undefined'&&plannerOpenTarget==='close-day');
-  if(new Date().getHours()<17&&!forced)return '';
+  if(new Date().getHours()<CLOSE_DAY_HOUR&&!forced)return '';
 
   var st=sweepState(today);                                                     // pure read: rendering writes nothing (R8.1)
-  var title,progress='',body;
+  var head='<div class="planner-card-head"><span class="planner-card-title"><span class="section-rule-bar"></span>';
 
   if(st.step==='summary'){
-    title='Day closed';
-    // sweepSummaryPanel lands in task 14.4. Guarded so the card still renders
-    // its completed state before that task, rather than throwing mid-render.
-    body=(typeof sweepSummaryPanel==='function')
-      ? sweepSummaryPanel(today,st)
-      : '<div class="pc-sweep-summary" style="font-size:13px;color:var(--text2)">That\u2019s today closed.</div>';
-  }else{
-    title='Close the day';
-    progress='<span class="pc-sweep-progress" style="font-size:11px;color:var(--text3);letter-spacing:.06em">'
-      +escapeHtml(String(st.step+1))+' of '+escapeHtml(String(SWEEP_STEPS.length))
-    +'</span>';
-    var builders={
-      water:sweepStepWater,
-      skincare:sweepStepSkincare,
-      mood:sweepStepMood,
-      gratitude:sweepStepGratitude,
-      habits:sweepStepHabits
-    };
-    var stepKey=SWEEP_STEPS[st.step];
-    body=(stepKey&&builders[stepKey])?builders[stepKey](today,st):'';
+    return ''
+      +'<div class="card planner-card planner-sweep-card" id="planner-sweep-card">'
+        +head+'Day closed</span></div>'
+        +'<div class="pc-sweep-summary" style="font-size:13px;color:var(--text2)">That\u2019s today closed. \u2713</div>'
+        +'<div style="margin-top:10px"><button type="button" class="btn btn-sm btn-ghost" onclick="openCloseDayModal()">Reopen</button></div>'
+      +'</div>';
   }
 
+  var started=(typeof st.step==='number'&&st.step>0);
   return ''
     +'<div class="card planner-card planner-sweep-card" id="planner-sweep-card">'
-      +'<div class="planner-card-head">'
-        +'<span class="planner-card-title"><span class="section-rule-bar"></span>'+escapeHtml(title)+'</span>'
-        +progress
-      +'</div>'
-      +body
+      +head+'Close the day</span></div>'
+      +'<div style="font-size:13px;color:var(--text3);margin-bottom:10px">A quick sweep \u2014 water, skincare, mood, gratitude, habits.</div>'
+      +'<button type="button" class="btn btn-accent" onclick="openCloseDayModal()">'+(started?'Continue closing the day':'Close the day')+'</button>'
     +'</div>';
+}
+
+// Open the sweep as a modal. The step buttons inside reuse the same sweep*
+// write paths as before; renderCloseDayModal keeps the modal in step with them.
+function openCloseDayModal(){
+  if(typeof openModal==='function')openModal('closeDay');
+}
+
+// The modal body for one sweep step (or the completion state). Mirrors the old
+// inline card exactly — same step builders, same handlers — so nothing about
+// the sweep's write logic changes; only where it renders. The wrapping
+// [data-close-day-modal] marker lets renderCloseDayModal recognise its own modal.
+function closeDayModalBody(today){
+  today=today||localDateKey(new Date());
+  var st=sweepState(today);
+  if(st.step==='summary'){
+    return '<h2>\uD83C\uDF19 Day closed</h2>'
+      +'<div class="modal-sub">That\u2019s today wrapped up. Nice work.</div>'
+      +'<div data-close-day-modal="1" hidden></div>'
+      +'<div class="modal-btns"><button class="btn btn-accent" onclick="closeModal()">Done</button></div>';
+  }
+  var builders={water:sweepStepWater,skincare:sweepStepSkincare,mood:sweepStepMood,gratitude:sweepStepGratitude,habits:sweepStepHabits};
+  var stepKey=SWEEP_STEPS[st.step];
+  var body=(stepKey&&builders[stepKey])?builders[stepKey](today,st):'';
+  return '<h2>\uD83C\uDF19 Close the day</h2>'
+    +'<div class="modal-sub">Step '+escapeHtml(String(st.step+1))+' of '+escapeHtml(String(SWEEP_STEPS.length))+'</div>'
+    +'<div data-close-day-modal="1">'+body+'</div>'
+    +'<div class="modal-btns"><button class="btn btn-ghost" onclick="closeModal()">Finish later</button></div>';
+}
+
+// Re-render the close-day modal in place when it is the modal on screen. Called
+// from refreshPlannerCards whenever the sweep changes, so tapping a step control
+// advances the pop-up just as it advanced the old inline card.
+function renderCloseDayModal(){
+  var modal=document.getElementById('modal'),mc=document.getElementById('modal-content');
+  if(!modal||!mc||modal.style.display!=='flex')return;
+  if(!mc.querySelector('[data-close-day-modal]'))return;
+  mc.innerHTML=closeDayModalBody(localDateKey(new Date()));
+  var first=mc.querySelector('textarea,input:not([type=hidden]),button');
+  if(first)setTimeout(function(){try{first.focus()}catch(e){}},0);
 }
 
 // The Sweep_Skip control, in one place because R8.5 asks for it at *every* step

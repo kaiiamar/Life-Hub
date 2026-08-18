@@ -53,10 +53,13 @@ var HABIT_ANCHORS={
   anytime:{label:'Anytime',emoji:'✨',hours:[0,24]}
 };
 
+// Running is tracked in the training plan, not as a habit, so the run auto-link
+// is no longer offered here. The 'lifehub.run.any' key stays valid in the
+// persistence allowlist so any archived run habit that still carries it
+// continues to validate; it is simply not selectable on new or edited habits.
 var HABIT_INTEGRATION_META=[
   {key:'lifehub.workout.any',label:'Any workout',sourceKind:'workout'},
   {key:'lifehub.workout.hyrox',label:'Hyrox workout',sourceKind:'workout'},
-  {key:'lifehub.run.any',label:'Any run',sourceKind:'run'},
   {key:'lifehub.skincare.am',label:'Morning skincare',sourceKind:'skincare'},
   {key:'lifehub.skincare.pm',label:'Evening skincare',sourceKind:'skincare'}
 ];

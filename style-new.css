@@ -3761,6 +3761,10 @@ body.night-mode .hb-week-day.done{background:linear-gradient(135deg,#d4845a,#b05
 .train-ex-note{font-size:11px;color:var(--text3);margin-top:2px;line-height:1.4}
 .train-plan-foot{font-size:11px;color:var(--text2);font-style:italic;margin-top:12px;padding-top:10px;border-top:1px dashed var(--border)}
 .train-plan-hint{font-size:11px;color:var(--text3);text-align:center;margin-top:12px}
+/* Run-day log affordance on the plan schedule. */
+.train-plan-runlog{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:0 14px 12px 18px;font-size:13px;color:var(--text2)}
+.train-plan-runlog.done{color:var(--moss);font-weight:600}
+.train-plan-runlog .btn{margin-left:auto}
 
 /* ══════════════════════════════════════════════
    UX PASS — accessibility, tap targets, hierarchy, utilities
