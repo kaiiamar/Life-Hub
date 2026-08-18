@@ -250,6 +250,38 @@ loadFromCloud(function(){
     saveState();
   }
 
+  // ---- DAILY REHAB HABIT (one-shot) ---------------------------------------
+  // Seed the physio's daily 5-minute rehab block as a tickable daily habit. It
+  // carries its exercise list in `details` (a field the validator permits and
+  // the habit sync-merge preserves) so the habit card can expand to show what it
+  // entails. Guarded by a flag AND an id check so it seeds exactly once and
+  // never duplicates a habit the user may already have. Snapshot/rollback on a
+  // refused save, matching the other one-shot migrations above.
+  if(!STATE.__rehabHabitV1){
+    var _rehabSnap=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
+    if(!Array.isArray(STATE.habits))STATE.habits=[];
+    if(!STATE.habits.some(function(h){return h&&h.id==='rehab-daily-5min'})){
+      STATE.habits.push({
+        id:'rehab-daily-5min',
+        name:'Daily 5-min rehab',
+        freq:'daily',badge:'fit',icon:'🦵',
+        note:'Five minutes daily beats a perfect session you skip. Do it while the kettle boils.',
+        anchor:'anytime',integrationKeys:[],provenanceVersion:1,
+        logProvenance:{},logs:{},startDate:localDateKey(new Date()),
+        lifecycle:{version:1,inactivePeriods:[]},
+        detailsTitle:'The daily 5-minute block',
+        details:[
+          {name:'Heel raises, ball squeezed between heels',spec:'2 × 15 slow'},
+          {name:'Banded inversion (foot turns inward)',spec:'2 × 15 each side'},
+          {name:'Calf stretch (straight knee + bent knee)',spec:'30s each'},
+          {name:'Hamstring stretch',spec:'30s each'}
+        ]
+      });
+    }
+    STATE.__rehabHabitV1=true;
+    if(!saveState({suppressUndo:true}))STATE=_rehabSnap;
+  }
+
   // ---- TASKS MIGRATION (one-shot) -----------------------------------------
   // Old data: STATE.dailyPriorities[date] = [{text,done}]
   //           STATE.weeklyPlans[wkKey].priorities = [3 strings]

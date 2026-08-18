@@ -1412,10 +1412,16 @@ function plannerHabitCard(){
     rows+=habits.map(function(h){
       var done=!!(h.logs&&h.logs[today]),manual=done&&typeof habitManualCompleted==='function'&&habitManualCompleted(h,today),sourceOnly=done&&!manual;
       var label=sourceOnly?'Completed by linked activity: '+h.name:(done?'Undo ':'Complete ')+h.name;
-      return '<button type="button" class="pw-habit-row'+(done?' done':'')+'" data-planner-habit="'+h.id+'" aria-pressed="'+(done?'true':'false')+'" aria-label="'+escapeHtml(label)+'"'+(sourceOnly?' disabled':' onclick="plannerToggleHabit(\''+h.id+'\')"')+'>'
-        +'<span class="pw-habit-check" data-tick="pwhab:'+h.id+'" aria-hidden="true">'+(done?'\u2713':'')+'</span>'
-        +'<span class="pw-habit-name">'+(h.icon?escapeHtml(h.icon)+' ':'')+escapeHtml(h.name)+(sourceOnly?'<span class="pw-habit-source">Linked</span>':'')+'</span>'
-      +'</button>';
+      var hasDetails=typeof habitHasDetails==='function'&&habitHasDetails(h);
+      var open=hasDetails&&habitDetailsOpen[h.id];
+      var row='<div class="pw-habit-rowline">'
+        +'<button type="button" class="pw-habit-row'+(done?' done':'')+'" data-planner-habit="'+h.id+'" aria-pressed="'+(done?'true':'false')+'" aria-label="'+escapeHtml(label)+'"'+(sourceOnly?' disabled':' onclick="plannerToggleHabit(\''+h.id+'\')"')+'>'
+          +'<span class="pw-habit-check" data-tick="pwhab:'+h.id+'" aria-hidden="true">'+(done?'\u2713':'')+'</span>'
+          +'<span class="pw-habit-name">'+(h.icon?escapeHtml(h.icon)+' ':'')+escapeHtml(h.name)+(sourceOnly?'<span class="pw-habit-source">Linked</span>':'')+'</span>'
+        +'</button>'
+        +(hasDetails?'<button type="button" class="pw-habit-info" data-planner-habit-info="'+h.id+'" aria-expanded="'+(open?'true':'false')+'" aria-label="'+(open?'Hide':'Show')+' what '+escapeHtml(h.name)+' entails" onclick="toggleHabitDetails(\''+h.id+'\')">'+(open?'\u25BE':'\u25B8')+'</button>':'')
+      +'</div>';
+      return '<div class="pw-habit-item">'+row+(open?habitDetailsPanelHTML(h):'')+'</div>';
     }).join('');
     rows+='</div>';
   }

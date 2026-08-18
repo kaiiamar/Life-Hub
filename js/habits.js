@@ -3,6 +3,41 @@
 
 var habitFilter='all';
 var habitLifecycleView='active';
+// Which habit detail panels are expanded, keyed by habit id. Module-level so the
+// open state survives the full innerHTML rebuild a tick triggers on either the
+// Habits page or the planner habits card.
+var habitDetailsOpen={};
+
+// A habit carries `details` (an array of {name, spec}) when it has an expandable
+// "what it entails" panel — e.g. the seeded daily rehab block. Optional, so most
+// habits have none and render exactly as before.
+function habitHasDetails(h){return !!(h&&Array.isArray(h.details)&&h.details.length)}
+
+function habitDetailsPanelHTML(h){
+  if(!habitHasDetails(h))return '';
+  return '<div class="hb-details-panel">'
+    +(h.detailsTitle?'<div class="hb-details-panel-title">'+escapeHtml(h.detailsTitle)+'</div>':'')
+    +'<ul class="hb-details-list">'
+    +h.details.map(function(d){
+      return '<li class="hb-details-item"><span class="hb-details-name">'+escapeHtml(d.name||'')+'</span>'
+        +(d.spec?'<span class="hb-details-spec">'+escapeHtml(d.spec)+'</span>':'')
+      +'</li>';
+    }).join('')
+    +'</ul></div>';
+}
+
+// Flip a habit's detail panel and re-render whichever surface is showing it. The
+// Habits page restores focus itself via data-habit-focus; the planner has no
+// generic restore, so re-focus the info toggle explicitly after its patch.
+function toggleHabitDetails(id){
+  habitDetailsOpen[id]=!habitDetailsOpen[id];
+  if(document.getElementById('habits-grid')&&typeof renderHabits==='function')renderHabits();
+  if(typeof refreshPlannerCards==='function'&&document.getElementById('planner-habits-card')){
+    refreshPlannerCards(['habits']);
+    var info=document.querySelector('[data-planner-habit-info="'+id+'"]');
+    if(info)info.focus();
+  }
+}
 
 var HABIT_CAT_META={
   fit:{label:'Fitness',color:'#B0563C',emoji:'💪'},
@@ -322,6 +357,12 @@ function renderHabitCard(h,todayKey){
   html+='<button type="button" class="hb-edit" data-habit-focus="edit:'+h.id+'" onclick="openModal(\'editHabit\',\''+h.id+'\')" aria-label="Manage '+escapeHtml(h.name)+'">•••</button></div>';
 
   if(h.note)html+='<p class="hb-note">'+escapeHtml(h.note)+'</p>';
+  if(habitHasDetails(h)){
+    var detailsOpen=!!habitDetailsOpen[h.id];
+    html+='<button type="button" class="hb-details-toggle" data-habit-focus="details:'+h.id+'" aria-expanded="'+(detailsOpen?'true':'false')+'" onclick="toggleHabitDetails(\''+h.id+'\')">'
+      +'<span class="hb-details-caret" aria-hidden="true">'+(detailsOpen?'▾':'▸')+'</span>'+escapeHtml(h.detailsTitle||'What it entails')+'</button>';
+    if(detailsOpen)html+=habitDetailsPanelHTML(h);
+  }
   html+='<div class="hb-snapshot"><div><span class="hb-snapshot-value" style="color:'+tone.color+'">'+consistency.pct+'%</span><span class="hb-snapshot-label">historical rhythm</span></div>';
   html+='<div><span class="hb-snapshot-value">'+(streak||'—')+'</span><span class="hb-snapshot-label">'+(streak?'period'+(streak===1?'':'s')+' in flow':'open start')+'</span></div>';
   html+='<div class="hb-ring-wrap" aria-label="'+escapeHtml(h.name)+' historical rhythm '+consistency.pct+' percent">'+(typeof ringSVG==='function'?ringSVG(consistency.pct,frequency==='daily'?'var(--moss)':'var(--amber)',42,currentProgress.met?'✓':''):'')+'</div></div>';
