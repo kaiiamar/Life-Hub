@@ -158,10 +158,29 @@ var NUTRITION_PLAN={
 
 function workoutDef(id){return id==='strength-a'?STRENGTH_A:id==='strength-b'?STRENGTH_B:null}
 
+// Bump whenever TRAINING_TEMPLATE or HM_RACE_BLOCK change. getTrainingPlan()
+// reconciles any saved plan stamped with an older version to the current
+// constants, so the prescriptive plan is always current. This is the durable
+// mechanism; the one-shot __hmBlock*V* migrations in init.js are belt-and-braces
+// and cannot leave a plan stale if their flag is set without the plan updating
+// (e.g. a partial sync of the flag domain but not the trainingPlan domain).
+var LIFEHUB_PLAN_VERSION=3;
+
 function getTrainingPlan(){
-  if(!STATE.trainingPlan)STATE.trainingPlan={template:JSON.parse(JSON.stringify(TRAINING_TEMPLATE)),checks:{}};
-  if(!STATE.trainingPlan.template)STATE.trainingPlan.template=JSON.parse(JSON.stringify(TRAINING_TEMPLATE));
+  if(!STATE.trainingPlan)STATE.trainingPlan={template:JSON.parse(JSON.stringify(TRAINING_TEMPLATE)),checks:{},planVersion:LIFEHUB_PLAN_VERSION};
   if(!STATE.trainingPlan.checks)STATE.trainingPlan.checks={};
+  // Version-gated self-heal: replace the prescriptive parts (weekly template and
+  // dated race block) with the current constants whenever the saved plan predates
+  // this version, preserving the user's exercise-tick history. Runs once per
+  // bump — after it stamps planVersion the branch is skipped — and drops stale
+  // per-week run-day overrides with the old block, exactly as the migration did.
+  if(STATE.trainingPlan.planVersion!==LIFEHUB_PLAN_VERSION){
+    if(typeof TRAINING_TEMPLATE!=='undefined')STATE.trainingPlan.template=JSON.parse(JSON.stringify(TRAINING_TEMPLATE));
+    if(typeof HM_RACE_BLOCK!=='undefined')STATE.trainingPlan.raceBlock=JSON.parse(JSON.stringify(HM_RACE_BLOCK));
+    STATE.trainingPlan.planVersion=LIFEHUB_PLAN_VERSION;
+    if(typeof saveState==='function')saveState({suppressUndo:true});
+  }
+  if(!STATE.trainingPlan.template)STATE.trainingPlan.template=JSON.parse(JSON.stringify(TRAINING_TEMPLATE));
   // Defensive backfill: ensure the dated race block is present (addendum §1).
   if(!STATE.trainingPlan.raceBlock&&typeof HM_RACE_BLOCK!=='undefined')STATE.trainingPlan.raceBlock=JSON.parse(JSON.stringify(HM_RACE_BLOCK));
   if(STATE.trainingPlan.raceBlock&&!STATE.trainingPlan.raceBlock.runDays)STATE.trainingPlan.raceBlock.runDays={easy:1,quality:4,long:6};

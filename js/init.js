@@ -246,6 +246,7 @@ loadFromCloud(function(){
     if(typeof TRAINING_TEMPLATE!=='undefined')STATE.trainingPlan.template=JSON.parse(JSON.stringify(TRAINING_TEMPLATE));
     if(typeof HM_RACE_BLOCK!=='undefined')STATE.trainingPlan.raceBlock=JSON.parse(JSON.stringify(HM_RACE_BLOCK));
     if(!STATE.trainingPlan.checks)STATE.trainingPlan.checks={};
+    if(typeof LIFEHUB_PLAN_VERSION!=='undefined')STATE.trainingPlan.planVersion=LIFEHUB_PLAN_VERSION;
     STATE.__hmBlock5wkV3=true;
     saveState();
   }
