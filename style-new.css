@@ -3735,7 +3735,7 @@ body.night-mode .hb-week-day.done{background:linear-gradient(135deg,#d4845a,#b05
   font-style:italic;
 }
 
-/* ── Half marathon training plan ── */
+/* ── Weekly muscle-health training plan ── */
 .train-plan-list{display:flex;flex-direction:column;gap:10px}
 .train-plan-day{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
 .train-plan-day.is-today{box-shadow:0 0 0 2px var(--accent-dim)}

@@ -182,73 +182,23 @@ loadFromCloud(function(){
   });
   if(habitDataChanged)saveState({suppressUndo:true});
 
-  // ---- TRAINING PLAN MIGRATION (one-shot) ---------------------------------
-  // Move gym/running out of the habit tracker into the dedicated training plan.
-  // Remove the old 'Gym session' and 'Run once a week' habits, seed the half
-  // marathon plan + race event. Guarded so it only runs once.
-  if(!STATE.__trainingMigrated){
-    STATE.habits=(STATE.habits||[]).filter(function(h){
-      var n=(h.name||'').toLowerCase();
-      return !(n.indexOf('gym session')!==-1||n==='run once a week'||n.indexOf('run once')!==-1);
+  // ---- BODY COMPOSITION PLAN V4 (one-shot) -------------------------------
+  // Replace only the prescriptive plan and the untouched seeded race event.
+  // Completed workouts, runs, weigh-ins and other metrics live in separate
+  // domains and are deliberately left unchanged.
+  if(!STATE.__bodyCompositionPlanV4){
+    var _planSnap=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
+    STATE.trainingPlan={
+      template:JSON.parse(JSON.stringify(TRAINING_TEMPLATE)),
+      program:JSON.parse(JSON.stringify(BODY_COMPOSITION_PROGRAM)),
+      checks:{},
+      planVersion:LIFEHUB_PLAN_VERSION
+    };
+    STATE.trainingEvents=(STATE.trainingEvents||[]).filter(function(e){
+      return !(e&&e.name==='Half Marathon'&&e.date==='2026-09-20'&&e.note==='21.1km race day');
     });
-    if(!STATE.trainingPlan&&typeof TRAINING_TEMPLATE!=='undefined'){
-      STATE.trainingPlan={template:JSON.parse(JSON.stringify(TRAINING_TEMPLATE)),checks:{}};
-    }
-    // Seed race event if not already present
-    if(!STATE.trainingEvents)STATE.trainingEvents=[];
-    var hasRace=STATE.trainingEvents.some(function(e){return e.date==='2026-09-20'||/half\s*marathon/i.test(e.name||'')});
-    if(!hasRace){
-      STATE.trainingEvents.push({id:g(),name:'Half Marathon',date:'2026-09-20',note:'21.1km race day'});
-    }
-    STATE.__trainingMigrated=true;
-    saveState();
-  }
-
-  // ---- HALF MARATHON RACE BLOCK SEED (one-shot) ---------------------------
-  // Load the dated 10-week block (13 Jul – 20 Sep 2026) and adopt the block-
-  // arranged weekly template. Guarded with __hmBlockSeeded so it runs once.
-  // HM_RACE_BLOCK + TRAINING_TEMPLATE come from workouts.js (loaded before
-  // init.js per index.html script order). (addendum §1)
-  if(!STATE.__hmBlockSeeded){
-    if(!STATE.trainingPlan)STATE.trainingPlan={template:[],checks:{}};
-    if(typeof TRAINING_TEMPLATE!=='undefined')STATE.trainingPlan.template=JSON.parse(JSON.stringify(TRAINING_TEMPLATE));
-    if(typeof HM_RACE_BLOCK!=='undefined')STATE.trainingPlan.raceBlock=JSON.parse(JSON.stringify(HM_RACE_BLOCK));
-    if(!STATE.trainingPlan.checks)STATE.trainingPlan.checks={};
-    STATE.__hmBlockSeeded=true;
-    saveState();
-  }
-
-  // ---- HM BLOCK RE-SEED V2 (one-shot) -------------------------------------
-  // The weekly layout changed (Mon easy · Tue strength · Wed rest · Thu quality
-  // · Fri rest · Sat long · Sun rest). Existing users already have the old
-  // template/runDays saved, and __hmBlockSeeded blocks a re-run — so force the
-  // template + run-day mapping to the current values once, guarded by a new
-  // flag. Weeks data is unchanged; user weigh-ins/checks are untouched.
-  if(!STATE.__hmBlockV2){
-    if(STATE.trainingPlan){
-      if(typeof TRAINING_TEMPLATE!=='undefined')STATE.trainingPlan.template=JSON.parse(JSON.stringify(TRAINING_TEMPLATE));
-      if(!STATE.trainingPlan.raceBlock&&typeof HM_RACE_BLOCK!=='undefined')STATE.trainingPlan.raceBlock=JSON.parse(JSON.stringify(HM_RACE_BLOCK));
-      if(STATE.trainingPlan.raceBlock)STATE.trainingPlan.raceBlock.runDays={easy:1,quality:4,long:6};
-    }
-    STATE.__hmBlockV2=true;
-    saveState();
-  }
-
-  // ---- FINAL 5-WEEK HM PLAN (one-shot) ------------------------------------
-  // The plan was revised to the final 5-week block (17 Aug – 20 Sep): a second
-  // gym day on Friday (upper+core), physio's full knee+calf rehab on Tuesday,
-  // and A–E weeks with a 19k peak. Force the saved template + race block to the
-  // current constants once, guarded by a new flag. Exercise-tick history in
-  // trainingPlan.checks is untouched; stale per-week run-day overrides inside
-  // the old raceBlock are dropped with it (the layout changed).
-  if(!STATE.__hmBlock5wkV3){
-    if(!STATE.trainingPlan)STATE.trainingPlan={template:[],checks:{}};
-    if(typeof TRAINING_TEMPLATE!=='undefined')STATE.trainingPlan.template=JSON.parse(JSON.stringify(TRAINING_TEMPLATE));
-    if(typeof HM_RACE_BLOCK!=='undefined')STATE.trainingPlan.raceBlock=JSON.parse(JSON.stringify(HM_RACE_BLOCK));
-    if(!STATE.trainingPlan.checks)STATE.trainingPlan.checks={};
-    if(typeof LIFEHUB_PLAN_VERSION!=='undefined')STATE.trainingPlan.planVersion=LIFEHUB_PLAN_VERSION;
-    STATE.__hmBlock5wkV3=true;
-    saveState();
+    STATE.__bodyCompositionPlanV4=true;
+    if(!saveState({suppressUndo:true}))STATE=_planSnap;
   }
 
   // ---- DAILY REHAB HABIT (one-shot) ---------------------------------------

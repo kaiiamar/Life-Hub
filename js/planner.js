@@ -1652,72 +1652,43 @@ function plannerTrainingCard(todayKey){
   var t=todaysTrainingSession(todayKey);
   if(!t)return '';
 
-  var icon,text,isRest=(t.session==='rest');
-  if(isRest){
-    icon='\uD83C\uDF3F';text=(t.label||'Rest')+(t.sub?' \u00B7 '+t.sub:'');
-  }else if(t.isRace){
-    icon='\uD83C\uDFC1';text=t.label+' \u00B7 '+(t.desc||'');
-  }else{
-    var def=(typeof workoutDef==='function')?workoutDef(t.session):null;
-    if(def){
-      icon=def.emoji||'\uD83C\uDFCB\uFE0F';
-      text=t.label+' \u00B7 '+def.exercises.length+' exercises';
-    }else{
-      icon=(t.runType==='long')?'\uD83C\uDFC3':(t.runType==='quality')?'\u26A1':'\uD83C\uDFC3';
-      text=t.label+(t.desc?' \u00B7 '+t.desc:(t.sub?' \u00B7 '+t.sub:''));
-    }
-  }
-
-  // Watermark emoji
-  var watermark=isRest?'\uD83C\uDF3F':(t.session==='run'?'\uD83C\uDFC3':'\uD83C\uDFCB\uFE0F');
-
-  // "TRAINING DAY" badge on active days; rest days stay calm.
-  var badge=isRest?'':'<span class="pw-train-badge">TRAINING DAY</span>';
-  // Editable run-days control
-  var editBtn=(t.block&&!isRest)?'<button class="planner-train-edit" onclick="openModal(\'editRunDays\')" title="Adjust run days" aria-label="Adjust run days">\u22EF</button>':'';
+  var def=(typeof workoutDef==='function')?workoutDef(t.session):null;
+  var isRest=t.session==='rest';
+  var isRun=t.session==='run';
+  var isCardio=t.session==='cardio-v4';
+  var icon=isRest?'🌿':isRun?'🏃':isCardio?'🚴':(def&&def.emoji)||'🏋️';
+  var text=t.label+' · '+(def?def.exercises.length+' exercises':t.sub||'');
+  var watermark=isRest?'🌿':isRun?'🏃':isCardio?'❤️':'🏋️';
+  var badge=isRest?'':'<span class="pw-train-badge">'+(isRun?'5K DAY':isCardio?'AEROBIC DAY':'STRENGTH DAY')+'</span>';
 
   var html='<div class="card planner-card planner-training-card" id="planner-training-card">';
   html+='<span class="pw-train-watermark" aria-hidden="true">'+watermark+'</span>';
-  html+='<div class="planner-card-head"><span class="planner-card-title"><span class="pw-train-bar"></span>Today\'s training</span>'+badge+editBtn+'</div>';
+  html+='<div class="planner-card-head"><span class="planner-card-title"><span class="pw-train-bar"></span>Today\'s training</span>'+badge+'</div>';
   html+='<div class="planner-train-line"><span class="planner-train-icon">'+icon+'</span>'
     +'<span class="planner-train-text">'+escapeHtml(text)+'</span></div>';
-
-  // In-block run session detail
-  if(t.block&&!isRest){
-    if(t.desc&&t.session==='run'&&!t.isRace)html+='<div class="planner-train-desc">'+escapeHtml(t.desc)+'</div>';
-    if(t.detail)html+='<div class="planner-train-pace">'+escapeHtml(t.detail)+'</div>';
-    if(t.easyRun)html+='<div class="planner-train-desc">then easy run \u00B7 '+escapeHtml(t.easyRun)+(t.easyDetail?' ('+escapeHtml(t.easyDetail)+')':'')+'</div>';
-    if(t.fuelText)html+='<div class="planner-train-fuel">\uD83E\uDD64 '+escapeHtml(t.fuelText)+'</div>';
-    if(t.isRace&&t.raceStrategy)html+='<div class="planner-train-desc">'+escapeHtml(t.raceStrategy)+'</div>';
-    else if(t.block.phase==='race week'&&!t.isRace)html+='<div class="planner-train-fuel">race week \u2014 keep it light</div>';
-    var ctxBits=['Week '+t.block.n+' of '+t.block.total];
-    if(t.block.daysToBirthday!=null&&t.block.daysToBirthday>0)ctxBits.push(t.block.daysToBirthday+' days to your birthday');
-    ctxBits.push(t.block.daysToRace+' days to race day');
-    html+='<div class="planner-train-context">'+ctxBits.join(' \u00B7 ')+'</div>';
-  }
+  if(t.desc&&!isRest)html+='<div class="planner-train-desc">'+escapeHtml(t.desc)+'</div>';
+  if(t.detail)html+='<div class="planner-train-pace">'+escapeHtml(t.detail)+'</div>';
 
   var logged=plannerTrainingLoggedToday(todayKey,t);
   if(logged){
-    html+='<div class="planner-train-done">'+escapeHtml(logged)+' \u2713 logged</div>';
+    html+='<div class="planner-train-done">'+escapeHtml(logged)+' ✓ logged</div>';
   }else{
     html+='<div class="planner-train-actions">';
     if(isRest){
-      html+='<button class="btn btn-sm pw-train-log-btn" onclick="quickLogToday(\'Rest\')">Log rest \uD83C\uDF3F</button>';
+      html+='<button class="btn btn-sm pw-train-log-btn" onclick="quickLogToday(\'Rest\')">Log recovery 🌿</button>';
       html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Gym\')">Gym</button>';
-      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Hyrox\')">Hyrox</button>';
-      html+='<button class="btn btn-sm btn-ghost" onclick="openModal(\'logRun\')">Run</button>';
-    }else if(t.session==='run'){
-      html+='<button class="btn btn-sm pw-train-log-btn" onclick="openModal(\'logRun\')">Log run \uD83C\uDFC3</button>';
+      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Cardio\')">Cardio</button>';
+    }else if(isRun){
+      html+='<button class="btn btn-sm pw-train-log-btn" onclick="openModal(\'logRun\')">Log 5K 🏃</button>';
+      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Rest\')">Recovery</button>';
+    }else if(isCardio){
+      html+='<button class="btn btn-sm pw-train-log-btn" onclick="quickLogToday(\'Cardio\')">Log Zone 2 ✓</button>';
       html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Gym\')">Gym</button>';
-      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Hyrox\')">Hyrox</button>';
-      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Rest\')">Rest</button>';
-      if(t.runType)html+='<button class="btn btn-sm btn-ghost" onclick="openModal(\'moveRun\',\''+t.runType+'\')" title="Move this run to another day">Move to\u2026</button>';
+      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Rest\')">Recovery</button>';
     }else{
-      html+='<button class="btn btn-sm pw-train-log-btn" onclick="quickLogToday(\'Gym\')">Log gym \uD83D\uDCAA</button>';
-      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Hyrox\')">Hyrox</button>';
-      if(t.run)html+='<button class="btn btn-sm btn-ghost" onclick="openModal(\'logRun\')">Recovery run</button>';
-      else html+='<button class="btn btn-sm btn-ghost" onclick="openModal(\'logRun\')">Run</button>';
-      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Rest\')">Rest</button>';
+      html+='<button class="btn btn-sm pw-train-log-btn" onclick="quickLogToday(\'Gym\')">Log strength 💪</button>';
+      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Cardio\')">Cardio</button>';
+      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Rest\')">Recovery</button>';
     }
     html+='</div>';
   }
@@ -2081,7 +2052,7 @@ function renderPlannerWeek(){
   var el=document.getElementById('planner-week');
   if(!el)return;
   var wkKey=weekKey(new Date());
-  el.innerHTML=plannerWeekHeaderCard(wkKey)+plannerWeekPrioritiesCard(wkKey)+plannerHabitConsistencyCard(wkKey)+plannerTrainingSplitCard(wkKey)+plannerIntentionCard(wkKey)+plannerBlockScheduleCard(wkKey)+plannerFixedTasksCard(wkKey)+plannerNextWeekCard(wkKey);
+  el.innerHTML=plannerWeekHeaderCard(wkKey)+plannerWeekPrioritiesCard(wkKey)+plannerHabitConsistencyCard(wkKey)+plannerTrainingSplitCard(wkKey)+plannerIntentionCard(wkKey)+plannerFixedTasksCard(wkKey)+plannerNextWeekCard(wkKey);
 }
 
 // Week header card — "This week" + date range + 7-day strip

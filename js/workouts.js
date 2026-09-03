@@ -4,85 +4,104 @@ var runCharts={};
 // Stub for legacy session viewing
 function getBestPrevSet(){return null}
 
-// ── HALF MARATHON TRAINING PLAN ─────────────────────────────────────────────
-// Day 1 = Monday. Strength days pair with an easy recovery run (per NRC plan).
-// Knee-friendly (isometric quad hold, single-leg work) and shin-aware (tib
-// raises, eccentric calf raises). Upper day is machine-led with two row
-// variations for upright running posture.
-// Tuesday — Legs. The physio's full rehab block: knee block (six) then the
-// calf + PTT block. Sits four days clear of the long run. Progression is weight,
-// never extra exercises.
-var STRENGTH_A={
-  id:'strength-a',
-  title:'Gym — Legs (Knee + Calf Rehab)',
+// ── MUSCLE HEALTH + FAT-LOSS TRAINING PLAN ─────────────────────────────────
+// A repeatable Mon→Sun split built around progressive resistance training,
+// low-impact aerobic work and enough recovery to keep the plan sustainable.
+// The existing knee/calf rehab remains in Lower A and the daily rehab habit.
+var LOWER_A={
+  id:'lower-a-v4',
+  title:'Lower A — Quads + Knee Health',
   emoji:'🦵',
   duration:'~55 min',
-  warmup:'Glute bridges x15 · Banded lateral walks x15 each · Heel-to-toe walks 20m',
-  note:'Add weight when the last rep is still controlled — never add exercises. Full rehab lives inside this session.',
+  warmup:'5 min easy bike · Glute bridges x15 · Banded lateral walks x12 each',
+  note:'Finish each set with 1–3 good reps still available. Add a little weight only when every rep is controlled.',
   exercises:[
-    {name:'Knee extension (machine)',scheme:'3 x 10',note:'Knee block #1'},
-    {name:'Leg press',scheme:'3 x 10',note:'Knee block #2 — full range, controlled'},
-    {name:'Hip abductor (machine)',scheme:'3 x 10',note:'Knee block #3'},
-    {name:'Hip adduction (machine)',scheme:'3 x 10',note:'Knee block #4'},
-    {name:'Seated hamstring curl',scheme:'3 x 10',note:'Knee block #5'},
-    {name:'Goblet squat',scheme:'3 x 10',note:'Knee block #6'},
-    {name:'Heel raises, ball squeezed between heels',scheme:'3 x 15 slow',note:'Calf + PTT block'},
-    {name:'Banded inversion (foot turns inward)',scheme:'3 x 15 each side',note:'PTT — tibialis posterior'},
-    {name:'Eccentric calf raise, straight knee',scheme:'3 x 12',note:'3 sec lower'},
-    {name:'Eccentric calf raise, bent knee',scheme:'3 x 12',note:'3 sec lower — soleus'},
-    {name:'Single-leg balance',scheme:'3 x 30-45 sec each',note:'Proprioception — no wobble'}
+    {name:'Goblet squat',scheme:'3 x 8–10',note:'Controlled depth; use a box if that keeps the knee comfortable'},
+    {name:'Leg press',scheme:'3 x 10',note:'Full comfortable range with a slow lowering phase'},
+    {name:'Reverse lunge or split squat',scheme:'3 x 8 each',note:'Hold support if needed; keep the front foot planted'},
+    {name:'Knee extension (machine)',scheme:'3 x 10–12',note:'Smooth reps; pause briefly at the top'},
+    {name:'Seated hamstring curl',scheme:'3 x 10–12',note:'Control both directions'},
+    {name:'Hip abductor (machine)',scheme:'2 x 12–15',note:'Keep the torso still'},
+    {name:'Heel raises, ball squeezed between heels',scheme:'3 x 15 slow',note:'Calf + posterior tibialis rehab'},
+    {name:'Single-leg balance',scheme:'2 x 30–45 sec each',note:'Stable foot and soft knee'}
   ]
 };
-// Friday — Upper + core (lunch). Machine-led for upright running posture, plus
-// core and single-leg balance. Add weight, never exercises.
-var STRENGTH_B={
-  id:'strength-b',
-  title:'Gym — Upper + Core',
+var UPPER_A={
+  id:'upper-a-v4',
+  title:'Upper A — Push + Pull',
   emoji:'💪',
-  duration:'~45 min',
-  warmup:'Arm circles · Thoracic rotations · Inchworms x5',
-  note:'Add weight when the last rep is still controlled. Never add exercises.',
+  duration:'~50 min',
+  warmup:'Arm circles · Thoracic rotations · Light cable rows x15',
+  note:'Use a repeatable range of motion and keep 1–3 reps in reserve. Progress weight before adding more exercises.',
   exercises:[
-    {name:'Lat pulldown or seated row',scheme:'3 x 10',note:'Upper back for upright running posture'},
-    {name:'Chest press',scheme:'3 x 10',note:'Controlled, full range'},
-    {name:'Shoulder press',scheme:'3 x 10',note:'Arm drive matters over 21k'},
-    {name:'Dead bugs',scheme:'3 x 10 each side',note:'Lower back flat on the floor throughout'},
-    {name:'Plank',scheme:'3 x 30-45 sec',note:"Hips level, don't let them sag"},
-    {name:'Side plank',scheme:'3 x 30 sec each side',note:'Lateral core'},
-    {name:'Single-leg balance',scheme:'2 x 30 sec each side',note:'Ankle stability'}
+    {name:'Chest press',scheme:'3 x 8–10',note:'Shoulder blades supported; controlled lowering'},
+    {name:'Lat pulldown',scheme:'3 x 8–10',note:'Pull elbows toward your ribs'},
+    {name:'Seated cable row',scheme:'3 x 10',note:'Pause with the upper back engaged'},
+    {name:'Shoulder press',scheme:'3 x 8–10',note:'Keep ribs stacked over hips'},
+    {name:'Cable or dumbbell lateral raise',scheme:'2 x 12–15',note:'Light and controlled'},
+    {name:'Triceps pressdown',scheme:'2 x 10–12',note:'Upper arms stay still'},
+    {name:'Dumbbell curl',scheme:'2 x 10–12',note:'No swinging'}
   ]
 };
-// Weekly template — Mon→Sun. session: 'strength-a'|'strength-b'|'run'|'rest'.
-// Final-5-week layout: Mon easy run · Tue gym (legs) · Wed rest/cross-train ·
-// Thu quality · Fri gym (upper+core) · Sat long run · Sun rest. Two gym days now.
-// Runs map to easy=Mon, quality=Thu, long=Sat via HM_RACE_BLOCK.runDays. `kcal`
-// is the day's calorie target from the nutrition plan (shown on the Fuel tab).
+var LOWER_B={
+  id:'lower-b-v4',
+  title:'Lower B — Glutes + Posterior Chain',
+  emoji:'🏋️',
+  duration:'~55 min',
+  warmup:'5 min easy bike · Bodyweight hinges x12 · Glute bridges x15',
+  note:'Prioritise tension and control over load. Stop or swap any movement that causes sharp or increasing pain.',
+  exercises:[
+    {name:'Romanian deadlift',scheme:'3 x 8–10',note:'Hips travel back; keep the load close'},
+    {name:'Hip thrust or glute bridge',scheme:'3 x 10',note:'Pause at the top without overextending'},
+    {name:'Step-up',scheme:'3 x 8 each',note:'Drive through the working leg; control the descent'},
+    {name:'Seated or lying hamstring curl',scheme:'3 x 10–12',note:'Slow return on every rep'},
+    {name:'Hip adduction (machine)',scheme:'2 x 12–15',note:'Controlled, comfortable range'},
+    {name:'Eccentric calf raise, straight knee',scheme:'3 x 12',note:'Three-second lower'},
+    {name:'Eccentric calf raise, bent knee',scheme:'3 x 12',note:'Three-second lower for the soleus'},
+    {name:'Dead bug',scheme:'3 x 8 each',note:'Keep the lower back gently anchored'}
+  ]
+};
+var UPPER_B={
+  id:'upper-b-v4',
+  title:'Upper B — Back + Shoulders',
+  emoji:'💪',
+  duration:'~50 min',
+  warmup:'Band pull-aparts x15 · Thoracic rotations · Light pulldowns x15',
+  note:'Aim to add one rep or a small amount of weight over time while keeping technique consistent.',
+  exercises:[
+    {name:'Incline chest press',scheme:'3 x 8–10',note:'Comfortable shoulder angle'},
+    {name:'Chest-supported row',scheme:'3 x 8–10',note:'Lead with the elbows'},
+    {name:'Neutral-grip pulldown',scheme:'3 x 10',note:'Keep the neck relaxed'},
+    {name:'Rear-delt fly',scheme:'2 x 12–15',note:'Small range, upper back working'},
+    {name:'Machine shoulder press',scheme:'2 x 10',note:'Stop before the shoulders shrug'},
+    {name:'Cable face pull',scheme:'2 x 12–15',note:'Pull toward eye level'},
+    {name:'Pallof press',scheme:'3 x 10 each',note:'Resist rotation; slow return'}
+  ]
+};
+
+// Four resistance days preserve/build muscle, Saturday keeps the weekly 5K,
+// and Wednesday/Sunday provide recovery so fatigue stays manageable.
 var TRAINING_TEMPLATE=[
-  {day:'Mon',session:'run',label:'Easy run',sub:'Easy pace · 06:30',run:false,kcal:2100},
-  {day:'Tue',session:'strength-a',label:'Gym — Legs',sub:'Knee + calf rehab block',run:false,kcal:2100},
-  {day:'Wed',session:'rest',label:'Rest',sub:'Optional cross-train',run:false,kcal:2000},
-  {day:'Thu',session:'run',label:'Quality run',sub:'Tempo / race pace · 06:30',run:false,kcal:2300},
-  {day:'Fri',session:'strength-b',label:'Gym — Upper + core',sub:'Machine-led · lunch',run:false,kcal:2100},
-  {day:'Sat',session:'run',label:'Long run',sub:'Build the distance · 07:00',run:false,kcal:2700},
-  {day:'Sun',session:'rest',label:'Rest',sub:'Recover + stretch',run:false,kcal:1900}
+  {day:'Mon',session:'lower-a-v4',label:'Lower A',sub:'Quads + knee health · ~55 min',run:false,kcal:2100},
+  {day:'Tue',session:'upper-a-v4',label:'Upper A',sub:'Push + pull · ~50 min',run:false,kcal:2100},
+  {day:'Wed',session:'rest',label:'Recovery + mobility',sub:'Easy steps + 10–15 min mobility',run:false,kcal:1950},
+  {day:'Thu',session:'lower-b-v4',label:'Lower B',sub:'Glutes + posterior chain · ~55 min',run:false,kcal:2100},
+  {day:'Fri',session:'upper-b-v4',label:'Upper B',sub:'Back + shoulders · ~50 min',run:false,kcal:2100},
+  {day:'Sat',session:'run',label:'5K Saturday',sub:'5km easy-to-steady · keep the effort controlled',run:false,kcal:2100},
+  {day:'Sun',session:'rest',label:'Full rest',sub:'Recover, prepare and sleep well',run:false,kcal:1950}
 ];
 
-// ── HALF MARATHON — FINAL 5 WEEKS (17 Aug – 20 Sep 2026, sub-2:30) ───────────
-// Dated, week-aware plan seeded into STATE.trainingPlan.raceBlock via a guarded
-// one-shot migration in init.js. runDays maps easy/quality/long to JS getDay()
-// weekdays and is user-editable. Peak long run 19k. Fuel from the 17k up.
-var HM_RACE_BLOCK={
-  race:{name:'Half Marathon',date:'2026-09-20',goal:'Sub 2:30',goalPace:'7:06/km',
-    strategy:'First 5k @ 7:15 · 5–15k @ 7:05 · final 6k on feel · checkpoints: 10k by 1:11, 15k by 1:47'},
-  paces:{easy:'8:00+ /km (nothing faster)',race:'7:05–7:15 /km',tempo:'7:00–7:06 /km',interval:'7:00 /km'},
-  runDays:{easy:1,quality:4,long:6},
-  weeks:[
-    {n:1,start:'2026-08-17',phase:'re-entry',easy:'6k easy — first run back, deliberately slow',quality:'1k easy · 3k @ 7:05 · 1k easy',long:'14k all easy'},
-    {n:2,start:'2026-08-24',phase:'build',easy:'6k easy',quality:'1k easy · 4k @ 7:00 · 1k easy',long:'17k easy',fuel:true},
-    {n:3,start:'2026-08-31',phase:'peak',easy:'6k easy',quality:'1k easy · 5k @ race pace 7:06 · 1k easy',long:'19k — last 3k at race pace',fuel:true},
-    {n:4,start:'2026-09-07',phase:'taper',easy:'6k easy',quality:'Easy 6k in Lisbon — travel week, no hard session',long:'12k with the group (Lisbon)',fuel:true},
-    {n:5,start:'2026-09-14',phase:'race week',easy:'4k easy (Mon, Lisbon)',quality:'3k — 2k easy + 4×30s strides @ race pace (Fri)',long:'RACE DAY — Sun 20 Sep 🏁',fuel:true}
-  ]
+// Program metadata is intentionally undated: this is a sustainable weekly
+// rhythm rather than a countdown block. Reassess loads and recovery every four
+// weeks using logged sessions, body trends and how the work is feeling.
+var BODY_COMPOSITION_PROGRAM={
+  name:'Muscle Health + Fat Loss',
+  phase:'Foundation',
+  focus:'Build and retain muscle while gradually reducing body fat',
+  progression:'When all prescribed reps are controlled for two sessions, add the smallest available load.',
+  recovery:'Sharp or increasing pain means stop and choose a comfortable alternative. Recovery is part of the plan.',
+  cardio:'Saturday is a controlled 5K: conversational most weeks, quicker only when recovery is good.',
+  steps:'Keep daily movement consistent; use walks to support recovery and energy expenditure.'
 };
 // ── NUTRITION PLAN ───────────────────────────────────────────────────────────
 // Static reference for the Fuel tab (renderTrainingFuel). Data-driven so the
@@ -90,8 +109,8 @@ var HM_RACE_BLOCK={
 // content — no state, no writes. Calorie targets per day come from the training
 // template's `kcal` field so the two never disagree.
 var NUTRITION_PLAN={
-  targets:{protein:'150–180g',fibre:'30–35g',water:'3L+',avg:'~2,170 kcal/day average — roughly 0.5kg/week'},
-  fibreNote:'If you\'re currently well under 30g, ramp up over 2–3 weeks rather than jumping straight there. A sudden increase causes bloating you don\'t want mid-long-run.',
+  targets:{protein:'150–180g',fibre:'30–35g',water:'3L+',avg:'~2,060 kcal/day weekly average — adjust from your body trend, recovery and training performance'},
+  fibreNote:'If you\'re currently well under 30g, ramp up over 2–3 weeks rather than jumping straight there. Increase gradually and keep meals comfortable.',
   noLegumes:'No beans, lentils or cottage cheese in the meals below. Fibre comes from oats, chia, berries, avocado, wholegrains, veg, nuts and seeds instead.',
   heroes:[
     {food:'Chia seeds',fibre:'10g / 2 tbsp',use:'Stir into yoghurt or overnight oats. Tasteless. The single biggest lever you have.'},
@@ -111,7 +130,7 @@ var NUTRITION_PLAN={
       {meal:'Overnight oats: oats 50g, milk, scoop protein, banana, chia',p:'38g',f:'14g'},
       {meal:'Skyr (200g) + granola + raspberries + flaxseed',p:'28g',f:'10g'},
       {meal:'2 poached eggs + wholegrain toast + avocado + grilled tomatoes + spinach',p:'24g',f:'12g'}
-    ],note:'Long-run days: add a banana and extra toast before heading out.'},
+    ],note:'Strength days: add a banana or extra toast around training if energy is low.'},
     lunch:{target:'45–55g protein · 10–12g fibre',items:[
       {meal:'Chicken + bulgur salad + roasted peppers, courgette, red onion + feta',p:'48g',f:'13g'},
       {meal:'Chicken burrito bowl: chicken 150g, brown rice, sweetcorn, avocado, salsa, spinach',p:'48g',f:'13g'},
@@ -148,122 +167,77 @@ var NUTRITION_PLAN={
   rules:[
     'Protein at every meal — protects muscle in a deficit and supports tendon repair.',
     'Fibre from chia, oats, raspberries, avocado, wholegrains and veg — no legumes required.',
-    'Eating window 8am–9pm. Don\'t run 12k+ fasted.',
+    'Eating window 8am–9pm. Put a useful share of your carbs around strength sessions.',
     'Batch-cook chilli, curry and stir-fry base on Sundays — three lunches sorted.',
-    'Never cut Saturday. The deficit lives on the other six days.',
+    'Keep the weekly deficit moderate. Training quality, recovery and consistency come first.',
     'Weigh weekly, same day, same time.'
   ],
-  floors:'Don\'t go below 1,900 on any day. If long runs feel heavy, sleep gets poor, or a niggle reappears — eat more, not less. The deficit is the first thing to relax.'
+  floors:'Don\'t go below 1,900 on any day. If strength drops repeatedly, sleep gets poor, recovery stalls, or a niggle reappears — eat more, not less. The deficit is the first thing to relax.'
 };
 
-function workoutDef(id){return id==='strength-a'?STRENGTH_A:id==='strength-b'?STRENGTH_B:null}
+function workoutDef(id){
+  return id==='lower-a-v4'?LOWER_A
+    :id==='upper-a-v4'?UPPER_A
+    :id==='lower-b-v4'?LOWER_B
+    :id==='upper-b-v4'?UPPER_B
+    :null;
+}
 
-// Bump whenever TRAINING_TEMPLATE or HM_RACE_BLOCK change. getTrainingPlan()
-// reconciles any saved plan stamped with an older version to the current
-// constants, so the prescriptive plan is always current. This is the durable
-// mechanism; the one-shot __hmBlock*V* migrations in init.js are belt-and-braces
-// and cannot leave a plan stale if their flag is set without the plan updating
-// (e.g. a partial sync of the flag domain but not the trainingPlan domain).
-var LIFEHUB_PLAN_VERSION=3;
+// Bump whenever the prescriptive plan changes. Existing logged workouts,
+// runs and body metrics live in separate domains and are never replaced here.
+var LIFEHUB_PLAN_VERSION=5;
 
 function getTrainingPlan(){
-  if(!STATE.trainingPlan)STATE.trainingPlan={template:JSON.parse(JSON.stringify(TRAINING_TEMPLATE)),checks:{},planVersion:LIFEHUB_PLAN_VERSION};
+  if(!STATE.trainingPlan)STATE.trainingPlan={template:JSON.parse(JSON.stringify(TRAINING_TEMPLATE)),checks:{},program:JSON.parse(JSON.stringify(BODY_COMPOSITION_PROGRAM)),planVersion:LIFEHUB_PLAN_VERSION};
   if(!STATE.trainingPlan.checks)STATE.trainingPlan.checks={};
-  // Version-gated self-heal: replace the prescriptive parts (weekly template and
-  // dated race block) with the current constants whenever the saved plan predates
-  // this version, preserving the user's exercise-tick history. Runs once per
-  // bump — after it stamps planVersion the branch is skipped — and drops stale
-  // per-week run-day overrides with the old block, exactly as the migration did.
+  // Reconcile only the prescriptive plan. Session IDs remain stable between
+  // v4 and v5, so in-progress exercise ticks are preserved when Saturday moves.
   if(STATE.trainingPlan.planVersion!==LIFEHUB_PLAN_VERSION){
-    if(typeof TRAINING_TEMPLATE!=='undefined')STATE.trainingPlan.template=JSON.parse(JSON.stringify(TRAINING_TEMPLATE));
-    if(typeof HM_RACE_BLOCK!=='undefined')STATE.trainingPlan.raceBlock=JSON.parse(JSON.stringify(HM_RACE_BLOCK));
+    STATE.trainingPlan.template=JSON.parse(JSON.stringify(TRAINING_TEMPLATE));
+    STATE.trainingPlan.program=JSON.parse(JSON.stringify(BODY_COMPOSITION_PROGRAM));
+    if(!STATE.trainingPlan.checks)STATE.trainingPlan.checks={};
+    delete STATE.trainingPlan.raceBlock;
     STATE.trainingPlan.planVersion=LIFEHUB_PLAN_VERSION;
     if(typeof saveState==='function')saveState({suppressUndo:true});
   }
   if(!STATE.trainingPlan.template)STATE.trainingPlan.template=JSON.parse(JSON.stringify(TRAINING_TEMPLATE));
-  // Defensive backfill: ensure the dated race block is present (addendum §1).
-  if(!STATE.trainingPlan.raceBlock&&typeof HM_RACE_BLOCK!=='undefined')STATE.trainingPlan.raceBlock=JSON.parse(JSON.stringify(HM_RACE_BLOCK));
-  if(STATE.trainingPlan.raceBlock&&!STATE.trainingPlan.raceBlock.runDays)STATE.trainingPlan.raceBlock.runDays={easy:1,quality:4,long:6};
+  if(!STATE.trainingPlan.program)STATE.trainingPlan.program=JSON.parse(JSON.stringify(BODY_COMPOSITION_PROGRAM));
+  if(STATE.trainingPlan.raceBlock)delete STATE.trainingPlan.raceBlock;
   return STATE.trainingPlan;
 }
 
-// Resolve which race-block week a date falls in (block start … race day, both
-// inclusive). Returns {week,n,total,daysToRace,daysToBirthday} or null when the
-// date is outside the block. Countdowns are always forward (never negative).
-function resolveHmWeek(dateKey){
-  var plan=getTrainingPlan();
-  var block=plan.raceBlock;
-  if(!block||!block.weeks||!block.weeks.length)return null;
-  var key=dateKey||localDateKey(new Date());
-  var weeks=block.weeks;
-  if(key<weeks[0].start||key>block.race.date)return null;
-  var wk=null;
-  for(var i=0;i<weeks.length;i++){if(weeks[i].start<=key)wk=weeks[i];else break;}
-  if(!wk)return null;
-  function daysBetween(a,b){return Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/86400000);}
-  return {
-    week:wk,n:wk.n,total:weeks.length,
-    daysToRace:Math.max(0,daysBetween(key,block.race.date)),
-    daysToBirthday:(block.birthday&&block.birthday>=key)?daysBetween(key,block.birthday):null
-  };
-}
+// Kept as a compatibility shim for older cached callers. The replacement plan
+// is a repeatable weekly rhythm and has no race-week countdown.
+function resolveHmWeek(){return null}
 
-// Today's planned session (Today card, Training page, bot mirror). Overlays the
-// dated HM race block onto the weekly template when the date is in-block, else
-// returns the plain template row unchanged. Extra fields (desc/detail/block/
-// runType/fuelText/isRace) are additive so existing callers keep working.
-// (addendum §2.1). Any change here MUST be mirrored in the backend _planner.js.
+// Resolve the repeatable weekly prescription used by Today, Week and Training.
+// Callers receive a cloned row so presentation code can safely add fields.
 function todaysTrainingSession(dateKey){
   var d=dateKey?new Date(dateKey+'T12:00:00'):new Date();
-  var key=dateKey||localDateKey(d);
-  var dow=d.getDay();               // 0 Sun..6 Sat
   var plan=getTrainingPlan();
-  var base=plan.template[(dow+6)%7]; // Mon=0..Sun=6
-  var ctx=resolveHmWeek(key);
-  if(!ctx)return base;
-  var block=plan.raceBlock;
-  var rd=block.runDays||{easy:1,quality:4,long:6};
-  // Per-week overrides: if this week's runDays have been moved (e.g. quality
-  // to Friday), apply that. Stored as raceBlock.weekOverrides[weekKey]={...}.
-  var _wkKey=(typeof weekKey==='function')?weekKey(d):null;
-  var _wkOver=(block.weekOverrides&&_wkKey&&block.weekOverrides[_wkKey])||null;
-  if(_wkOver){rd={easy:_wkOver.easy!=null?_wkOver.easy:rd.easy,quality:_wkOver.quality!=null?_wkOver.quality:rd.quality,long:_wkOver.long!=null?_wkOver.long:rd.long}}
-  var wk=ctx.week;
-  var fuelText=wk.fuel?'practise fuelling: gel/sweets ~every 40min':'';
-  var blockInfo={n:ctx.n,total:ctx.total,phase:wk.phase,daysToRace:ctx.daysToRace,daysToBirthday:ctx.daysToBirthday,fuel:!!wk.fuel,race:block.race};
-  var runType=null;
-  if(dow===rd.long)runType='long';
-  else if(dow===rd.quality)runType='quality';
-  else if(dow===rd.easy)runType='easy';
-  var out={session:base.session,label:base.label,sub:base.sub,run:base.run,block:blockInfo,runType:runType,desc:'',detail:'',fuelText:'',isRace:(key===block.race.date)};
-  if(out.isRace){
-    out.session='run';out.label='RACE DAY';out.desc=wk.long;out.detail=block.paces.race;out.runType='long';out.run=false;out.raceStrategy=block.race.strategy;
-    return out;
+  var base=plan.template[(d.getDay()+6)%7]; // Mon=0..Sun=6
+  if(!base)return null;
+  var out=JSON.parse(JSON.stringify(base));
+  out.program=plan.program||BODY_COMPOSITION_PROGRAM;
+  var def=workoutDef(out.session);
+  if(def){
+    out.desc=def.title;
+    out.detail=def.duration+' · '+def.exercises.length+' exercises';
+    out.trainingType='strength';
+  }else if(out.session==='run'){
+    out.desc='Your weekly 5K';
+    out.detail='Run 5km at an easy-to-steady effort. Push the pace only when your legs and recovery feel good.';
+    out.runType='steady';
+    out.trainingType='run';
+  }else if(out.session==='cardio-v4'){
+    out.desc='Low-impact aerobic base';
+    out.detail='Keep the effort conversational; finish with 10 minutes of mobility.';
+    out.trainingType='cardio';
+  }else{
+    out.desc=out.sub||'Recover';
+    out.detail='Easy movement is optional. Prioritise sleep and recovery.';
+    out.trainingType='recovery';
   }
-  if(base.session==='strength-a'||base.session==='strength-b'){
-    out.desc=base.label;
-    if(runType==='easy'){out.run=true;out.easyRun=wk.easy;out.easyDetail=block.paces.easy;}
-    return out;
-  }
-  if(runType==='long'){
-    // Race week: the long-run slot the day before the race is a shakeout, not
-    // a long run (the race itself is handled by the isRace branch above).
-    if(blockInfo.phase==='race week'){
-      out.session='run';out.label='Shakeout';out.desc='2k easy shakeout or rest — race tomorrow';out.detail=block.paces.easy;out.run=false;
-      return out;
-    }
-    out.session='run';out.label='Long run';out.desc=wk.long;out.detail=block.paces.easy;out.fuelText=fuelText;out.run=false;
-    return out;
-  }
-  if(runType==='quality'){
-    out.session='run';out.label='Quality session';out.desc=wk.quality;out.detail=/interval/i.test(wk.quality)?block.paces.interval:block.paces.tempo;out.run=false;
-    return out;
-  }
-  if(runType==='easy'){
-    out.session='run';out.label='Easy run';out.desc=wk.easy;out.detail=block.paces.easy;out.run=false;
-    return out;
-  }
-  out.session='rest';out.label='Rest';out.sub=base.sub||'Recover';
   return out;
 }
 
@@ -381,21 +355,17 @@ function renderTrainingEvents(){
   var now=new Date();
   var upcoming=events.filter(function(e){return new Date(e.date)>=now}).sort(function(a,b){return a.date.localeCompare(b.date)});
   if(!upcoming.length){
-    el.innerHTML='<div class="empty-prompt-mini">No events scheduled. Add your Hyrox race, half marathon, or any target date.</div>';
+    el.innerHTML='<div class="empty-prompt-mini">No events scheduled. Add a class, challenge, assessment or any target date.</div>';
     return;
   }
-  var raceBlock=(STATE.trainingPlan&&STATE.trainingPlan.raceBlock)||null;
   el.innerHTML=upcoming.map(function(e){
     var d=new Date(e.date);
     var daysAway=Math.ceil((d-now)/86400000);
     var urgency=daysAway<=14?'var(--accent-dark)':daysAway<=60?'var(--gold)':'var(--text2)';
-    // Race-day strategy summary for the block's race event (addendum §6).
-    var strategy=(raceBlock&&raceBlock.race&&e.date===raceBlock.race.date&&raceBlock.race.strategy)?raceBlock.race.strategy:'';
     return '<div class="training-event">'
       +'<div class="training-event-date"><div class="training-event-num">'+d.getDate()+'</div><div class="training-event-mon">'+d.toLocaleDateString('en-GB',{month:'short'}).toUpperCase()+'</div></div>'
-      +'<div class="training-event-body"><div class="training-event-title">'+e.name+(raceBlock&&e.date===raceBlock.race.date?' · '+raceBlock.race.goal:'')+'</div>'
-      +'<div class="training-event-sub" style="color:'+urgency+'">'+daysAway+' days away'+(e.note?' · '+e.note:'')+'</div>'
-      +(strategy?'<div class="training-event-strategy">'+strategy+'</div>':'')+'</div>'
+      +'<div class="training-event-body"><div class="training-event-title">'+escapeHtml(e.name)+'</div>'
+      +'<div class="training-event-sub" style="color:'+urgency+'">'+daysAway+' days away'+(e.note?' · '+escapeHtml(e.note):'')+'</div></div>'
       +'<button class="btn-danger" onclick="deleteTrainingEvent(\''+e.id+'\')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px">×</button>'
       +'</div>';
   }).join('');
@@ -701,12 +671,9 @@ function trainingRunPace(r){
   return m+':'+('0'+s).slice(-2);
 }
 
-// ── Weekly training plan (half marathon) ──
+// ── Weekly muscle-health plan ──
 // Renders the Mon→Sun template. Strength days expand to show the full exercise
-// list with per-week checkboxes. Run days show a log affordance — a "Log this
-// run" button prefilled to that day's date, replaced by a done line with
-// distance · time · pace once a run is recorded. Checks are keyed by ISO week so
-// each week starts fresh but history is preserved.
+// list with weekly checkboxes; Saturday's 5K uses the existing run logger.
 function renderMyPlanSchedule(){
   var el=document.getElementById('myplan-schedule');if(!el)return;
   var plan=getTrainingPlan();
@@ -714,23 +681,20 @@ function renderMyPlanSchedule(){
   var wdays=(typeof weekDays==='function')?weekDays(wk):null; // Sun-first date keys
   var todayIdx=(new Date().getDay()+6)%7;
   var sessionColors={
-    'strength-a':{c:'var(--accent)',badge:'badge-fin',bg:'var(--accent-dim)'},
-    'strength-b':{c:'var(--accent)',badge:'badge-fin',bg:'var(--accent-dim)'},
-    'run':{c:'var(--mint)',badge:'badge-per',bg:'var(--mint-dim)'},
+    'lower-a-v4':{c:'var(--accent)',badge:'badge-fin',bg:'var(--accent-dim)'},
+    'upper-a-v4':{c:'var(--accent)',badge:'badge-fin',bg:'var(--accent-dim)'},
+    'lower-b-v4':{c:'var(--accent)',badge:'badge-fin',bg:'var(--accent-dim)'},
+    'upper-b-v4':{c:'var(--accent)',badge:'badge-fin',bg:'var(--accent-dim)'},
+    'run':{c:'var(--sky)',badge:'badge-per',bg:'var(--sky-dim)'},
+    'cardio-v4':{c:'var(--sky)',badge:'badge-per',bg:'var(--sky-dim)'},
     'rest':{c:'var(--text3)',badge:'',bg:'var(--bg3)'}
   };
-  // Block header — week/phase context + the one pain rule (addendum §5.5).
-  var block=plan.raceBlock;
-  var blockCtx=(typeof resolveHmWeek==='function')?resolveHmWeek(localDateKey(new Date())):null;
-  var html='';
-  if(block&&blockCtx){
-    var _hasOverride=block.weekOverrides&&block.weekOverrides[wk];
-    html+='<div class="train-plan-block-head">'
-      +'<div class="train-plan-block-week">Week '+blockCtx.n+' of '+blockCtx.total+' · '+blockCtx.week.phase+(_hasOverride?' <span style="font-size:11px;color:var(--accent);font-weight:500">· adjusted this week</span>':'')+'</div>'
-      +'<div class="train-plan-block-race">'+block.race.goal+' · '+blockCtx.daysToRace+' days to race day</div>'
-    +'</div>';
-  }
-  html+='<div class="train-plan-painrule">Any pain that changes your gait = stop and rest.</div>';
+  var program=plan.program||BODY_COMPOSITION_PROGRAM;
+  var html='<div class="train-plan-block-head">'
+    +'<div class="train-plan-block-week">'+escapeHtml(program.name)+' · '+escapeHtml(program.phase)+'</div>'
+    +'<div class="train-plan-block-race">'+escapeHtml(program.focus)+'</div>'
+  +'</div>';
+  html+='<div class="train-plan-painrule">'+escapeHtml(program.recovery)+'</div>';
   html+='<div class="train-plan-list">';
   plan.template.forEach(function(d,i){
     var def=workoutDef(d.session);
@@ -747,22 +711,8 @@ function renderMyPlanSchedule(){
     html+='<div class="train-plan-day'+(isToday?' is-today':'')+'" style="border-left:4px solid '+cm.c+'">';
     html+='<div class="train-plan-head"'+(def?' onclick="toggleTrainDay(\''+d.session+'\')" style="cursor:pointer"':'')+'>';
     html+='<div class="train-plan-head-main">';
-    // Overlay this week's ACTUAL block session onto the run rows (and the easy
-    // run that pairs with Tue strength) so the schedule shows the real plan,
-    // not generic placeholders. Falls back to the template off-plan.
     var rowLabel=d.label;
     var rowSub=d.sub+(def?' · '+def.duration:'');
-    if(block&&blockCtx&&wdays&&typeof todaysTrainingSession==='function'){
-      var s=todaysTrainingSession(wdays[(i+1)%7]);
-      if(s){
-        if(d.session==='run'&&s.session==='run'){
-          rowLabel=s.label;
-          rowSub=(s.desc||d.sub)+(s.detail?' · '+s.detail:'');
-        }else if((d.session==='strength-a'||d.session==='strength-b')&&s.easyRun){
-          rowSub=d.sub+(def?' · '+def.duration:'')+' · then easy run: '+s.easyRun;
-        }
-      }
-    }
     html+='<div class="train-plan-dayname">'+(dayNames[d.day]||d.day)+(isToday?' · Today':'')+'</div>';
     html+='<div class="train-plan-label">'+rowLabel+'</div>';
     html+='<div class="train-plan-sub">'+rowSub+'</div>';
@@ -787,6 +737,15 @@ function renderMyPlanSchedule(){
         html+='<div class="train-plan-runlog">'
           +'<button class="btn btn-sm btn-accent" onclick="openModal(\'logRun\',\''+runDate+'\')">Log this run \u2713</button>'
         +'</div>';
+      }
+    }
+    if(d.session==='cardio-v4'&&wdays){
+      var cardioDate=wdays[(i+1)%7];
+      var cardioLogged=(STATE.workouts||[]).some(function(w){return w.date===cardioDate&&/cardio|zone 2/i.test(w.type||w.name||'')});
+      if(cardioLogged){
+        html+='<div class="train-plan-runlog done"><span>✓ Cardio logged</span></div>';
+      }else if(cardioDate===localDateKey(new Date())){
+        html+='<div class="train-plan-runlog"><button class="btn btn-sm btn-accent" onclick="quickLogToday(\'Cardio\')">Log Zone 2 ✓</button></div>';
       }
     }
     if(def){
@@ -964,7 +923,7 @@ function toggleTrainEx(sessionId,exIdx){
   var allDone=def&&def.exercises.every(function(ex,xi){return checks[xi]});
   if(allDone){
     var today=localDateKey(new Date());
-    var typeLabel=sessionId==='strength-a'?'Lower':'Upper';
+    var typeLabel=sessionId.indexOf('lower-')===0?'Lower':sessionId.indexOf('upper-')===0?'Upper':'Strength';
     var already=(STATE.workouts||[]).some(function(w){return w.date===today&&w.type===typeLabel});
     if(!already){
       var snapshot=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));

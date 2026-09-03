@@ -12,7 +12,7 @@
 <title>Kai's Life Hub 🤎</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style-new.css?v=46">
+<link rel="stylesheet" href="style-new.css?v=48">
 <!-- Chart.js is lazy-loaded on first visit to a chart page — see ensureChartJs() in js/navigation.js (Part 5.3) -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -344,7 +344,7 @@
         <div class="header-row">
           <div>
             <h1>Training</h1>
-            <p>Your half marathon plan, sessions and body stats in one place.</p>
+            <p>Your muscle-health plan, sessions and body-composition trends in one place.</p>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn" onclick="openModal('quickLog')">+ Log session</button>
@@ -355,7 +355,7 @@
 
       <div class="page-tabs">
         <button class="page-tab active" onclick="subNav('workout','overview')">Overview</button>
-        <button class="page-tab" onclick="subNav('workout','myplan')">🏃 HM Plan</button>
+        <button class="page-tab" onclick="subNav('workout','myplan')">💪 My Plan</button>
         <button class="page-tab" onclick="subNav('workout','fuel')">🍽️ Fuel</button>
         <button class="page-tab" onclick="subNav('workout','body')">💪 Body</button>
         <button class="page-tab" onclick="subNav('workout','history')">📖 History</button>
@@ -417,7 +417,7 @@
       <div class="sub-page" id="workout-myplan">
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-            <div class="card-label" style="margin:0">🏃 Half marathon plan</div>
+            <div class="card-label" style="margin:0">💪 Muscle health + fat loss</div>
             <span style="font-size:11px;color:var(--text3)">Day 1 = Monday</span>
           </div>
           <div id="myplan-schedule"></div>
@@ -427,7 +427,7 @@
       <!-- Fuel tab: nutrition plan for the training block -->
       <div class="sub-page" id="workout-fuel">
         <div class="page-intro" style="margin-bottom:16px">
-          <div style="font-size:13px;color:var(--text2)">Fuelling for the final block. Calories cycle with the training day — hardest days eat the most.</div>
+          <div style="font-size:13px;color:var(--text2)">Fuel strength, recovery and gradual fat loss. Resistance days get a little more energy; recovery days stay steady.</div>
         </div>
         <div id="training-fuel"></div>
       </div>
@@ -831,20 +831,20 @@
 
 
 
-<script src="js/state.js?v=46"></script>
-<script src="js/persistence.js?v=46"></script>
-<script src="js/navigation.js?v=46"></script>
-<script src="js/dashboard.js?v=46"></script>
-<script src="js/habits.js?v=46"></script>
-<script src="js/workouts.js?v=46"></script>
-<script src="js/finance.js?v=46"></script>
-<script src="js/reviews.js?v=46"></script>
-<script src="js/relationships.js?v=46"></script>
-<script src="js/gratitude.js?v=46"></script>
-<script src="js/insights.js?v=46"></script>
-<script src="js/skincare.js?v=46"></script>
-<script src="js/modals.js?v=46"></script>
-<script src="js/planner.js?v=46"></script>
-<script src="js/init.js?v=46"></script>
+<script src="js/state.js?v=48"></script>
+<script src="js/persistence.js?v=48"></script>
+<script src="js/navigation.js?v=48"></script>
+<script src="js/dashboard.js?v=48"></script>
+<script src="js/habits.js?v=48"></script>
+<script src="js/workouts.js?v=48"></script>
+<script src="js/finance.js?v=48"></script>
+<script src="js/reviews.js?v=48"></script>
+<script src="js/relationships.js?v=48"></script>
+<script src="js/gratitude.js?v=48"></script>
+<script src="js/insights.js?v=48"></script>
+<script src="js/skincare.js?v=48"></script>
+<script src="js/modals.js?v=48"></script>
+<script src="js/planner.js?v=48"></script>
+<script src="js/init.js?v=48"></script>
 </body>
 </html>
