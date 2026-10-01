@@ -35,7 +35,7 @@ var BODY_COMPOSITION_PROGRAM={
 // content — no state, no writes. Calorie targets per day come from the training
 // template's `kcal` field so the two never disagree.
 var NUTRITION_PLAN={
-  targets:{protein:'150–180g',fibre:'30–35g',water:'3L+',avg:'~2,020 kcal/day weekly average — recovery and symptom stability come before a larger deficit'},
+  targets:{protein:'150–180g',fibre:'30–35g',water:'2L',avg:'~2,020 kcal/day weekly average — recovery and symptom stability come before a larger deficit'},
   fibreNote:'If you\'re currently well under 30g, ramp up over 2–3 weeks rather than jumping straight there. Increase gradually and keep meals comfortable.',
   noLegumes:'No beans, lentils or cottage cheese in the meals below. Fibre comes from oats, chia, berries, avocado, wholegrains, veg, nuts and seeds instead.',
   heroes:[

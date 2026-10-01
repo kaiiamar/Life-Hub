@@ -273,6 +273,7 @@ function deleteInboxTask(id){
 var PLANNER_CARDS={
   reentry:    {host:'pc-reentry',            build:function(todayKey){return plannerReentryCard(todayKey)}},
   welcome:    {host:'planner-welcome-card',  build:function(todayKey){return plannerWelcomeCard(todayKey)}},
+  challenge:  {host:'planner-challenge-card', build:function(todayKey){return typeof renderChallenge75Card==='function'?renderChallenge75Card(todayKey):''}},
   training:   {host:'planner-training-card', build:function(todayKey){return plannerTrainingCard(todayKey)}},
   habits:     {host:'planner-habits-card',   build:function(){return plannerHabitCard()}},
   focus:      {host:'planner-focus-card',    build:function(todayKey){return plannerFocusCard(todayKey)}},
@@ -307,7 +308,7 @@ var PLANNER_FOCUS_SLATE_CARDS=['focus','welcome','inbox','suggested','schedule']
 // interrupts them and the Inbox last as the quiet sorting surface.
 function plannerTodayOrder(){
   if(plannerViewMode==='short')return ['reentry','short'];
-  return ['reentry','welcome','monthreview','training','habits','focus','suggested','schedule','capture','waterweight','gratitude','sweep','inbox'];
+  return ['reentry','welcome','challenge','monthreview','training','habits','focus','suggested','schedule','capture','waterweight','gratitude','sweep','inbox'];
 }
 
 // ── Quiet-day re-entry ─────────────────────────────────────
@@ -1437,13 +1438,14 @@ function plannerWaterCard(){
 // nothing and the patch skips it, so naming it here costs a full-day refresh
 // nothing.
 function renderPlannerWater(){
-  refreshPlannerCards(['waterweight','welcome','sweep','short']);
+  refreshPlannerCards(['waterweight','challenge','welcome','sweep','short']);
 }
 
 // Habits card — top coral border, hand-drawn underline, tappable rows.
 function plannerHabitCard(){
   var today=localDateKey(new Date());
   var habits=(STATE.habits||[]).filter(function(h){
+    if(typeof challenge75OwnsHabit==='function'&&challenge75OwnsHabit(h.id))return false;
     var s=habitDayStatus(h,today);
     return s==='done'||s==='todo';
   });
@@ -1500,7 +1502,7 @@ function plannerToggleHabit(hid){
   // The tick changes the habits card, the welcome card's streak and chip line,
   // the evening sweep's habit count, and — while the Short_Version is open —
   // its first row, which is this same habit (R6.9).
-  refreshPlannerCards(['habits','welcome','sweep','short']);
+  refreshPlannerCards(['habits','challenge','welcome','sweep','short']);
   var current=(STATE.habits||[]).find(function(x){return x.id===hid});
   if(!wasDone&&current&&current.logs&&current.logs[today]&&typeof bloomTick==='function')bloomTick('pwhab:'+hid);
   if(fromControl){var restored=document.querySelector(control);if(restored)restored.focus();}

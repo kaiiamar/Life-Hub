@@ -289,7 +289,9 @@ function renderDashboardTodayBridge(view){
   var el=document.getElementById('dash-today-bridge');if(!el)return;
   var focusText=view.focus.total?view.focus.done+' of '+view.focus.total+' focus tasks complete':'No focus selected yet';
   var next=view.nextCommitment?'<div class="dashboard-next-line"><span class="dashboard-next-time">'+escapeHtml(view.nextCommitment.start||'Any time')+'</span><span>'+escapeHtml(view.nextCommitment.text||'Commitment')+'</span></div>':'<div class="dashboard-next-line dashboard-next-empty">No remaining commitments today</div>';
-  el.innerHTML='<div class="dashboard-today-head"><div><h2 id="dash-today-title">Today at a glance</h2><p>'+focusText+'</p></div><button class="btn btn-accent btn-sm" onclick="nav(\'planner\')">Open Today</button></div>'+next;
+  var challengeSummary=typeof challenge75CompactSummary==='function'?challenge75CompactSummary(view.todayKey):null;
+  var challengeLine=challengeSummary?'<div class="dashboard-next-line dashboard-challenge-line"><span>🌱</span><span>'+escapeHtml(challengeSummary.text)+'</span></div>':'';
+  el.innerHTML='<div class="dashboard-today-head"><div><h2 id="dash-today-title">Today at a glance</h2><p>'+focusText+'</p></div><button class="btn btn-accent btn-sm" onclick="nav(\'planner\')">Open Today</button></div>'+challengeLine+next;
 }
 
 function renderDashChrome(view){

@@ -176,6 +176,8 @@ var DEFAULT_STATE = {
   dailyPriorities:{},
   trainingEvents:[],
   trainingPlan:null,
+  // Personal challenge definitions are seeded after cloud data loads.
+  challenges:{},
   journal:{},mood:{},dailyHighlights:{},
   skincare:{startedOn:null,products:{am:[],pm:[]},actives:[],nightSchedule:{},guaShaLog:{},activeLog:{},photos:[]},
   tasks:[],

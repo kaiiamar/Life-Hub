@@ -19,9 +19,10 @@ document.addEventListener('lifehub:change',function(event){
   var detail=event.detail||{};if(detail.rendered||detail.source==='sync')return;
   var domains=detail.domains||[],habitsChanged=domains.indexOf('habits')!==-1;
   var movementChanged=domains.indexOf('workouts')!==-1||domains.indexOf('metrics')!==-1;
+  var challengeChanged=domains.indexOf('challenges')!==-1||domains.indexOf('water')!==-1||domains.indexOf('waterSettings')!==-1;
   if(habitsChanged&&_lifeHubPageActive('habits')&&typeof renderHabits==='function')renderHabits();
-  if((habitsChanged||movementChanged)&&_lifeHubPageActive('planner')&&typeof renderPlanner==='function')renderPlanner();
-  if((habitsChanged||movementChanged)&&typeof refreshDashboardIfActive==='function')refreshDashboardIfActive();
+  if((habitsChanged||movementChanged||challengeChanged)&&_lifeHubPageActive('planner')&&typeof renderPlanner==='function')renderPlanner();
+  if((habitsChanged||movementChanged||challengeChanged)&&typeof refreshDashboardIfActive==='function')refreshDashboardIfActive();
   if(habitsChanged&&_lifeHubPageActive('skincare')&&typeof renderSkincareToday==='function')renderSkincareToday();
   if(movementChanged&&_lifeHubPageActive('workout')&&typeof renderWorkout==='function')renderWorkout();
 });
@@ -97,7 +98,7 @@ loadFromCloud(function(){
   // new; `netWorthSnapshots` and `waterSettings` are written by live code but
   // were never registered here (Data Models → "Registration is required in
   // three places").
-  var migrateKeys=['goals','habits','workouts','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','relationships','gratitude','wishlist','watchlist','debtPayments','reminders','water','dailyPriorities','trainingEvents','trainingPlan','tasks','commitments','weeklyIntentions','weeklyIntention','sweep','companion','netWorthSnapshots','waterSettings'];
+  var migrateKeys=['goals','habits','workouts','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','relationships','gratitude','wishlist','watchlist','debtPayments','reminders','water','dailyPriorities','trainingEvents','trainingPlan','challenges','tasks','commitments','weeklyIntentions','weeklyIntention','sweep','companion','netWorthSnapshots','waterSettings'];
   migrateKeys.forEach(function(k){if(!STATE[k])STATE[k]=JSON.parse(JSON.stringify(DEFAULT_STATE[k]||(k==='tasks'?[]:{})))});
   if(!STATE.tasks)STATE.tasks=[];
   if(!STATE.metrics.projectsDone)STATE.metrics.projectsDone=[];
@@ -313,6 +314,100 @@ loadFromCloud(function(){
     STATE.__rehabHabitV1=true;
     STATE.__injuryReentryV1=true;
     if(!saveState({suppressUndo:true}))STATE=_reentrySnap;
+  }
+
+  // ---- 75 INTENTIONAL DAYS (one-shot) ------------------------------------
+  // Seed the 5 Oct–18 Dec challenge after cloud data loads. Canonical habit,
+  // water and workout records remain the only completion sources; the challenge
+  // domain stores configuration only, so a missed day never mutates the dates or
+  // restarts the calendar. Snapshot/rollback protects every existing history.
+  if(!STATE.__challenge75V1){
+    var _challengeSnap=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
+    var _challengeStart='2026-10-05',_challengeEnd='2026-12-18',_challengeArchive='2026-12-19';
+    if(!STATE.challenges||typeof STATE.challenges!=='object'||Array.isArray(STATE.challenges))STATE.challenges={};
+    if(!Array.isArray(STATE.habits))STATE.habits=[];
+    if(!Array.isArray(STATE.trainingEvents))STATE.trainingEvents=[];
+
+    function _challengeHabit(spec){
+      var habit=STATE.habits.find(function(h){return h&&h.id===spec.id});
+      var challengeOwned=!!habit;
+      if(!habit&&spec.aliases){
+        var matches=STATE.habits.filter(function(h){return h&&spec.aliases.some(function(name){return String(h.name||'').trim().toLowerCase()===name.toLowerCase()})&&habitFrequency(h)===spec.freq});
+        if(matches.length===1)habit=matches[0];
+      }
+      if(!habit){
+        habit={id:spec.id,name:spec.name,freq:spec.freq,badge:spec.badge,icon:spec.icon,anchor:spec.anchor||'anytime',note:spec.note,integrationKeys:[],provenanceVersion:1,logProvenance:{},logs:{},startDate:_challengeStart,lifecycle:{version:1,inactivePeriods:[{kind:'archived',from:_challengeArchive,to:null}]}};
+        if(spec.detailsTitle)habit.detailsTitle=spec.detailsTitle;
+        if(spec.details)habit.details=spec.details;
+        STATE.habits.push(habit);challengeOwned=true;
+      }
+      // Only records carrying the stable challenge id are managed by this
+      // migration. An adopted user-authored rhythm keeps its own presentation,
+      // lifecycle and history; the challenge merely references its canonical id.
+      if(challengeOwned&&habit.challengeSeedVersion!==1){
+        habit.name=spec.name;habit.freq=spec.freq;habit.badge=spec.badge;habit.icon=spec.icon;habit.anchor=spec.anchor||'anytime';habit.note=spec.note;
+        if(spec.detailsTitle)habit.detailsTitle=spec.detailsTitle;
+        if(spec.details)habit.details=spec.details;
+        if(!habit.startDate)habit.startDate=_challengeStart;
+        habit.challengeSeedVersion=1;
+      }
+      if(challengeOwned){
+        if(typeof ensureHabitLifecycle==='function')ensureHabitLifecycle(habit);
+        var hasChallengeEnd=(habit.lifecycle.inactivePeriods||[]).some(function(range){return range&&range.kind==='archived'&&range.from===_challengeArchive&&range.to===null});
+        if(!hasChallengeEnd)(habit.lifecycle.inactivePeriods||(habit.lifecycle.inactivePeriods=[])).push({kind:'archived',from:_challengeArchive,to:null});
+      }
+      if(typeof ensureHabitProvenance==='function')ensureHabitProvenance(habit);
+      if(typeof ensureHabitLifecycle==='function')ensureHabitLifecycle(habit);
+      return {id:habit.id,challengeOwned:challengeOwned};
+    }
+
+    var _challengeSteps=STATE.habits.find(function(h){return h&&h.id==='steps-towards-10k-v1'});
+    var _challengeStepsManaged=!!_challengeSteps;
+    if(!_challengeSteps){
+      _challengeSteps=STATE.habits.find(function(h){return h&&/^daily steps$/i.test((h.name||'').trim())})
+        ||STATE.habits.find(function(h){return h&&/^(build towards )?10,?000 steps$/i.test((h.name||'').trim())});
+    }
+    if(!_challengeSteps){
+      _challengeSteps={id:'steps-towards-10k-v1',name:'10,000 steps',freq:'daily',badge:'fit',icon:'👟',note:'Tick when 10,000 steps are reached.',anchor:'anytime',integrationKeys:[],provenanceVersion:1,logProvenance:{},logs:{},startDate:_challengeStart,lifecycle:{version:1,inactivePeriods:[{kind:'archived',from:_challengeArchive,to:null}]}};
+      STATE.habits.push(_challengeSteps);_challengeStepsManaged=true;_challengeStepsCreated=true;
+    }
+    // The stable app-managed step rhythm can adopt the exact challenge rule.
+    // A user-authored alias keeps its own name, notes, details and lifecycle.
+    if(_challengeStepsManaged&&_challengeSteps.challengeStepSeedVersion!==1){
+      _challengeSteps.name='10,000 steps';
+      _challengeSteps.note='Tick when 10,000 steps are reached. If symptoms increase, scale back, leave the day incomplete, and continue tomorrow—clinical guidance comes first.';
+      _challengeSteps.detailsTitle='Challenge step rule';
+      _challengeSteps.details=[{name:'Daily target',spec:'10,000 steps'},{name:'Workout rule',spec:'Walking does not count toward the separate 45 minutes'},{name:'Symptoms increase',spec:'Scale back and follow physio or GP advice'}];
+      _challengeSteps.challengeStepSeedVersion=1;
+    }
+    if(typeof ensureHabitProvenance==='function')ensureHabitProvenance(_challengeSteps);
+    if(typeof ensureHabitLifecycle==='function')ensureHabitLifecycle(_challengeSteps);
+
+    var _movement=_challengeHabit({id:'challenge-45min-movement-v1',aliases:['45-minute workout','45 minute workout'],name:'45-minute workout',freq:'daily',badge:'fit',icon:'⏱️',note:'Walking does not count. Use clinician-compatible cycling, swimming, physio plus mobility, or active recovery. Stop if symptoms increase.',detailsTitle:'What counts',details:[{name:'Duration',spec:'45 minutes'},{name:'Counts',spec:'Cycling · swimming · physio + mobility · active recovery'},{name:'Does not count',spec:'Walking'},{name:'Safety',spec:'Keep it clinician-compatible and stop if symptoms increase'}]});
+    var _duolingo=_challengeHabit({id:'challenge-duolingo-v1',aliases:['Duolingo'],name:'Duolingo',freq:'daily',badge:'car',icon:'🦉',note:'Complete at least one lesson or practice session.',anchor:'evening'});
+    var _manna=_challengeHabit({id:'challenge-manna-v1',aliases:['Manna'],name:'Manna',freq:'daily',badge:'per',icon:'📖',note:'Complete the daily Manna lesson or practice session.',anchor:'morning'});
+    var _food=_challengeHabit({id:'challenge-whole-food-v1',aliases:['Whole-food day','Whole foods'],name:'Whole-food day',freq:'daily',badge:'fit',icon:'🥗',note:'Prioritise whole or minimally processed foods and no unhealthy takeaway. A planned balanced restaurant meal is allowed.',detailsTitle:'Food rule',details:[{name:'Aim for',spec:'Whole or minimally processed meals'},{name:'Avoid',spec:'Unplanned unhealthy takeaway'},{name:'Allowed',spec:'Planned balanced restaurant meal'}]});
+    var _alcohol=_challengeHabit({id:'challenge-alcohol-rule-v1',aliases:['Alcohol rule followed'],name:'Alcohol rule followed',freq:'daily',badge:'per',icon:'🥂',note:'No alcohol except for a special occasion decided in advance. Tick when the rule was followed.'});
+    var _career=_challengeHabit({id:'challenge-career-focus-v1',aliases:['Career focus'],name:'Career focus',freq:'3x/week',badge:'car',icon:'💼',note:'Three intentional career blocks each week. Applications, networking, CV or LinkedIn work, interview preparation and relevant skills training all count.',detailsTitle:'What counts as Career Focus',details:[{name:'Apply',spec:'Tailored applications'},{name:'Connect',spec:'Networking · recruiter contact · follow-up'},{name:'Prepare',spec:'CV · LinkedIn · interview practice'},{name:'Build skills',spec:'Relevant training or portfolio work'}]});
+
+    if(!STATE.waterSettings)STATE.waterSettings={};
+    if(!Number(STATE.waterSettings.target))STATE.waterSettings.target=8;
+    if(!Number(STATE.waterSettings.glassMl))STATE.waterSettings.glassMl=250;
+
+    var _existingChallenge=STATE.challenges[CHALLENGE_75_ID]||{};
+    var _challengeGlassMl=Number(_existingChallenge.waterGlassMl)||Number(STATE.waterSettings.glassMl)||250;
+    STATE.challenges[CHALLENGE_75_ID]=Object.assign({},_existingChallenge,{
+      id:CHALLENGE_75_ID,title:'75 Intentional Days',startDate:_challengeStart,endDate:_challengeEnd,continuation:'continue',waterTargetMl:2000,waterGlassMl:_challengeGlassMl,
+      habitIds:{steps:_challengeSteps.id,movement:_movement.id,duolingo:_duolingo.id,manna:_manna.id,food:_food.id,alcohol:_alcohol.id,career:_career.id}
+    });
+
+    var _challengeEvent=STATE.trainingEvents.find(function(e){return e&&e.id==='75-day-challenge-2026-10-03'})
+      ||STATE.trainingEvents.find(function(e){return e&&/^75-day challenge begins$/i.test(e.name||'')&&(e.date==='2026-10-03'||e.date==='2026-10-05')});
+    if(_challengeEvent){_challengeEvent.name='75-day challenge begins';_challengeEvent.date=_challengeStart;_challengeEvent.note='75 Intentional Days · ends 18 December 2026';}
+    else STATE.trainingEvents.push({id:'75-day-challenge-2026-10-05',name:'75-day challenge begins',date:_challengeStart,note:'75 Intentional Days · ends 18 December 2026'});
+
+    STATE.__challenge75V1=true;
+    if(!saveState({suppressUndo:true}))STATE=_challengeSnap;
   }
 
   // ---- RETIRE RUNNING FROM HABITS (one-shot) ------------------------------

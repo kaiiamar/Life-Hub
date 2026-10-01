@@ -105,8 +105,10 @@ function logWaterGlass(count){
   var prev=STATE.water[today]||0;
   STATE.water[today]=Math.max(0,count);
   saveState();
+  if(typeof emitLifeHubChange==='function')emitLifeHubChange({action:'water-update',dateKeys:[today],domains:['water'],source:'water',rendered:true});
   renderMetricsWater();
   if(typeof renderPlannerWater === 'function') renderPlannerWater();
+  if(typeof refreshDashboardIfActive==='function')refreshDashboardIfActive();
   // Celebrate hitting the daily target (crossing, not already there)
   var target=Number((STATE.waterSettings&&STATE.waterSettings.target)||8);
   if(prev<target&&STATE.water[today]>=target){
@@ -120,12 +122,21 @@ function logWaterGlass(count){
 function saveWaterSettings(){
   var t=Number((document.getElementById('m-water-target')||{}).value)||8;
   var ml=Number((document.getElementById('m-water-ml')||{}).value)||250;
+  var challenge=typeof getChallenge75==='function'?getChallenge75():null;
+  var challengePhase=typeof challenge75Phase==='function'?challenge75Phase(localDateKey(new Date())):'none';
+  if(challenge&&(challengePhase==='before'||challengePhase==='active')&&Number(challenge.waterGlassMl)>0&&ml!==Number(challenge.waterGlassMl)){
+    ml=Number(challenge.waterGlassMl);
+    if(typeof showCelebrationToast==='function')showCelebrationToast('Glass size stays '+ml+'ml during the challenge','💧');
+  }
   if(!STATE.waterSettings)STATE.waterSettings={};
   STATE.waterSettings.target=Math.max(1,Math.min(20,t));
   STATE.waterSettings.glassMl=Math.max(50,Math.min(2000,ml));
   saveState();
+  if(typeof emitLifeHubChange==='function')emitLifeHubChange({action:'water-settings-update',domains:['waterSettings'],source:'water',rendered:true});
   closeModal();
   renderMetricsWater();
+  if(typeof renderPlannerWater==='function')renderPlannerWater();
+  if(typeof refreshDashboardIfActive==='function')refreshDashboardIfActive();
 }
 
 

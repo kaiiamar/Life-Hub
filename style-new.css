@@ -5209,3 +5209,31 @@ body.night-mode .hb-week-day.done{background:var(--moss);border-color:var(--moss
 @media(max-width:700px){.habit-toolbar{align-items:stretch;flex-direction:column}.habit-week-nav{align-self:flex-end}.habits-grid{grid-template-columns:1fr}.hb-details{grid-template-columns:1fr}.habit-form-grid{grid-template-columns:76px 1fr}.habit-form-grid>.field:last-child{grid-column:1/-1}}
 @media(max-width:480px){.habit-page-header .header-row{align-items:flex-start}.habit-add-btn{padding:9px 11px}.habit-view-tabs{display:grid;grid-template-columns:repeat(3,1fr);width:100%;box-sizing:border-box}.habit-view-tab{justify-content:center;padding:7px 8px}.habit-toolbar{margin-top:10px}.habit-week-nav{align-self:stretch;justify-content:space-between}.habit-week-nav .week-label{flex:1}.habit-card{padding:15px}.hb-snapshot{grid-template-columns:1fr 1fr auto}.hb-foot{align-items:flex-start;flex-direction:column}.hb-foot-action{margin-left:0;width:100%}.hb-today-btn{width:100%}.habit-new-rhythm-row{flex-direction:column}.habit-lifecycle-buttons .btn{flex:1}}
 @media(prefers-reduced-motion:reduce){.habit-card,.habit-view-tab,.habit-filter-btn,.habit-week-btn,.hb-week-day,.hb-today-btn,.hb-consistency-bar span{transition:none!important}.habit-card:hover,.habit-week-btn:hover:not(:disabled),.hb-week-day:hover:not(:disabled),.hb-today-btn:hover{transform:none!important}}
+
+/* ── 75 Intentional Days ── */
+.challenge75-card{border-top:3px solid var(--moss);overflow:hidden}
+.challenge75-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.challenge75-kicker{font-size:10px;font-weight:700;letter-spacing:.11em;color:var(--moss)}
+.challenge75-title{margin-top:3px;font-family:var(--serif);font-size:19px;font-weight:600;color:var(--text)}
+.challenge75-day{font-family:var(--mono,var(--serif));font-size:25px;font-weight:600;color:var(--moss);white-space:nowrap}
+.challenge75-day span{font-size:12px;font-weight:500;color:var(--text3)}
+.challenge75-before{margin-top:12px;font-size:14px;font-weight:600;color:var(--text2)}
+.challenge75-progress{height:5px;margin:13px 0 10px;overflow:hidden;border-radius:999px;background:var(--moss-dim)}
+.challenge75-progress span{display:block;height:100%;border-radius:inherit;background:var(--moss)}
+.challenge75-summary{margin-bottom:8px;font-size:12px;font-weight:600;color:var(--text3)}
+.challenge75-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.challenge75-row{min-width:0;padding:9px 10px;border:1px solid var(--border);border-radius:10px;background:var(--paper2,var(--bg3));color:var(--text2);font:inherit;display:grid;grid-template-columns:24px minmax(0,1fr);align-items:center;gap:7px;text-align:left;cursor:pointer}
+.challenge75-row:hover:not(:disabled){border-color:var(--moss);transform:translateY(-1px)}
+.challenge75-row.done{border-color:var(--moss);background:var(--moss-dim);color:var(--moss)}
+.challenge75-check{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--panel);font-size:12px;font-weight:700}
+.challenge75-row.done .challenge75-check{background:var(--moss);color:#fff}
+.challenge75-label{min-width:0;font-size:12px;font-weight:600;line-height:1.25}
+.challenge75-meta{grid-column:2;font-family:var(--mono,var(--serif));font-size:10px;color:var(--text3)}
+.challenge75-career{margin-top:9px;padding:10px 11px;border:1px solid var(--border);border-radius:10px;background:var(--sky-dim);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.challenge75-career strong{display:block;font-size:12px;color:var(--text)}
+.challenge75-career span{display:block;margin-top:2px;font-size:10px;line-height:1.35;color:var(--text3)}
+.challenge75-career-count{flex:0 0 auto;min-width:44px;padding:6px 8px;border:1px solid var(--sky);border-radius:9px;background:var(--panel);color:var(--sky);font:600 12px var(--mono,var(--serif));cursor:pointer}
+.challenge75-career-count.done{border-color:var(--moss);background:var(--moss-dim);color:var(--moss)}
+.challenge75-rule-note{margin-top:10px;font-size:11px;line-height:1.45;color:var(--text3)}
+.dashboard-challenge-line{border-left:3px solid var(--moss)}
+@media(max-width:520px){.challenge75-grid{grid-template-columns:1fr}.challenge75-career{align-items:flex-start}.challenge75-career-count{margin-top:1px}}

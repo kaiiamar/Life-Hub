@@ -1,7 +1,7 @@
 // ============================================================
 // REVISIONED DOMAIN PERSISTENCE
 // ============================================================
-var LIFEHUB_SCHEMA_VERSION=3;
+var LIFEHUB_SCHEMA_VERSION=4;
 var LIFEHUB_QUEUE_KEY='lifehub_sync_queue_v2';
 var LIFEHUB_CONFLICT_KEY='lifehub_sync_conflicts_v2';
 var LIFEHUB_META_KEY='lifehub_local_meta_v2';
@@ -197,11 +197,46 @@ function validateHabitDomainData(data){
   return {ok:errors.length===0,errors:errors,data:holder.habits};
 }
 
+function _validateChallengeRecords(challenges,habits,add){
+  if(!_isPlainRecord(challenges))return;
+  var requiredHabitKeys=['steps','movement','duolingo','manna','food','alcohol','career'];
+  var habitIds=Object.create(null);(Array.isArray(habits)?habits:[]).forEach(function(h){if(h&&typeof h.id==='string')habitIds[h.id]=true});
+  Object.keys(challenges).forEach(function(id){
+    var challenge=challenges[id],path='state.challenges.'+id;
+    if(!_isPlainRecord(challenge)){add(path,'must be a plain object');return}
+    if(challenge.id!==id)add(path+'.id','must match its challenge key');
+    if(typeof challenge.title!=='string'||!challenge.title.trim()||challenge.title.length>120)add(path+'.title','must be 1–120 characters');
+    if(!_validDateKey(challenge.startDate))add(path+'.startDate','must be a valid YYYY-MM-DD date');
+    if(!_validDateKey(challenge.endDate))add(path+'.endDate','must be a valid YYYY-MM-DD date');
+    if(_validDateKey(challenge.startDate)&&_validDateKey(challenge.endDate)){
+      var a=challenge.startDate.split('-').map(Number),b=challenge.endDate.split('-').map(Number);
+      var span=Math.round((Date.UTC(b[0],b[1]-1,b[2])-Date.UTC(a[0],a[1]-1,a[2]))/86400000)+1;
+      if(span!==75)add(path+'.endDate','must make the challenge exactly 75 inclusive days');
+    }
+    if(challenge.continuation!=='continue')add(path+'.continuation','must be continue');
+    if(!Number.isFinite(challenge.waterTargetMl)||challenge.waterTargetMl<=0)add(path+'.waterTargetMl','must be a positive number');
+    if(!Number.isFinite(challenge.waterGlassMl)||challenge.waterGlassMl<=0)add(path+'.waterGlassMl','must be a positive number');
+    if(!_isPlainRecord(challenge.habitIds))add(path+'.habitIds','must be an object');
+    else{
+      var references=[];
+      requiredHabitKeys.forEach(function(key){
+        var value=challenge.habitIds[key];
+        if(typeof value!=='string'||!/^[A-Za-z0-9_-]{1,80}$/.test(value))add(path+'.habitIds.'+key,'must reference a valid habit id');
+        else{
+          references.push(value);
+          if(!habitIds[value])add(path+'.habitIds.'+key,'must reference an existing habit');
+        }
+      });
+      if(new Set(references).size!==references.length)add(path+'.habitIds','must reference seven distinct habits');
+    }
+  });
+}
+
 function validateLifeHubState(state,options){
   options=options||{};
   if(state&&typeof state==='object'&&!Array.isArray(state))normalizeLifeHubHabits(state);
   var errors=[];var nodes=0;var stringBytes=0;var dangerous=Object.create(null);dangerous.__proto__=true;dangerous.prototype=true;dangerous.constructor=true;
-  var typeRules={goals:'array',habits:'array',workouts:'array',prs:'object',income:'array',expenses:'array',accounts:'array',debts:'array',savingsGoals:'array',metrics:'object',weeklyPlans:'object',reviews:'object',dailyPriorities:'object',trainingEvents:'array',journal:'object',mood:'object',dailyHighlights:'object',skincare:'object',tasks:'array',relationships:'array',gratitude:'array',wishlist:'array',watchlist:'array',roadmapChecklist:'object',debtPayments:'array',plannedPayments:'array',reminders:'array',water:'object',waterSettings:'object',commitments:'array',netWorthSnapshots:'array',sweep:'object',companion:'object'};
+  var typeRules={goals:'array',habits:'array',workouts:'array',prs:'object',income:'array',expenses:'array',accounts:'array',debts:'array',savingsGoals:'array',metrics:'object',weeklyPlans:'object',reviews:'object',dailyPriorities:'object',trainingEvents:'array',challenges:'object',journal:'object',mood:'object',dailyHighlights:'object',skincare:'object',tasks:'array',relationships:'array',gratitude:'array',wishlist:'array',watchlist:'array',roadmapChecklist:'object',debtPayments:'array',plannedPayments:'array',reminders:'array',water:'object',waterSettings:'object',commitments:'array',netWorthSnapshots:'array',sweep:'object',companion:'object'};
   function add(path,message){if(errors.length<12)errors.push(path+': '+message)}
   function walk(value,path,depth){
     nodes++;if(nodes>100000){add(path,'too many values');return}if(depth>24){add(path,'nesting is too deep');return}
@@ -224,6 +259,7 @@ function validateLifeHubState(state,options){
     Object.keys(state).forEach(function(key){if(!_validDomainName(key))add('state.'+key,'invalid domain name')});
     Object.keys(typeRules).forEach(function(key){if(state[key]===undefined){if(options.requireCore)add('state.'+key,'required data area is missing');return}var expected=typeRules[key];var actual=Array.isArray(state[key])?'array':(state[key]===null?'null':typeof state[key]);if(actual!==expected)add('state.'+key,'expected '+expected)});
     _validateHabitRecords(state.habits,add);
+    _validateChallengeRecords(state.challenges,state.habits,add);
     if(options.requireCore&&state.trainingPlan===undefined)add('state.trainingPlan','required data area is missing');
     if(options.requireCore&&state.weeklyIntention===undefined)add('state.weeklyIntention','required data area is missing');
     if(state.trainingPlan!==undefined&&state.trainingPlan!==null&&(typeof state.trainingPlan!=='object'||Array.isArray(state.trainingPlan)))add('state.trainingPlan','expected object or null');
@@ -624,6 +660,7 @@ function _rerenderCurrentPage(){
 }
 function _refreshFromCloud(recoveryOperation){
   var operation=recoveryOperation||'read';
+  var refreshRollback=null;
   if(!_syncReady||!_firebaseReady||!syncDoc||!_authUser||_syncWriting)return Promise.resolve(false);
   return syncDoc.collection('domains').get().then(function(query){
     var incoming=[];
@@ -640,6 +677,10 @@ function _refreshFromCloud(recoveryOperation){
       }
       incoming.push({domain:domain,record:record,revision:revision});
     });
+    refreshRollback={
+      state:_clone(STATE),cloudData:_clone(_cloudData),domainRevisions:_clone(_domainRevisions),domainExists:_clone(_domainExists),
+      pendingDomains:_clone(_pendingDomains),syncConflicts:_clone(_syncConflicts),domainSnapshotLoaded:_domainSnapshotLoaded
+    };
     var changed=false,changedDomains=[];
     incoming.forEach(function(item){
       var domain=item.domain,record=item.record,revision=item.revision;
@@ -668,7 +709,14 @@ function _refreshFromCloud(recoveryOperation){
       _localSnapshots=_clone(STATE);_persistLocalState();_rerenderCurrentPage();emitLifeHubChange({action:'remote-apply',domains:changedDomains,source:'sync'});
     }
     _persistRevisionMetadata();_clearCloudIssue(operation);_updateSyncPresentation();_scheduleCloudFlush();return true;
-  }).catch(function(e){console.warn('Cloud refresh failed:',e);_setCloudIssue(e,operation);return false});
+  }).catch(function(e){
+    if(refreshRollback){
+      STATE=refreshRollback.state;_cloudData=refreshRollback.cloudData;_domainRevisions=refreshRollback.domainRevisions;_domainExists=refreshRollback.domainExists;
+      _pendingDomains=refreshRollback.pendingDomains;_syncConflicts=refreshRollback.syncConflicts;_domainSnapshotLoaded=refreshRollback.domainSnapshotLoaded;
+      _persistQueue();_persistConflicts();_persistRevisionMetadata();
+    }
+    console.warn('Cloud refresh failed:',e);_setCloudIssue(e,operation);return false;
+  });
 }
 document.addEventListener('visibilitychange',function(){if(!document.hidden)_refreshFromCloud()});
 window.addEventListener('focus',function(){_refreshFromCloud()});
