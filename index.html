@@ -12,7 +12,7 @@
 <title>Kai's Life Hub 🤎</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style-new.css?v=48">
+<link rel="stylesheet" href="style-new.css?v=49">
 <!-- Chart.js is lazy-loaded on first visit to a chart page — see ensureChartJs() in js/navigation.js (Part 5.3) -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -33,7 +33,7 @@
         <button class="topnav-link active" data-page="planner" onclick="nav('planner')">Planner</button>
         <button class="topnav-link" data-page="dashboard" onclick="nav('dashboard')">Dashboard</button>
         <button class="topnav-link" data-page="habits" onclick="nav('habits')">Habits</button>
-        <button class="topnav-link" data-page="workout" onclick="nav('workout')">Gym</button>
+        <button class="topnav-link" data-page="workout" onclick="nav('workout')">Movement</button>
         <button class="topnav-link" data-page="skincare" onclick="nav('skincare')">Skincare</button>
         <button class="topnav-link" data-page="gratitude" onclick="nav('gratitude')">Gratitude</button>
         <div class="topnav-more">
@@ -86,7 +86,7 @@
       <button class="nav-item" onclick="nav('dashboard')">🏠 Dashboard</button>
       <button class="nav-item" onclick="nav('goals')">🎯 Goals</button>
       <button class="nav-item" onclick="nav('habits')">✅ Habits</button>
-      <button class="nav-item" onclick="nav('workout')">🏋️ Workouts</button>
+      <button class="nav-item" onclick="nav('workout')">🌿 Movement</button>
       <button class="nav-item" onclick="nav('finance')">💸 Finance</button>
       <button class="nav-item" onclick="nav('review')">📝 Reviews</button>
       <button class="nav-item" onclick="nav('gratitude')">🙏 Gratitude</button>
@@ -344,11 +344,10 @@
         <div class="header-row">
           <div>
             <h1>Training</h1>
-            <p>Your muscle-health plan, sessions and body-composition trends in one place.</p>
+            <p>Your recovery-first movement plan, physio rhythm and body trends in one place.</p>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn" onclick="openModal('quickLog')">+ Log session</button>
-            <button class="btn" onclick="openModal('logRun')">+ Log run</button>
+            <button class="btn" onclick="openModal('quickLog')">+ Log movement</button>
           </div>
         </div>
       </div>
@@ -372,10 +371,9 @@
               <div style="font-size:13px;color:var(--text2)" id="training-week-target">— sessions this week</div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button class="btn btn-accent" onclick="quickLogToday('Gym')">+ Gym</button>
-              <button class="btn" onclick="quickLogToday('Hyrox')">+ Hyrox</button>
-              <button class="btn" onclick="quickLogToday('Run')">+ Run</button>
-              <button class="btn btn-ghost" onclick="quickLogToday('Rest')">Rest day</button>
+              <button class="btn btn-accent" onclick="quickLogToday('Easy cycle')">+ Easy cycle</button>
+              <button class="btn" onclick="quickLogToday('Beginner swim')">+ Beginner swim</button>
+              <button class="btn btn-ghost" onclick="openModal('quickLog')">Other movement</button>
             </div>
           </div>
           <div id="training-week-grid"></div>
@@ -417,7 +415,7 @@
       <div class="sub-page" id="workout-myplan">
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-            <div class="card-label" style="margin:0">💪 Muscle health + fat loss</div>
+            <div class="card-label" style="margin:0">🌿 Injury re-entry plan</div>
             <span style="font-size:11px;color:var(--text3)">Day 1 = Monday</span>
           </div>
           <div id="myplan-schedule"></div>
@@ -427,7 +425,7 @@
       <!-- Fuel tab: nutrition plan for the training block -->
       <div class="sub-page" id="workout-fuel">
         <div class="page-intro" style="margin-bottom:16px">
-          <div style="font-size:13px;color:var(--text2)">Fuel strength, recovery and gradual fat loss. Resistance days get a little more energy; recovery days stay steady.</div>
+          <div style="font-size:13px;color:var(--text2)">Recovery comes first. Keep protein and regular meals steady; use enough energy to support physio, walking and gentle cardio.</div>
         </div>
         <div id="training-fuel"></div>
       </div>
@@ -831,20 +829,20 @@
 
 
 
-<script src="js/state.js?v=48"></script>
-<script src="js/persistence.js?v=48"></script>
-<script src="js/navigation.js?v=48"></script>
-<script src="js/dashboard.js?v=48"></script>
-<script src="js/habits.js?v=48"></script>
-<script src="js/workouts.js?v=48"></script>
-<script src="js/finance.js?v=48"></script>
-<script src="js/reviews.js?v=48"></script>
-<script src="js/relationships.js?v=48"></script>
-<script src="js/gratitude.js?v=48"></script>
-<script src="js/insights.js?v=48"></script>
-<script src="js/skincare.js?v=48"></script>
-<script src="js/modals.js?v=48"></script>
-<script src="js/planner.js?v=48"></script>
-<script src="js/init.js?v=48"></script>
+<script src="js/state.js?v=49"></script>
+<script src="js/persistence.js?v=49"></script>
+<script src="js/navigation.js?v=49"></script>
+<script src="js/dashboard.js?v=49"></script>
+<script src="js/habits.js?v=49"></script>
+<script src="js/workouts.js?v=49"></script>
+<script src="js/finance.js?v=49"></script>
+<script src="js/reviews.js?v=49"></script>
+<script src="js/relationships.js?v=49"></script>
+<script src="js/gratitude.js?v=49"></script>
+<script src="js/insights.js?v=49"></script>
+<script src="js/skincare.js?v=49"></script>
+<script src="js/modals.js?v=49"></script>
+<script src="js/planner.js?v=49"></script>
+<script src="js/init.js?v=49"></script>
 </body>
 </html>

@@ -4,104 +4,30 @@ var runCharts={};
 // Stub for legacy session viewing
 function getBestPrevSet(){return null}
 
-// ── MUSCLE HEALTH + FAT-LOSS TRAINING PLAN ─────────────────────────────────
-// A repeatable Mon→Sun split built around progressive resistance training,
-// low-impact aerobic work and enough recovery to keep the plan sustainable.
-// The existing knee/calf rehab remains in Lower A and the daily rehab habit.
-var LOWER_A={
-  id:'lower-a-v4',
-  title:'Lower A — Quads + Knee Health',
-  emoji:'🦵',
-  duration:'~55 min',
-  warmup:'5 min easy bike · Glute bridges x15 · Banded lateral walks x12 each',
-  note:'Finish each set with 1–3 good reps still available. Add a little weight only when every rep is controlled.',
-  exercises:[
-    {name:'Goblet squat',scheme:'3 x 8–10',note:'Controlled depth; use a box if that keeps the knee comfortable'},
-    {name:'Leg press',scheme:'3 x 10',note:'Full comfortable range with a slow lowering phase'},
-    {name:'Reverse lunge or split squat',scheme:'3 x 8 each',note:'Hold support if needed; keep the front foot planted'},
-    {name:'Knee extension (machine)',scheme:'3 x 10–12',note:'Smooth reps; pause briefly at the top'},
-    {name:'Seated hamstring curl',scheme:'3 x 10–12',note:'Control both directions'},
-    {name:'Hip abductor (machine)',scheme:'2 x 12–15',note:'Keep the torso still'},
-    {name:'Heel raises, ball squeezed between heels',scheme:'3 x 15 slow',note:'Calf + posterior tibialis rehab'},
-    {name:'Single-leg balance',scheme:'2 x 30–45 sec each',note:'Stable foot and soft knee'}
-  ]
-};
-var UPPER_A={
-  id:'upper-a-v4',
-  title:'Upper A — Push + Pull',
-  emoji:'💪',
-  duration:'~50 min',
-  warmup:'Arm circles · Thoracic rotations · Light cable rows x15',
-  note:'Use a repeatable range of motion and keep 1–3 reps in reserve. Progress weight before adding more exercises.',
-  exercises:[
-    {name:'Chest press',scheme:'3 x 8–10',note:'Shoulder blades supported; controlled lowering'},
-    {name:'Lat pulldown',scheme:'3 x 8–10',note:'Pull elbows toward your ribs'},
-    {name:'Seated cable row',scheme:'3 x 10',note:'Pause with the upper back engaged'},
-    {name:'Shoulder press',scheme:'3 x 8–10',note:'Keep ribs stacked over hips'},
-    {name:'Cable or dumbbell lateral raise',scheme:'2 x 12–15',note:'Light and controlled'},
-    {name:'Triceps pressdown',scheme:'2 x 10–12',note:'Upper arms stay still'},
-    {name:'Dumbbell curl',scheme:'2 x 10–12',note:'No swinging'}
-  ]
-};
-var LOWER_B={
-  id:'lower-b-v4',
-  title:'Lower B — Glutes + Posterior Chain',
-  emoji:'🏋️',
-  duration:'~55 min',
-  warmup:'5 min easy bike · Bodyweight hinges x12 · Glute bridges x15',
-  note:'Prioritise tension and control over load. Stop or swap any movement that causes sharp or increasing pain.',
-  exercises:[
-    {name:'Romanian deadlift',scheme:'3 x 8–10',note:'Hips travel back; keep the load close'},
-    {name:'Hip thrust or glute bridge',scheme:'3 x 10',note:'Pause at the top without overextending'},
-    {name:'Step-up',scheme:'3 x 8 each',note:'Drive through the working leg; control the descent'},
-    {name:'Seated or lying hamstring curl',scheme:'3 x 10–12',note:'Slow return on every rep'},
-    {name:'Hip adduction (machine)',scheme:'2 x 12–15',note:'Controlled, comfortable range'},
-    {name:'Eccentric calf raise, straight knee',scheme:'3 x 12',note:'Three-second lower'},
-    {name:'Eccentric calf raise, bent knee',scheme:'3 x 12',note:'Three-second lower for the soleus'},
-    {name:'Dead bug',scheme:'3 x 8 each',note:'Keep the lower back gently anchored'}
-  ]
-};
-var UPPER_B={
-  id:'upper-b-v4',
-  title:'Upper B — Back + Shoulders',
-  emoji:'💪',
-  duration:'~50 min',
-  warmup:'Band pull-aparts x15 · Thoracic rotations · Light pulldowns x15',
-  note:'Aim to add one rep or a small amount of weight over time while keeping technique consistent.',
-  exercises:[
-    {name:'Incline chest press',scheme:'3 x 8–10',note:'Comfortable shoulder angle'},
-    {name:'Chest-supported row',scheme:'3 x 8–10',note:'Lead with the elbows'},
-    {name:'Neutral-grip pulldown',scheme:'3 x 10',note:'Keep the neck relaxed'},
-    {name:'Rear-delt fly',scheme:'2 x 12–15',note:'Small range, upper back working'},
-    {name:'Machine shoulder press',scheme:'2 x 10',note:'Stop before the shoulders shrug'},
-    {name:'Cable face pull',scheme:'2 x 12–15',note:'Pull toward eye level'},
-    {name:'Pallof press',scheme:'3 x 10 each',note:'Resist rotation; slow return'}
-  ]
-};
-
-// Four resistance days preserve/build muscle, Saturday keeps the weekly 5K,
-// and Wednesday/Sunday provide recovery so fatigue stays manageable.
+// ── INJURY RE-ENTRY TRAINING PLAN ──────────────────────────────────────────
+// Recovery-first weekly rhythm based on the current physio/GP guidance:
+// running and demanding upper-body work are paused; cycling is the primary
+// cardio; swimming is optional and deliberately short; hip physio is tracked
+// as a separate 3x/week habit with an optional fourth day, so its completion
+// history remains meaningful.
 var TRAINING_TEMPLATE=[
-  {day:'Mon',session:'lower-a-v4',label:'Lower A',sub:'Quads + knee health · ~55 min',run:false,kcal:2100},
-  {day:'Tue',session:'upper-a-v4',label:'Upper A',sub:'Push + pull · ~50 min',run:false,kcal:2100},
-  {day:'Wed',session:'rest',label:'Recovery + mobility',sub:'Easy steps + 10–15 min mobility',run:false,kcal:1950},
-  {day:'Thu',session:'lower-b-v4',label:'Lower B',sub:'Glutes + posterior chain · ~55 min',run:false,kcal:2100},
-  {day:'Fri',session:'upper-b-v4',label:'Upper B',sub:'Back + shoulders · ~50 min',run:false,kcal:2100},
-  {day:'Sat',session:'run',label:'5K Saturday',sub:'5km easy-to-steady · keep the effort controlled',run:false,kcal:2100},
-  {day:'Sun',session:'rest',label:'Full rest',sub:'Recover, prepare and sleep well',run:false,kcal:1950}
+  {day:'Mon',session:'recovery-v6',kind:'recovery',label:'Hip physio + walking',sub:'Physio habit · build towards 10k steps',required:false,kcal:2000,icon:'🦵'},
+  {day:'Tue',session:'cycle-v6',kind:'cycle',label:'Easy cycle',sub:'20–30 min · comfortable, conversational effort',required:true,logType:'Easy cycle',acceptedLogTypes:['Easy cycle'],kcal:2050,icon:'🚲'},
+  {day:'Wed',session:'recovery-v6',kind:'recovery',label:'Hip physio + recovery',sub:'Physio habit · gentle walking through the day',required:false,kcal:2000,icon:'🦵'},
+  {day:'Thu',session:'cycle-v6',kind:'cycle',label:'Easy cycle',sub:'20–30 min · comfortable, conversational effort',required:true,logType:'Easy cycle',acceptedLogTypes:['Easy cycle'],kcal:2050,icon:'🚲'},
+  {day:'Fri',session:'recovery-v6',kind:'recovery',label:'Hip physio + walking',sub:'Physio habit · build towards 10k steps',required:false,kcal:2000,icon:'🦵'},
+  {day:'Sat',session:'swim-v6',kind:'swim',label:'Beginner swim or easy cycle',sub:'Optional · 10–20 min with rests · keep upper-body effort gentle',required:false,logType:'Beginner swim',acceptedLogTypes:['Beginner swim','Easy cycle'],kcal:2050,icon:'🏊'},
+  {day:'Sun',session:'recovery-v6',kind:'recovery',label:'Optional fourth physio day',sub:'Use if comfortable · otherwise keep the day easy',required:false,kcal:2000,icon:'🌿'}
 ];
 
-// Program metadata is intentionally undated: this is a sustainable weekly
-// rhythm rather than a countdown block. Reassess loads and recovery every four
-// weeks using logged sessions, body trends and how the work is feeling.
 var BODY_COMPOSITION_PROGRAM={
-  name:'Muscle Health + Fat Loss',
-  phase:'Foundation',
-  focus:'Build and retain muscle while gradually reducing body fat',
-  progression:'When all prescribed reps are controlled for two sessions, add the smallest available load.',
-  recovery:'Sharp or increasing pain means stop and choose a comfortable alternative. Recovery is part of the plan.',
-  cardio:'Saturday is a controlled 5K: conversational most weeks, quicker only when recovery is good.',
-  steps:'Keep daily movement consistent; use walks to support recovery and energy expenditure.'
+  name:'Injury Re-entry',
+  phase:'Recovery',
+  focus:'Rebuild consistency without running or demanding upper-body training',
+  progression:'Keep cycling easy. Increase duration or effort only when symptoms stay settled and your clinician is happy with progress.',
+  recovery:'Follow the physio form: stop any exercise that causes pain. Scale walking back if symptoms increase and seek clinical advice for new or worsening symptoms.',
+  cardio:'Cycling is the main cardio. Swimming is optional, short and rest-friendly while confidence and tolerance build.',
+  steps:'Build gradually towards 10,000 steps across the day; the direction matters more than hitting the number immediately.'
 };
 // ── NUTRITION PLAN ───────────────────────────────────────────────────────────
 // Static reference for the Fuel tab (renderTrainingFuel). Data-driven so the
@@ -109,7 +35,7 @@ var BODY_COMPOSITION_PROGRAM={
 // content — no state, no writes. Calorie targets per day come from the training
 // template's `kcal` field so the two never disagree.
 var NUTRITION_PLAN={
-  targets:{protein:'150–180g',fibre:'30–35g',water:'3L+',avg:'~2,060 kcal/day weekly average — adjust from your body trend, recovery and training performance'},
+  targets:{protein:'150–180g',fibre:'30–35g',water:'3L+',avg:'~2,020 kcal/day weekly average — recovery and symptom stability come before a larger deficit'},
   fibreNote:'If you\'re currently well under 30g, ramp up over 2–3 weeks rather than jumping straight there. Increase gradually and keep meals comfortable.',
   noLegumes:'No beans, lentils or cottage cheese in the meals below. Fibre comes from oats, chia, berries, avocado, wholegrains, veg, nuts and seeds instead.',
   heroes:[
@@ -130,7 +56,7 @@ var NUTRITION_PLAN={
       {meal:'Overnight oats: oats 50g, milk, scoop protein, banana, chia',p:'38g',f:'14g'},
       {meal:'Skyr (200g) + granola + raspberries + flaxseed',p:'28g',f:'10g'},
       {meal:'2 poached eggs + wholegrain toast + avocado + grilled tomatoes + spinach',p:'24g',f:'12g'}
-    ],note:'Strength days: add a banana or extra toast around training if energy is low.'},
+    ],note:'Cycling or swim days: add a banana or extra toast if energy is low.'},
     lunch:{target:'45–55g protein · 10–12g fibre',items:[
       {meal:'Chicken + bulgur salad + roasted peppers, courgette, red onion + feta',p:'48g',f:'13g'},
       {meal:'Chicken burrito bowl: chicken 150g, brown rice, sweetcorn, avocado, salsa, spinach',p:'48g',f:'13g'},
@@ -167,41 +93,39 @@ var NUTRITION_PLAN={
   rules:[
     'Protein at every meal — protects muscle in a deficit and supports tendon repair.',
     'Fibre from chia, oats, raspberries, avocado, wholegrains and veg — no legumes required.',
-    'Eating window 8am–9pm. Put a useful share of your carbs around strength sessions.',
+    'Eating window 8am–9pm. Put a useful share of your carbs around cycling or swimming.',
     'Batch-cook chilli, curry and stir-fry base on Sundays — three lunches sorted.',
-    'Keep the weekly deficit moderate. Training quality, recovery and consistency come first.',
+    'Keep any deficit moderate. Healing, symptom stability and consistency come first.',
     'Weigh weekly, same day, same time.'
   ],
-  floors:'Don\'t go below 1,900 on any day. If strength drops repeatedly, sleep gets poor, recovery stalls, or a niggle reappears — eat more, not less. The deficit is the first thing to relax.'
+  floors:'Don\'t go below 1,900 on any day. If energy drops repeatedly, sleep gets poor, recovery stalls, or symptoms increase — eat more, not less. The deficit is the first thing to relax.'
 };
 
-function workoutDef(id){
-  return id==='lower-a-v4'?LOWER_A
-    :id==='upper-a-v4'?UPPER_A
-    :id==='lower-b-v4'?LOWER_B
-    :id==='upper-b-v4'?UPPER_B
-    :null;
-}
+function workoutDef(){return null}
 
 // Bump whenever the prescriptive plan changes. Existing logged workouts,
 // runs and body metrics live in separate domains and are never replaced here.
-var LIFEHUB_PLAN_VERSION=5;
+var LIFEHUB_PLAN_VERSION=6;
 
 function getTrainingPlan(){
-  if(!STATE.trainingPlan)STATE.trainingPlan={template:JSON.parse(JSON.stringify(TRAINING_TEMPLATE)),checks:{},program:JSON.parse(JSON.stringify(BODY_COMPOSITION_PROGRAM)),planVersion:LIFEHUB_PLAN_VERSION};
+  if(!STATE.trainingPlan)STATE.trainingPlan={template:JSON.parse(JSON.stringify(TRAINING_TEMPLATE)),checks:{},program:JSON.parse(JSON.stringify(BODY_COMPOSITION_PROGRAM)),planVersion:LIFEHUB_PLAN_VERSION,effectiveDate:localDateKey(new Date()),effectiveWeek:weekKey(new Date())};
   if(!STATE.trainingPlan.checks)STATE.trainingPlan.checks={};
-  // Reconcile only the prescriptive plan. Session IDs remain stable between
-  // v4 and v5, so in-progress exercise ticks are preserved when Saturday moves.
+  // Reconcile only the current prescription. Prior checkbox data remains in
+  // place for history safety, but v6 has no strength checklist to remap.
   if(STATE.trainingPlan.planVersion!==LIFEHUB_PLAN_VERSION){
     STATE.trainingPlan.template=JSON.parse(JSON.stringify(TRAINING_TEMPLATE));
     STATE.trainingPlan.program=JSON.parse(JSON.stringify(BODY_COMPOSITION_PROGRAM));
     if(!STATE.trainingPlan.checks)STATE.trainingPlan.checks={};
     delete STATE.trainingPlan.raceBlock;
+    STATE.trainingPlan.effectiveDate=localDateKey(new Date());
+    STATE.trainingPlan.effectiveWeek=weekKey(new Date());
     STATE.trainingPlan.planVersion=LIFEHUB_PLAN_VERSION;
     if(typeof saveState==='function')saveState({suppressUndo:true});
   }
   if(!STATE.trainingPlan.template)STATE.trainingPlan.template=JSON.parse(JSON.stringify(TRAINING_TEMPLATE));
   if(!STATE.trainingPlan.program)STATE.trainingPlan.program=JSON.parse(JSON.stringify(BODY_COMPOSITION_PROGRAM));
+  if(!STATE.trainingPlan.effectiveDate)STATE.trainingPlan.effectiveDate=localDateKey(new Date());
+  if(!STATE.trainingPlan.effectiveWeek)STATE.trainingPlan.effectiveWeek=weekKey(new Date());
   if(STATE.trainingPlan.raceBlock)delete STATE.trainingPlan.raceBlock;
   return STATE.trainingPlan;
 }
@@ -219,24 +143,19 @@ function todaysTrainingSession(dateKey){
   if(!base)return null;
   var out=JSON.parse(JSON.stringify(base));
   out.program=plan.program||BODY_COMPOSITION_PROGRAM;
-  var def=workoutDef(out.session);
-  if(def){
-    out.desc=def.title;
-    out.detail=def.duration+' · '+def.exercises.length+' exercises';
-    out.trainingType='strength';
-  }else if(out.session==='run'){
-    out.desc='Your weekly 5K';
-    out.detail='Run 5km at an easy-to-steady effort. Push the pace only when your legs and recovery feel good.';
-    out.runType='steady';
-    out.trainingType='run';
-  }else if(out.session==='cardio-v4'){
-    out.desc='Low-impact aerobic base';
-    out.detail='Keep the effort conversational; finish with 10 minutes of mobility.';
-    out.trainingType='cardio';
+  out.trainingType=out.kind||'recovery';
+  out.logType=out.logType||null;
+  out.acceptedLogTypes=out.acceptedLogTypes||[];
+  out.icon=out.icon||(out.kind==='cycle'?'🚲':out.kind==='swim'?'🏊':'🌿');
+  if(out.kind==='cycle'){
+    out.desc='Low-impact cardio';
+    out.detail='Keep the effort comfortable and conversational. Stop if symptoms increase.';
+  }else if(out.kind==='swim'){
+    out.desc='Optional confidence-building cardio';
+    out.detail='Take frequent rests and keep the upper-body effort gentle. Choose an easy cycle instead if that feels better.';
   }else{
-    out.desc=out.sub||'Recover';
-    out.detail='Easy movement is optional. Prioritise sleep and recovery.';
-    out.trainingType='recovery';
+    out.desc=out.label;
+    out.detail='Physio is tracked in Habits. Walking can be split into short, comfortable bouts across the day.';
   }
   return out;
 }
@@ -255,14 +174,28 @@ function renderTrainingOverview(){
   var sessions=STATE.workouts||[];
   var runs=((STATE.metrics||{}).run||[]);
 
-  // Merge sessions + runs for this week
+  // Merge all historical session types for the visible week grid.
   var weekItems=sessions.filter(function(w){return days.indexOf(w.date)!==-1})
     .concat(runs.filter(function(r){return days.indexOf(r.date)!==-1}).map(function(r){return {type:'Run',date:r.date,isRun:true}}));
-  var weekCount=weekItems.length;
 
-  // Weekly target — count non-rest days from the training plan
-  var plan=getTrainingPlan().template;
-  var target=plan.filter(function(d){return d.session&&d.session!=='rest'}).length;
+  // Weekly target — match the two required cycle slots by weekday and type.
+  // Optional swimming, physio habits and unrelated historical activities never
+  // make the target harder or satisfy a different planned slot accidentally.
+  var planState=getTrainingPlan();
+  var plan=planState.template;
+  var effectiveWeek=planState.effectiveWeek||wk;
+  function requiredCountForDays(dateKeys){
+    return plan.reduce(function(count,row,index){
+      if(row.required===false||!row.logType||!dateKeys[index])return count;
+      var accepted=(row.acceptedLogTypes||[row.logType]).map(function(type){return String(type).toLowerCase()});
+      var done=sessions.some(function(item){
+        return item&&item.date===dateKeys[index]&&accepted.indexOf(String(item.type||item.name||'').toLowerCase())!==-1;
+      });
+      return count+(done?1:0);
+    },0);
+  }
+  var target=plan.filter(function(d){return d.required!==false&&d.logType}).length;
+  var weekCount=requiredCountForDays(days);
 
   // Update header counters
   var cEl=document.getElementById('training-week-count');
@@ -276,20 +209,17 @@ function renderTrainingOverview(){
   // Week day grid — show what's logged each day
   var gridEl=document.getElementById('training-week-grid');
   if(gridEl){
-    var dayLabels=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     gridEl.innerHTML='<div class="training-week-grid">'+days.map(function(d,i){
       var items=weekItems.filter(function(x){return x.date===d});
       var isToday=d===todayKey;
-      var isPast=d<todayKey;
-      var pd=plan[(i+6)%7];  // align to plan order (starts Mon)
+      var pd=plan[i];
       var planType=pd?pd.label:'';
-      var planSession=pd?pd.session:'';
       // Zero-guilt: past unlogged days are never flagged red or "missed".
       var statusClass='';
       if(items.length>0)statusClass='done';
       else if(isToday)statusClass='today';
       return '<div class="training-day '+statusClass+'">'
-        +'<div class="training-day-name">'+dayLabels[i]+'</div>'
+        +'<div class="training-day-name">'+new Date(d+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short'})+'</div>'
         +'<div class="training-day-plan">'+(planType||'—')+'</div>'
         +'<div class="training-day-logged">'+(items.length>0?items.map(function(x){return '✓ '+(x.type||x.name||'session')}).join('<br>'):'—')+'</div>'
         +'</div>';
@@ -301,16 +231,16 @@ function renderTrainingOverview(){
   for(var wi=0;wi<52;wi++){
     var checkDate=new Date(now);checkDate.setDate(checkDate.getDate()-wi*7);
     var checkWk=weekKey(checkDate);
+    if(effectiveWeek&&checkWk<effectiveWeek)break;
     var checkDays=weekDays(checkWk);
-    var checkCount=sessions.filter(function(w){return checkDays.indexOf(w.date)!==-1}).length
-      +runs.filter(function(r){return checkDays.indexOf(r.date)!==-1}).length;
+    var checkCount=requiredCountForDays(checkDays);
     if(checkCount>=target)streak++;
     else if(wi>0)break;  // allow current week to still be incomplete
   }
   var sEl=document.getElementById('training-streak');
   if(sEl)sEl.textContent=streak;
   var ssEl=document.getElementById('training-streak-sub');
-  if(ssEl)ssEl.textContent=streak===0?'hit your target to start':'weeks hitting target';
+  if(ssEl)ssEl.textContent=streak===0?'complete this re-entry week to start':'weeks on this re-entry plan';
 
   // This month breakdown
   var monthKey=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
@@ -353,14 +283,15 @@ function renderTrainingEvents(){
   if(!el)return;
   var events=STATE.trainingEvents||[];
   var now=new Date();
-  var upcoming=events.filter(function(e){return new Date(e.date)>=now}).sort(function(a,b){return a.date.localeCompare(b.date)});
+  var todayKey=localDateKey(now);
+  var upcoming=events.filter(function(e){return e.date&&e.date>=todayKey}).sort(function(a,b){return a.date.localeCompare(b.date)});
   if(!upcoming.length){
     el.innerHTML='<div class="empty-prompt-mini">No events scheduled. Add a class, challenge, assessment or any target date.</div>';
     return;
   }
   el.innerHTML=upcoming.map(function(e){
-    var d=new Date(e.date);
-    var daysAway=Math.ceil((d-now)/86400000);
+    var d=new Date(e.date+'T12:00:00');
+    var daysAway=Math.max(0,Math.round((d-new Date(todayKey+'T12:00:00'))/86400000));
     var urgency=daysAway<=14?'var(--accent-dark)':daysAway<=60?'var(--gold)':'var(--text2)';
     return '<div class="training-event">'
       +'<div class="training-event-date"><div class="training-event-num">'+d.getDate()+'</div><div class="training-event-mon">'+d.toLocaleDateString('en-GB',{month:'short'}).toUpperCase()+'</div></div>'
@@ -671,24 +602,17 @@ function trainingRunPace(r){
   return m+':'+('0'+s).slice(-2);
 }
 
-// ── Weekly muscle-health plan ──
-// Renders the Mon→Sun template. Strength days expand to show the full exercise
-// list with weekly checkboxes; Saturday's 5K uses the existing run logger.
+// ── Weekly injury re-entry plan ──
+// Renders recovery, cycling and optional beginner-swim rows. Physio and steps
+// remain habits so their cadence and completion history are tracked correctly.
 function renderMyPlanSchedule(){
   var el=document.getElementById('myplan-schedule');if(!el)return;
   var plan=getTrainingPlan();
   var wk=weekKey(new Date());
-  var wdays=(typeof weekDays==='function')?weekDays(wk):null; // Sun-first date keys
+  var wdays=(typeof weekDays==='function')?weekDays(wk):null; // Mon→Sun
   var todayIdx=(new Date().getDay()+6)%7;
-  var sessionColors={
-    'lower-a-v4':{c:'var(--accent)',badge:'badge-fin',bg:'var(--accent-dim)'},
-    'upper-a-v4':{c:'var(--accent)',badge:'badge-fin',bg:'var(--accent-dim)'},
-    'lower-b-v4':{c:'var(--accent)',badge:'badge-fin',bg:'var(--accent-dim)'},
-    'upper-b-v4':{c:'var(--accent)',badge:'badge-fin',bg:'var(--accent-dim)'},
-    'run':{c:'var(--sky)',badge:'badge-per',bg:'var(--sky-dim)'},
-    'cardio-v4':{c:'var(--sky)',badge:'badge-per',bg:'var(--sky-dim)'},
-    'rest':{c:'var(--text3)',badge:'',bg:'var(--bg3)'}
-  };
+  var kindColors={cycle:'var(--sky)',swim:'var(--mint)',recovery:'var(--text3)'};
+  var dayNames={Mon:'Monday',Tue:'Tuesday',Wed:'Wednesday',Thu:'Thursday',Fri:'Friday',Sat:'Saturday',Sun:'Sunday'};
   var program=plan.program||BODY_COMPOSITION_PROGRAM;
   var html='<div class="train-plan-block-head">'
     +'<div class="train-plan-block-week">'+escapeHtml(program.name)+' · '+escapeHtml(program.phase)+'</div>'
@@ -697,77 +621,32 @@ function renderMyPlanSchedule(){
   html+='<div class="train-plan-painrule">'+escapeHtml(program.recovery)+'</div>';
   html+='<div class="train-plan-list">';
   plan.template.forEach(function(d,i){
-    var def=workoutDef(d.session);
-    var cm=sessionColors[d.session]||sessionColors.rest;
     var isToday=i===todayIdx;
-    var dayNames={Mon:'Monday',Tue:'Tuesday',Wed:'Wednesday',Thu:'Thursday',Fri:'Friday',Sat:'Saturday',Sun:'Sunday'};
-    // Progress for strength days this week
-    var progressBadge='';
-    if(def){
-      var checks=(plan.checks[wk]&&plan.checks[wk][d.session])||{};
-      var doneCount=def.exercises.filter(function(ex,xi){return checks[xi]}).length;
-      progressBadge='<span class="train-plan-progress">'+doneCount+'/'+def.exercises.length+'</span>';
-    }
-    html+='<div class="train-plan-day'+(isToday?' is-today':'')+'" style="border-left:4px solid '+cm.c+'">';
-    html+='<div class="train-plan-head"'+(def?' onclick="toggleTrainDay(\''+d.session+'\')" style="cursor:pointer"':'')+'>';
-    html+='<div class="train-plan-head-main">';
-    var rowLabel=d.label;
-    var rowSub=d.sub+(def?' · '+def.duration:'');
-    html+='<div class="train-plan-dayname">'+(dayNames[d.day]||d.day)+(isToday?' · Today':'')+'</div>';
-    html+='<div class="train-plan-label">'+rowLabel+'</div>';
-    html+='<div class="train-plan-sub">'+rowSub+'</div>';
-    html+='</div>';
-    html+='<div class="train-plan-head-right">'+progressBadge+(def?'<span class="train-plan-chevron" id="chev-'+d.session+'">▸</span>':'')+'</div>';
-    html+='</div>';
-    // Run days: tick the session off by logging it, with speed/time/detail. The
-    // date is this week's slot for that weekday (wdays is Sun-first, template is
-    // Mon-first, so shift by one). Once a run exists for that date the row shows
-    // distance · time · pace; before then, a Log button on today or past days.
-    if(d.session==='run'&&wdays){
-      var runDate=wdays[(i+1)%7];
-      var loggedRuns=((STATE.metrics||{}).run||[]).filter(function(r){return r.date===runDate});
-      if(loggedRuns.length){
-        var lr=loggedRuns[loggedRuns.length-1];
-        var pace=trainingRunPace(lr);
-        html+='<div class="train-plan-runlog done">'
-          +'<span>\u2713 '+(lr.distance!=null?escapeHtml(String(lr.distance))+'km':'Run logged')+(lr.time?' \u00B7 '+escapeHtml(String(lr.time)):'')+(pace?' \u00B7 '+pace+'/km':'')+'</span>'
-          +'<button class="btn btn-sm btn-ghost" onclick="openModal(\'logRun\',\''+runDate+'\')">+ Add</button>'
-        +'</div>';
-      }else if(runDate<=localDateKey(new Date())){
-        html+='<div class="train-plan-runlog">'
-          +'<button class="btn btn-sm btn-accent" onclick="openModal(\'logRun\',\''+runDate+'\')">Log this run \u2713</button>'
-        +'</div>';
+    var dateKey=wdays?wdays[i]:null;
+    var accepted=d.acceptedLogTypes||[];
+    var logged=dateKey&&(STATE.workouts||[]).find(function(w){
+      var type=String(w.type||w.name||'').toLowerCase();
+      return w.date===dateKey&&accepted.some(function(candidate){return type===String(candidate).toLowerCase()});
+    });
+    html+='<div class="train-plan-day'+(isToday?' is-today':'')+'" style="border-left:4px solid '+(kindColors[d.kind]||kindColors.recovery)+'">';
+    html+='<div class="train-plan-head"><div class="train-plan-head-main">';
+    html+='<div class="train-plan-dayname">'+(dayNames[d.day]||d.day)+(isToday?' · Today':'')+(d.required===false&&d.logType?' · Optional':'')+'</div>';
+    html+='<div class="train-plan-label">'+escapeHtml((d.icon?d.icon+' ':'')+d.label)+'</div>';
+    html+='<div class="train-plan-sub">'+escapeHtml(d.sub||'')+'</div>';
+    html+='</div></div>';
+    if(d.logType&&dateKey){
+      if(logged){
+        html+='<div class="train-plan-runlog done"><span>✓ '+escapeHtml(logged.type||logged.name||d.logType)+' logged</span></div>';
+      }else if(isToday){
+        html+='<div class="train-plan-runlog"><button class="btn btn-sm btn-accent" onclick="quickLogToday(\''+String(d.logType).replace(/'/g,"\\'")+'\')">Log '+escapeHtml(d.logType)+' ✓</button>';
+        if(d.kind==='swim')html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Easy cycle\')">Choose easy cycle</button>';
+        html+='</div>';
       }
-    }
-    if(d.session==='cardio-v4'&&wdays){
-      var cardioDate=wdays[(i+1)%7];
-      var cardioLogged=(STATE.workouts||[]).some(function(w){return w.date===cardioDate&&/cardio|zone 2/i.test(w.type||w.name||'')});
-      if(cardioLogged){
-        html+='<div class="train-plan-runlog done"><span>✓ Cardio logged</span></div>';
-      }else if(cardioDate===localDateKey(new Date())){
-        html+='<div class="train-plan-runlog"><button class="btn btn-sm btn-accent" onclick="quickLogToday(\'Cardio\')">Log Zone 2 ✓</button></div>';
-      }
-    }
-    if(def){
-      var checks2=(plan.checks[wk]&&plan.checks[wk][d.session])||{};
-      html+='<div class="train-plan-body" id="trainbody-'+d.session+'">';
-      html+='<div class="train-plan-warmup"><strong>Warm-up:</strong> '+def.warmup+'</div>';
-      html+=def.exercises.map(function(ex,xi){
-        var done=!!checks2[xi];
-        return '<div class="train-ex'+(done?' done':'')+'" onclick="toggleTrainEx(\''+d.session+'\','+xi+')" role="button" tabindex="0" aria-label="Toggle '+ex.name.replace(/"/g,'')+'">'
-          +'<div class="train-ex-tick">'+(done?'✓':'')+'</div>'
-          +'<div class="train-ex-body">'
-            +'<div class="train-ex-name">'+ex.name+'<span class="train-ex-scheme">'+ex.scheme+'</span></div>'
-            +'<div class="train-ex-note">'+ex.note+'</div>'
-          +'</div></div>';
-      }).join('');
-      html+='<div class="train-plan-foot">'+def.note+'</div>';
-      html+='</div>';
     }
     html+='</div>';
   });
   html+='</div>';
-  html+='<div class="train-plan-hint">Tap a strength day to see the full session. Tick exercises as you go — they reset each week.</div>';
+  html+='<div class="train-plan-hint">Hip physio and the gradual 10k-step goal are tracked in Habits. The Saturday swim is optional; an easy cycle is always a valid swap.</div>';
   el.innerHTML=html;
 }
 

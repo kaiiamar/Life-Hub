@@ -13,14 +13,27 @@ var habitDetailsOpen={};
 // habits have none and render exactly as before.
 function habitHasDetails(h){return !!(h&&Array.isArray(h.details)&&h.details.length)}
 
+function habitDetailVideoUrl(value){
+  if(typeof value!=='string'||!value)return '';
+  try{
+    var url=new URL(value);
+    var host=url.hostname.toLowerCase();
+    if(url.protocol==='https:'&&(host==='youtu.be'||host==='youtube.com'||host==='www.youtube.com'))return url.href;
+  }catch(e){}
+  return '';
+}
+
 function habitDetailsPanelHTML(h){
   if(!habitHasDetails(h))return '';
   return '<div class="hb-details-panel">'
     +(h.detailsTitle?'<div class="hb-details-panel-title">'+escapeHtml(h.detailsTitle)+'</div>':'')
     +'<ul class="hb-details-list">'
     +h.details.map(function(d){
-      return '<li class="hb-details-item"><span class="hb-details-name">'+escapeHtml(d.name||'')+'</span>'
-        +(d.spec?'<span class="hb-details-spec">'+escapeHtml(d.spec)+'</span>':'')
+      var video=habitDetailVideoUrl(d.video);
+      return '<li class="hb-details-item"><div class="hb-details-copy"><span class="hb-details-name">'+escapeHtml(d.name||'')+'</span>'
+        +(d.note?'<span class="hb-details-note">'+escapeHtml(d.note)+'</span>':'')+'</div>'
+        +'<div class="hb-details-meta">'+(d.spec?'<span class="hb-details-spec">'+escapeHtml(d.spec)+'</span>':'')
+        +(video?'<a class="hb-details-video" href="'+escapeHtml(video)+'" target="_blank" rel="noopener noreferrer">Video ↗</a>':'')+'</div>'
       +'</li>';
     }).join('')
     +'</ul></div>';
@@ -382,10 +395,10 @@ function renderHabitCard(h,todayKey){
     var dayLetters=['M','T','W','T','F','S','S'];
     html+='<div class="hb-week" aria-label="Selected week">'+habitWeekDays(activeWeek).map(function(dateKey,index){
       var dayStatus=getHabitDayState(h,dateKey,todayKey),manual=dayStatus==='done'&&habitManualCompleted(h,dateKey),sourceOnly=dayStatus==='done'&&!manual;
-      var clickable=!readOnly&&((dayStatus==='done'&&manual)||dayStatus==='todo');
+      var clickable=!readOnly&&((dayStatus==='done'&&manual)||dayStatus==='todo'||dayStatus==='optional');
       var cls='hb-week-day '+dayStatus+(dateKey===todayKey?' today':'');
       var fullDate=habitDate(dateKey).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
-      var statusText=sourceOnly?'completed by linked activity':dayStatus==='done'?'completed manually':dayStatus==='rest'?'rhythm already met':dayStatus==='inactive'?'inactive':dayStatus==='pre-start'?'before tracking began':dayStatus==='future'?'future date':'open';
+      var statusText=sourceOnly?'completed by linked activity':dayStatus==='done'?'completed manually':dayStatus==='optional'?'optional extra available':dayStatus==='rest'?'rhythm already met':dayStatus==='inactive'?'inactive':dayStatus==='pre-start'?'before tracking began':dayStatus==='future'?'future date':'open';
       return '<button type="button" class="'+cls+'" data-habit-focus="day:'+h.id+':'+dateKey+'" aria-label="'+escapeHtml(h.name+', '+fullDate+', '+statusText)+'" aria-pressed="'+(dayStatus==='done'?'true':'false')+'"'+(clickable?' data-tick="hab:'+h.id+':'+dateKey+'" onclick="toggleHabit(\''+h.id+'\',\''+dateKey+'\')"':' disabled')+'><span class="hb-week-letter" aria-hidden="true">'+dayLetters[index]+'</span><span class="hb-week-mark" aria-hidden="true">'+(dayStatus==='done'?'✓':dayStatus==='inactive'?'—':dayLetters[index])+'</span></button>';
     }).join('')+'</div>';
   }
@@ -404,7 +417,8 @@ function renderHabitCard(h,todayKey){
   else if(frequency==='monthly'||frequency==='fortnightly'){
     if(currentProgress.met&&!periodManualKeys.length)todayAction='<span class="hb-today-tag">✓ Linked activity</span>';
     else todayAction='<button type="button" class="hb-today-btn'+(currentProgress.met?' done':'')+'" data-habit-focus="period:'+h.id+'" aria-pressed="'+(currentProgress.met?'true':'false')+'" onclick="toggleHabitPeriod(\''+h.id+'\',\''+todayKey+'\')">'+(currentProgress.met?'✓ Logged this '+currentProgress.period.unit:'Log this '+currentProgress.period.unit)+'</button>';
-  }else if(todayStatus==='rest')todayAction='<span class="hb-today-tag">✓ Rhythm met for this '+currentProgress.period.unit+'</span>';
+  }else if(todayStatus==='optional')todayAction='<button type="button" class="hb-today-btn" data-habit-focus="today:'+h.id+'" aria-pressed="false" onclick="toggleHabitToday(\''+h.id+'\')">Log optional extra</button>';
+  else if(todayStatus==='rest')todayAction='<span class="hb-today-tag">✓ Rhythm met for this '+currentProgress.period.unit+'</span>';
   else if(todayStatus==='done'&&!todayManual)todayAction='<span class="hb-today-tag">✓ Linked activity</span>';
   else todayAction='<button type="button" class="hb-today-btn'+(todayStatus==='done'?' done':'')+'" data-habit-focus="today:'+h.id+'" aria-pressed="'+(todayManual?'true':'false')+'" onclick="toggleHabitToday(\''+h.id+'\')">'+(todayStatus==='done'?'✓ Logged today':'Log today')+'</button>';
   html+='<div class="hb-foot"><span class="hb-consistency-detail">'+(consistency.total?consistency.done+' of '+consistency.total+' completed periods':'No completed periods yet')+'</span><div class="hb-foot-action">'+todayAction+'</div></div></article>';

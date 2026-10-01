@@ -3735,7 +3735,7 @@ body.night-mode .hb-week-day.done{background:linear-gradient(135deg,#d4845a,#b05
   font-style:italic;
 }
 
-/* ── Weekly muscle-health training plan ── */
+/* ── Weekly injury re-entry plan ── */
 .train-plan-list{display:flex;flex-direction:column;gap:10px}
 .train-plan-day{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
 .train-plan-day.is-today{box-shadow:0 0 0 2px var(--accent-dim)}
@@ -4066,10 +4066,15 @@ body.night-mode .focus-progress{background:rgba(255,255,255,0.1)}
 .hb-details-caret{font-size:10px}
 .hb-details-panel{margin:6px 0 10px;padding:10px 12px;background:var(--paper2,var(--bg3));border-radius:10px;border-left:3px solid var(--moss)}
 .hb-details-panel-title{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:6px}
-.hb-details-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
-.hb-details-item{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:var(--text2)}
-.hb-details-name{flex:1}
+.hb-details-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.hb-details-item{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;font-size:13px;color:var(--text2)}
+.hb-details-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}
+.hb-details-name{font-weight:600;color:var(--text)}
+.hb-details-note{font-size:11px;line-height:1.45;color:var(--text3)}
+.hb-details-meta{display:flex;flex:0 0 auto;flex-direction:column;align-items:flex-end;gap:3px}
 .hb-details-spec{font-family:var(--mono,var(--serif));font-size:12px;color:var(--moss);white-space:nowrap}
+.hb-details-video{font-size:11px;color:var(--sky);text-decoration:none}
+.hb-details-video:hover{text-decoration:underline}
 
 /* ── Schedule card — vertical dashed timeline ── */
 .planner-schedule-card .planner-card-title{
@@ -5157,6 +5162,8 @@ body.night-mode .dash-mood-mini-btn{background:var(--paper2)}
 .hb-week-day.today:not(.done){border-color:var(--amber);box-shadow:inset 0 0 0 1px var(--amber)}
 .hb-week-day.inactive{opacity:.42;border-style:dashed;background:transparent}
 .hb-week-day.inactive .hb-week-mark{color:var(--text3)}
+.hb-week-day.optional{border-style:dashed;border-color:var(--sky);background:var(--sky-dim);color:var(--sky)}
+.hb-week-day.optional:hover{border-color:var(--moss);color:var(--moss)}
 .hb-week-day.rest{opacity:.55;background:var(--moss-dim)}
 .hb-week-day:disabled{cursor:default}
 .hb-periods{gap:6px}

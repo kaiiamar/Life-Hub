@@ -233,6 +233,88 @@ loadFromCloud(function(){
     if(!saveState({suppressUndo:true}))STATE=_rehabSnap;
   }
 
+  // ---- INJURY RE-ENTRY PLAN + HABITS (one-shot) --------------------------
+  // Apply the current NHS hip programme after cloud data has loaded. The old
+  // rehab rhythm is archived when it has history (rather than reinterpreting
+  // its cadence), while workouts, runs, metrics and all habit completions remain
+  // untouched. The challenge entry is only a date marker until rules are known.
+  if(!STATE.__injuryReentryV1){
+    var _reentrySnap=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
+    var _reentryToday=localDateKey(new Date());
+    if(!Array.isArray(STATE.habits))STATE.habits=[];
+    if(!Array.isArray(STATE.trainingEvents))STATE.trainingEvents=[];
+
+    STATE.trainingPlan={
+      template:JSON.parse(JSON.stringify(TRAINING_TEMPLATE)),
+      program:JSON.parse(JSON.stringify(BODY_COMPOSITION_PROGRAM)),
+      checks:(STATE.trainingPlan&&STATE.trainingPlan.checks)||{},
+      effectiveDate:_reentryToday,
+      effectiveWeek:weekKey(new Date()),
+      planVersion:LIFEHUB_PLAN_VERSION
+    };
+
+    var _oldRehab=STATE.habits.find(function(h){return h&&h.id==='rehab-daily-5min'});
+    if(_oldRehab){
+      if(typeof habitHasHistory==='function'&&habitHasHistory(_oldRehab)){
+        if(typeof ensureHabitLifecycle==='function')ensureHabitLifecycle(_oldRehab);
+        if(typeof habitLifecycleStatus!=='function'||habitLifecycleStatus(_oldRehab,new Date())!=='archived'){
+          if(typeof _setHabitLifecycleKind==='function')_setHabitLifecycleKind(_oldRehab,'archived',_reentryToday);
+        }
+      }else{
+        STATE.habits=STATE.habits.filter(function(h){return h!==_oldRehab});
+      }
+    }
+
+    var _hipHabit=STATE.habits.find(function(h){return h&&h.id==='hip-physio-reentry-v1'});
+    if(!_hipHabit){
+      _hipHabit={id:'hip-physio-reentry-v1',integrationKeys:[],provenanceVersion:1,logProvenance:{},logs:{},startDate:_reentryToday,lifecycle:{version:1,inactivePeriods:[]}};
+      STATE.habits.push(_hipHabit);
+    }
+    _hipHabit.name='Hip physio programme';
+    _hipHabit.freq='3x/week';
+    _hipHabit.optionalExtraPerPeriod=1;
+    _hipHabit.badge='fit';_hipHabit.icon='🦵';_hipHabit.anchor='anytime';
+    _hipHabit.note='Once daily on 3–4 days each week. Stop any exercise that causes pain, as directed on the physio form.';
+    _hipHabit.detailsTitle='NHS hip programme · 21 September 2026';
+    _hipHabit.details=[
+      {name:'Supine Bridge Band Basic',spec:'2 × 10 · hold each rep for 10 sec',note:'Lie on your back with knees bent and a band around your thighs. Squeeze your bottom, lift without over-arching your lower back, and keep your knees open against the band.',video:'https://youtu.be/xrS2naqqB1E'},
+      {name:'Hip Abduction with Band Supine',spec:'2 × 10 · hold for 10 (per form)',note:'Lie on your back with the band around your knees. Gently open your legs to create tension, keeping the movement controlled.',video:'https://youtu.be/x3M43tCUCUQ'},
+      {name:'Hip Abduction with Band',spec:'2 × 10 · slow and controlled',note:'Secure the band around your ankle and to a fixed object. Move the leg out to the side with control, keeping your body steady.',video:'https://youtu.be/mH631V-5K6s'},
+      {name:'1/2 Wall Squat',spec:'10 slow movements',note:'Stand with your back against the wall, feet slightly wider than shoulder width, and bend to a half squat while keeping your knees aligned over your feet.',video:'https://youtu.be/vSrxia0hZiY'}
+    ];
+    if(typeof ensureHabitProvenance==='function')ensureHabitProvenance(_hipHabit);
+    if(typeof ensureHabitLifecycle==='function')ensureHabitLifecycle(_hipHabit);
+    if(typeof habitLifecycleStatus==='function'&&habitLifecycleStatus(_hipHabit,new Date())!=='active'&&typeof _setHabitLifecycleKind==='function')_setHabitLifecycleKind(_hipHabit,null,_reentryToday);
+
+    var _stepsHabit=STATE.habits.find(function(h){return h&&h.id==='steps-towards-10k-v1'})
+      ||STATE.habits.find(function(h){return h&&/^daily steps$/i.test((h.name||'').trim())})
+      ||STATE.habits.find(function(h){return h&&/^build towards 10,?000 steps$/i.test((h.name||'').trim())});
+    if(!_stepsHabit){
+      _stepsHabit={id:'steps-towards-10k-v1',integrationKeys:[],provenanceVersion:1,logProvenance:{},logs:{},startDate:_reentryToday,lifecycle:{version:1,inactivePeriods:[]}};
+      STATE.habits.push(_stepsHabit);
+    }
+    _stepsHabit.name='Build towards 10,000 steps';
+    _stepsHabit.freq='daily';
+    _stepsHabit.badge='fit';_stepsHabit.icon='👟';_stepsHabit.anchor='anytime';
+    _stepsHabit.note='Build up gradually and split walking into comfortable bouts. A lower-step recovery day is not a failure; scale back if symptoms increase.';
+    _stepsHabit.detailsTitle='The gradual target';
+    _stepsHabit.details=[
+      {name:'Build gradually',spec:'Increase only while the hip stays comfortable'},
+      {name:'10,000 steps',spec:'The direction — not an immediate pass/fail test'},
+      {name:'Symptoms increase',spec:'Scale back and follow your physio or GP advice'}
+    ];
+    if(typeof ensureHabitProvenance==='function')ensureHabitProvenance(_stepsHabit);
+    if(typeof ensureHabitLifecycle==='function')ensureHabitLifecycle(_stepsHabit);
+    if(typeof habitLifecycleStatus==='function'&&habitLifecycleStatus(_stepsHabit,new Date())!=='active'&&typeof _setHabitLifecycleKind==='function')_setHabitLifecycleKind(_stepsHabit,null,_reentryToday);
+
+    if(!STATE.trainingEvents.some(function(e){return e&&e.id==='75-day-challenge-2026-10-03'})){
+      STATE.trainingEvents.push({id:'75-day-challenge-2026-10-03',name:'75-day challenge begins',date:'2026-10-03',note:'Rules to be added when confirmed'});
+    }
+    STATE.__rehabHabitV1=true;
+    STATE.__injuryReentryV1=true;
+    if(!saveState({suppressUndo:true}))STATE=_reentrySnap;
+  }
+
   // ---- RETIRE RUNNING FROM HABITS (one-shot) ------------------------------
   // Running now lives in the training plan (logged per session with pace/detail),
   // so any running habit is retired from the active list. Archived, not deleted:

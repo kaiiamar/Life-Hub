@@ -1284,11 +1284,12 @@ function computeEveningSweepStats(todayKey){
   var habitsTotal=habitStats.total;
   var habitsDone=habitStats.done;
   var training=null;
-  var logged=(typeof plannerTrainingLoggedToday==='function')?plannerTrainingLoggedToday(todayKey):'';
   var t=(typeof todaysTrainingSession==='function')?todaysTrainingSession(todayKey):null;
+  var logged=(typeof plannerTrainingLoggedToday==='function')?plannerTrainingLoggedToday(todayKey,t):'';
   if(logged)training=logged+' logged';
-  else if(t&&t.session==='rest')training='rest day';
-  else if(t)training=(t.label||'training')+' still to do';
+  else if(t&&t.trainingType==='recovery')training='recovery day · physio and steps in habits';
+  else if(t&&t.required===false)training=(t.label||'movement')+' is optional';
+  else if(t)training=(t.label||'movement')+' still to do';
   var glasses=(STATE.water&&STATE.water[todayKey])||0;
   var target=Number((STATE.waterSettings&&STATE.waterSettings.target)||8);
   var waterPct=Math.min(100,Math.round((glasses/Math.max(1,target))*100));
@@ -1343,11 +1344,11 @@ function plannerWelcomeCard(todayKey){
 
   // Streak (showUpStreak from dashboard.js)
   var streak=(typeof showUpStreak==='function')?showUpStreak():0;
-  // Training today?
+  // Required movement today?
   var hasTraining=false;
   if(typeof todaysTrainingSession==='function'){
     var ts=todaysTrainingSession(todayKey);
-    hasTraining=!!(ts&&ts.session!=='rest');
+    hasTraining=!!(ts&&ts.logType&&ts.required!==false);
   }
   // Focus count
   var focusTasks=(STATE.tasks||[]).filter(function(t){return t&&t.focusDate===todayKey&&!t.done});
@@ -1356,7 +1357,7 @@ function plannerWelcomeCard(todayKey){
   // Status chips
   var chips='<div class="pw-welcome-chips">';
   if(!quiet&&streak>=2)chips+='<span class="pw-chip pw-chip-streak">\uD83D\uDD25 '+streak+' day streak</span>';
-  if(hasTraining)chips+='<span class="pw-chip pw-chip-training">\uD83C\uDFCB\uFE0F training day</span>';
+  if(hasTraining)chips+='<span class="pw-chip pw-chip-training">🚲 easy movement day</span>';
   if(focusCount>0)chips+='<span class="pw-chip pw-chip-focus">\uD83C\uDFAF '+focusCount+' to focus on</span>';
   chips+='</div>';
 
@@ -1613,60 +1614,34 @@ function plannerInboxCard(){
   return html;
 }
 
-// Detect whether a training session has already been logged for `dateKey`.
-// Prefer the kind planned for today, then use a fixed activity order so the
-// label is deterministic even when more than one session exists that day.
+// Detect whether the precise movement planned for `dateKey` is logged. Unrelated
+// historical sessions and runs do not satisfy a cycling or swimming slot.
 function plannerTrainingLoggedToday(dateKey,planned){
-  var labels=[];
-  (STATE.workouts||[]).forEach(function(w){
-    if(!w||w.date!==dateKey)return;
-    var label=w.type||w.name||'Session';
-    if(labels.indexOf(label)===-1)labels.push(label);
+  if(!planned||!planned.logType)return null;
+  var accepted=(planned.acceptedLogTypes||[planned.logType]).map(function(label){return String(label).toLowerCase()});
+  var match=(STATE.workouts||[]).find(function(w){
+    if(!w||w.date!==dateKey)return false;
+    return accepted.indexOf(String(w.type||w.name||'').toLowerCase())!==-1;
   });
-  var hasRun=((STATE.metrics||{}).run||[]).some(function(r){return r&&r.date===dateKey});
-  if(hasRun&&labels.indexOf('Run')===-1)labels.push('Run');
-  if(!labels.length)return null;
-
-  var preferred=null;
-  if(planned){
-    if(planned.session==='run'&&hasRun)preferred='Run';
-    else if(planned.session==='rest')preferred=labels.find(function(label){return /^rest/i.test(label)});
-    else if(/hyrox/i.test(planned.label||''))preferred=labels.find(function(label){return /hyrox/i.test(label)});
-    else preferred=labels.find(function(label){return !/^rest$/i.test(label)&&!/^rest day$/i.test(label)&&label!=='Run'});
-  }
-  if(preferred)return preferred;
-
-  var order={hyrox:1,gym:2,upper:3,lower:4,strength:5,run:6,session:7,rest:9,'rest day':9};
-  labels.sort(function(a,b){
-    var ak=String(a).toLowerCase(),bk=String(b).toLowerCase();
-    var ap=order[ak]||8,bp=order[bk]||8;
-    return ap-bp||ak.localeCompare(bk);
-  });
-  return labels[0];
+  return match?(match.type||match.name||planned.logType):null;
 }
 
-// Part 3 (3.2): today's training promoted to a standalone card.
-// Gradient card with watermark emoji, accent bar, "TRAINING DAY" badge.
+// Today's recovery-first movement card. The root ID stays stable so targeted
+// Planner refreshes can replace it without rebuilding the whole Today view.
 function plannerTrainingCard(todayKey){
   if(typeof todaysTrainingSession!=='function')return '';
   var t=todaysTrainingSession(todayKey);
   if(!t)return '';
 
-  var def=(typeof workoutDef==='function')?workoutDef(t.session):null;
-  var isRest=t.session==='rest';
-  var isRun=t.session==='run';
-  var isCardio=t.session==='cardio-v4';
-  var icon=isRest?'🌿':isRun?'🏃':isCardio?'🚴':(def&&def.emoji)||'🏋️';
-  var text=t.label+' · '+(def?def.exercises.length+' exercises':t.sub||'');
-  var watermark=isRest?'🌿':isRun?'🏃':isCardio?'❤️':'🏋️';
-  var badge=isRest?'':'<span class="pw-train-badge">'+(isRun?'5K DAY':isCardio?'AEROBIC DAY':'STRENGTH DAY')+'</span>';
-
+  var isRecovery=t.trainingType==='recovery';
+  var isCycle=t.trainingType==='cycle';
+  var isSwim=t.trainingType==='swim';
+  var badge=isRecovery?'':'<span class="pw-train-badge">'+(isCycle?'EASY CYCLE':isSwim?'OPTIONAL CARDIO':'MOVEMENT')+'</span>';
   var html='<div class="card planner-card planner-training-card" id="planner-training-card">';
-  html+='<span class="pw-train-watermark" aria-hidden="true">'+watermark+'</span>';
-  html+='<div class="planner-card-head"><span class="planner-card-title"><span class="pw-train-bar"></span>Today\'s training</span>'+badge+'</div>';
-  html+='<div class="planner-train-line"><span class="planner-train-icon">'+icon+'</span>'
-    +'<span class="planner-train-text">'+escapeHtml(text)+'</span></div>';
-  if(t.desc&&!isRest)html+='<div class="planner-train-desc">'+escapeHtml(t.desc)+'</div>';
+  html+='<span class="pw-train-watermark" aria-hidden="true">'+escapeHtml(t.icon||'🌿')+'</span>';
+  html+='<div class="planner-card-head"><span class="planner-card-title"><span class="pw-train-bar"></span>Today\'s movement</span>'+badge+'</div>';
+  html+='<div class="planner-train-line"><span class="planner-train-icon">'+escapeHtml(t.icon||'🌿')+'</span>'
+    +'<span class="planner-train-text">'+escapeHtml(t.label+(t.sub?' · '+t.sub:''))+'</span></div>';
   if(t.detail)html+='<div class="planner-train-pace">'+escapeHtml(t.detail)+'</div>';
 
   var logged=plannerTrainingLoggedToday(todayKey,t);
@@ -1674,21 +1649,15 @@ function plannerTrainingCard(todayKey){
     html+='<div class="planner-train-done">'+escapeHtml(logged)+' ✓ logged</div>';
   }else{
     html+='<div class="planner-train-actions">';
-    if(isRest){
-      html+='<button class="btn btn-sm pw-train-log-btn" onclick="quickLogToday(\'Rest\')">Log recovery 🌿</button>';
-      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Gym\')">Gym</button>';
-      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Cardio\')">Cardio</button>';
-    }else if(isRun){
-      html+='<button class="btn btn-sm pw-train-log-btn" onclick="openModal(\'logRun\')">Log 5K 🏃</button>';
-      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Rest\')">Recovery</button>';
-    }else if(isCardio){
-      html+='<button class="btn btn-sm pw-train-log-btn" onclick="quickLogToday(\'Cardio\')">Log Zone 2 ✓</button>';
-      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Gym\')">Gym</button>';
-      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Rest\')">Recovery</button>';
+    if(isCycle){
+      html+='<button class="btn btn-sm pw-train-log-btn" onclick="quickLogToday(\'Easy cycle\')">Log easy cycle 🚲</button>';
+      html+='<button class="btn btn-sm btn-ghost" onclick="nav(\'habits\')">Physio + steps</button>';
+    }else if(isSwim){
+      html+='<button class="btn btn-sm pw-train-log-btn" onclick="quickLogToday(\'Beginner swim\')">Log beginner swim 🏊</button>';
+      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Easy cycle\')">Easy cycle instead</button>';
+      html+='<button class="btn btn-sm btn-ghost" onclick="nav(\'habits\')">Physio + steps</button>';
     }else{
-      html+='<button class="btn btn-sm pw-train-log-btn" onclick="quickLogToday(\'Gym\')">Log strength 💪</button>';
-      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Cardio\')">Cardio</button>';
-      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Rest\')">Recovery</button>';
+      html+='<button class="btn btn-sm pw-train-log-btn" onclick="nav(\'habits\')">Open physio + steps 🌿</button>';
     }
     html+='</div>';
   }
@@ -2169,15 +2138,16 @@ function plannerTrainingSplitCard(wkKey){
   var dayLabels=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
   var html='<div class="card planner-card pw-split-card">';
-  html+='<div class="pw-split-head">\uD83C\uDFCB\uFE0F Training split</div>';
+  html+='<div class="pw-split-head">🌿 Re-entry week</div>';
   html+='<div class="pw-split-list">';
   days.forEach(function(dk){
     var d=new Date(dk+'T12:00:00');
     var dow=d.getDay();
     var isToday=dk===todayKey;
     var s=todaysTrainingSession(dk);
-    var label=s?s.label:'Rest';
-    var isRest=(!s||s.session==='rest');
+    var label=s?s.label:'Recovery';
+    var isRest=(!s||s.trainingType==='recovery');
+    if(s&&s.required===false&&s.logType)label+=' · optional';
     html+='<div class="pw-split-row'+(isToday?' is-today':'')+(isRest?' is-rest':'')+'">'
       +'<span class="pw-split-day'+(isToday?' is-today':'')+'">'+dayLabels[dow]+'</span>'
       +'<span class="pw-split-session'+(isRest?' is-rest':'')+'">'+escapeHtml(label)+'</span>'

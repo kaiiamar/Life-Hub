@@ -339,7 +339,12 @@ function getHabitDayState(h,dateValue,asOfValue){
   if(h.logs&&h.logs[dateKey])return 'done';
   var progress=getHabitProgress(h,dateKey,asOfKey);
   if(!progress.active)return 'pre-start';
-  return progress.met?'rest':'todo';
+  if(progress.met){
+    var optionalExtras=Math.max(0,Math.floor(Number(h.optionalExtraPerPeriod)||0));
+    if(optionalExtras&&progress.count<progress.target+optionalExtras)return 'optional';
+    return 'rest';
+  }
+  return 'todo';
 }
 function habitDayStatus(h,dateKey){return getHabitDayState(h,dateKey,new Date())}
 

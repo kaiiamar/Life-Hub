@@ -147,7 +147,7 @@ var DEFAULT_STATE = {
     {id:g(),name:'Sample finance goal',cat:'Finance',badge:'fin',desc:'Edit or replace this example goal',target:1000,unit:'\u00a3',direction:'up',deadline:'2026-12-31',progress:0,subGoals:[]},
   ],
   habits:[
-    {id:g(),name:'Daily steps',freq:'daily',badge:'fit',icon:'👟',note:'',anchor:'anytime',startDate:DEFAULT_HABIT_START,lifecycle:{version:1,inactivePeriods:[]},integrationKeys:[],provenanceVersion:1,logProvenance:{},logs:{}},
+    {id:'steps-towards-10k-v1',name:'Build towards 10,000 steps',freq:'daily',badge:'fit',icon:'👟',note:'Build up gradually and split walking into comfortable bouts. A lower-step recovery day is not a failure; scale back if symptoms increase.',anchor:'anytime',detailsTitle:'The gradual target',details:[{name:'Build gradually',spec:'Increase only while the hip stays comfortable'},{name:'10,000 steps',spec:'The direction — not an immediate pass/fail test'},{name:'Symptoms increase',spec:'Scale back and follow your physio or GP advice'}],startDate:DEFAULT_HABIT_START,lifecycle:{version:1,inactivePeriods:[]},integrationKeys:[],provenanceVersion:1,logProvenance:{},logs:{}},
     {id:g(),name:'Skincare AM',freq:'daily',badge:'per',icon:'☀️',note:'',anchor:'morning',startDate:DEFAULT_HABIT_START,lifecycle:{version:1,inactivePeriods:[]},integrationKeys:['lifehub.skincare.am'],provenanceVersion:1,logProvenance:{},logs:{}},
     {id:g(),name:'Skincare PM',freq:'daily',badge:'per',icon:'🌙',note:'',anchor:'evening',startDate:DEFAULT_HABIT_START,lifecycle:{version:1,inactivePeriods:[]},integrationKeys:['lifehub.skincare.pm'],provenanceVersion:1,logProvenance:{},logs:{}},
   ],
