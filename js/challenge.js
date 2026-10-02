@@ -49,19 +49,19 @@ function challenge75WaterStatus(dateKey){
 function challenge75DailyStatus(dateKey){
   var challenge=getChallenge75();if(!challenge)return {rows:[],done:0,total:0,water:null};
   var definitions=[
-    {key:'steps',icon:'10K',label:'10,000 steps'},
-    {key:'movement',icon:'45',label:'45-minute workout · walking excluded'},
-    {key:'duolingo',icon:'DU',label:'Duolingo'},
-    {key:'manna',icon:'MN',label:'Manna'},
-    {key:'food',icon:'FD',label:'Whole foods · no unhealthy takeaway'},
-    {key:'alcohol',icon:'AL',label:'Alcohol rule followed'}
+    {key:'steps',icon:'👟',label:'10,000 steps'},
+    {key:'movement',icon:'✨',label:'45-minute workout · walking excluded'},
+    {key:'duolingo',icon:'🦉',label:'Duolingo'},
+    {key:'manna',icon:'📖',label:'Manna'},
+    {key:'food',icon:'🍓',label:'Whole foods · no unhealthy takeaway'},
+    {key:'alcohol',icon:'🥂',label:'Alcohol rule followed'}
   ];
   var rows=definitions.map(function(definition){
     var habit=challenge75Habit(definition.key);
     return {key:definition.key,icon:definition.icon,label:definition.label,habitId:habit&&habit.id||null,done:!!(habit&&habit.logs&&habit.logs[dateKey])};
   });
   var water=challenge75WaterStatus(dateKey);
-  rows.push({key:'water',icon:'2L',label:'2 litres of water',habitId:null,done:water.done});
+  rows.push({key:'water',icon:'💧',label:'2 litres of water',habitId:null,done:water.done});
   return {rows:rows,done:rows.filter(function(row){return row.done}).length,total:rows.length,water:water};
 }
 

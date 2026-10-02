@@ -5540,3 +5540,165 @@ body.night-mode .btn-accent,body.night-mode .btn-primary,body.night-mode .page-t
   body.nav-open{overflow:hidden;touch-action:none}
 }
 @media(max-width:360px){.mobile-command-item{font-size:9px}}
+
+/* ══════════════════════════════════════════════════════════
+   GIRL MODE v53 — playful 75 Me command centre
+   Blush · berry · lilac · peach · mint · butter
+══════════════════════════════════════════════════════════ */
+:root{
+  --bg:#FFF8FB;--card:#FFFFFF;--paper2:#FBEFF5;--ink:#3D2534;
+  --moss:#B64276;--moss-dark:#8F2D5D;--moss-dim:rgba(182,66,118,.12);
+  --lime:#F5B5D1;--lime-dim:rgba(245,181,209,.26);
+  --berry:#B64276;--blush:#F5B5D1;--lilac:#CAB8FF;--peach:#FFC9A8;--mint-pop:#BFEBD1;--butter:#FFE58A;
+  --sky:#8D7DD1;--sky-dim:rgba(141,125,209,.13);--amber:#DD8C59;--amber-dim:rgba(221,140,89,.13);--clay:#CF5F8D;--clay-dim:rgba(207,95,141,.13);
+  --border:#EFD9E4;--border2:#F6E9EF;--text:#3D2534;--text2:#6D4E60;--text3:#725667;
+  --shadow-xs:0 2px 5px rgba(91,45,70,.035);--shadow-sm:0 7px 20px rgba(91,45,70,.065);--shadow:0 10px 28px rgba(91,45,70,.08);--shadow-md:0 18px 42px rgba(91,45,70,.11);
+}
+body.night-mode{
+  --bg:#21151D;--card:#2E1E29;--paper2:#382531;--ink:#FFF7FB;
+  --moss:#F18AB8;--moss-dark:#FFC1DC;--moss-dim:rgba(241,138,184,.16);
+  --lime:#D5C3FF;--lime-dim:rgba(213,195,255,.15);
+  --berry:#F18AB8;--blush:#F4A9CA;--lilac:#B8A2F2;--peach:#EBAE88;--mint-pop:#9BD9B7;--butter:#E7CF75;
+  --border:#51364A;--border2:#412C3B;--text:#FFF7FB;--text2:#DEC7D4;--text3:#C1A6B5;
+}
+body{background:var(--bg)}
+body::before{content:''!important;position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(circle at 8% 10%,rgba(245,181,209,.24),transparent 26%),radial-gradient(circle at 92% 16%,rgba(202,184,255,.20),transparent 24%),radial-gradient(circle at 75% 88%,rgba(191,235,209,.18),transparent 28%)!important}
+.card,.card-sm,.stat-card,.feature-card,.focus-card,.bento-stat{border-color:var(--border)!important;box-shadow:var(--shadow-sm)!important;background:var(--card)!important}
+.card:hover,.focus-card:hover,.bento-stat:hover{transform:translateY(-1px)!important;box-shadow:var(--shadow)!important;border-color:#E7C4D6!important}
+.btn-accent,.btn-primary,.filter-btn.active,.page-tab.active{background:var(--berry)!important;border-color:var(--berry)!important;color:#fff!important}
+.btn-ghost{color:var(--berry)!important;border-color:var(--border)!important;background:rgba(255,255,255,.45)!important}
+body.night-mode .btn-accent,body.night-mode .btn-primary,body.night-mode .page-tab.active,body.night-mode .filter-btn.active,body.night-mode .hb-week-day.done,body.night-mode .hb-today-btn,body.night-mode .pw-train-log-btn{background:var(--berry)!important;border-color:var(--berry)!important;color:#2A1420!important}
+
+/* Light playful shell */
+.topnav{background:rgba(255,250,252,.96)!important;border-bottom-color:var(--border)!important}
+.topnav-logo{background:linear-gradient(145deg,var(--blush),var(--lilac));color:#6D2B4C;font-family:var(--sans);font-size:19px;letter-spacing:0}
+.topnav-brand{color:var(--text)}
+.topnav-link.active{background:linear-gradient(135deg,var(--blush),#F8C7DB)!important;color:#6B284A!important}
+.topnav-link:hover{background:var(--lime-dim);color:var(--berry)}
+.topnav-dropdown,.sidebar{background:#FFF9FC!important;border-color:var(--border)!important}
+.nav-item.active{background:linear-gradient(135deg,var(--blush),var(--lilac));color:#54243F}
+.mobile-command-nav{border-color:var(--border)!important;background:rgba(255,251,253,.96)!important;box-shadow:0 12px 35px rgba(103,45,76,.16)!important}
+.mobile-command-item{color:var(--text2)!important}
+.mobile-command-item.active{background:linear-gradient(135deg,var(--blush),var(--lilac));color:#572541!important}
+.mobile-command-mark{font-family:var(--sans);font-weight:800}
+body.night-mode .topnav,body.night-mode .mobile-command-nav,body.night-mode .sidebar{background:rgba(46,30,41,.97)!important}
+
+/* Explicit spacing: tabs can never overlap the hero */
+#page-planner{padding-top:18px!important}
+.challenge-page-tabs{position:relative!important;top:auto!important;left:auto!important;right:auto!important;z-index:2!important;margin:0 0 20px!important;transform:none!important;width:max-content;max-width:100%;overflow-x:auto;background:rgba(255,255,255,.82)!important;border:1px solid var(--border)!important;border-radius:14px!important;box-shadow:0 8px 22px rgba(103,45,76,.07)!important;backdrop-filter:blur(12px)!important}
+.challenge-page-tabs .page-tab{color:var(--text2);border-radius:10px;font-weight:750}
+.challenge-page-tabs .page-tab.active{background:linear-gradient(135deg,var(--blush),var(--lilac))!important;color:#572541!important}
+#planner-today.planner-tab.active{position:relative;z-index:1;margin-top:0!important;isolation:isolate}
+#planner-today.planner-tab.active>*{min-width:0;max-width:100%}
+
+/* Bright playful challenge hero */
+#planner-today .challenge75-card{padding:30px!important;background:linear-gradient(135deg,#FFD8E8 0%,#E7DEFF 54%,#FFE4D2 100%)!important;border:1px solid #EBC6D8!important;border-radius:24px!important;color:#48283C!important;box-shadow:0 18px 45px rgba(122,55,91,.12)!important;overflow:hidden}
+body.night-mode #planner-today .challenge75-card{background:linear-gradient(135deg,#5A2B47 0%,#44335F 58%,#5A3A32 100%)!important;border-color:#70445F!important}
+#planner-today .challenge75-card::before{content:'';position:absolute;width:190px;height:190px;right:-55px;top:-80px;border:0;background:rgba(255,255,255,.25);border-radius:50%;pointer-events:none}
+#planner-today .challenge75-card::after{content:'✦';position:absolute;right:56px;top:34px;color:rgba(122,55,91,.32);font-size:28px;pointer-events:none}
+.challenge75-kicker{color:var(--berry)!important;font-family:var(--sans);font-weight:800}
+#planner-today .challenge75-title{color:#48283C!important;font-size:clamp(30px,4.5vw,48px)!important;font-weight:800;letter-spacing:-.045em}
+body.night-mode #planner-today .challenge75-title{color:#FFF5FA!important}
+#planner-today .challenge75-day{color:var(--berry);font-family:var(--sans);font-weight:800}
+body.night-mode #planner-today .challenge75-day{color:#FFD0E4}
+#planner-today .challenge75-day span{color:rgba(72,40,60,.52)}
+#planner-today .challenge75-before,#planner-today .challenge75-summary{color:#674659;font-size:14px}
+body.night-mode #planner-today .challenge75-before,body.night-mode #planner-today .challenge75-summary{color:#F0D6E3}
+#planner-today .challenge75-progress{height:7px;background:rgba(255,255,255,.55);border-radius:999px}
+#planner-today .challenge75-progress span{background:linear-gradient(90deg,var(--berry),#8D6CC7)}
+#planner-today .challenge75-grid{gap:10px}
+#planner-today .challenge75-row{min-height:62px;padding:11px 12px;border:1px solid rgba(133,74,105,.12);border-radius:15px;background:rgba(255,255,255,.72);color:#4A2C3E;box-shadow:0 5px 14px rgba(103,45,76,.05)}
+#planner-today .challenge75-row:nth-child(1){background:#FFF0F6}
+#planner-today .challenge75-row:nth-child(2){background:#F1ECFF}
+#planner-today .challenge75-row:nth-child(3){background:#FFF7D9}
+#planner-today .challenge75-row:nth-child(4){background:#EAF9F0}
+#planner-today .challenge75-row:nth-child(5){background:#FFF0E6}
+#planner-today .challenge75-row:nth-child(6){background:#FCEAF2}
+#planner-today .challenge75-row:nth-child(7){background:#EAF4FF}
+#planner-today .challenge75-row:hover:not(:disabled){border-color:var(--berry);background:#fff;transform:translateY(-1px)}
+#planner-today .challenge75-row.done{background:linear-gradient(135deg,var(--berry),#CE6592);border-color:var(--berry);color:#fff}
+#planner-today .challenge75-check{width:34px;height:34px;border-radius:11px;background:rgba(255,255,255,.82);font-family:var(--sans);font-size:15px;filter:none;color:#5B334A}
+#planner-today .challenge75-row.done .challenge75-check{background:#fff;color:var(--berry)}
+#planner-today .challenge75-label{font-size:12px;font-weight:750;overflow-wrap:anywhere}
+#planner-today .challenge75-meta{color:#806478;font-size:10px}
+#planner-today .challenge75-row.done .challenge75-meta{color:rgba(255,255,255,.75)}
+#planner-today .challenge75-rule-note{color:#76566A;font-size:11px}
+body.night-mode #planner-today .challenge75-rule-note{color:#E5C7D6}
+
+/* Colour-coded supporting modules */
+#planner-today .planner-training-card{background:#FFF1E8!important;border-color:#F5D5C2!important}
+#planner-today .planner-habits-card{background:#F4F0FF!important;border-color:#DED3FF!important}
+#planner-today .planner-focus-card{background:#FFF0F6!important;border-color:#F2CBDB!important}
+#planner-today .planner-schedule-card{background:#ECF9F1!important;border-color:#CFECDD!important}
+#planner-today .planner-capture-card{background:rgba(255,255,255,.78)!important;border-color:#E9BFD2!important}
+body.night-mode #planner-today .planner-training-card{background:#3D2926!important;border-color:#68463B!important}
+body.night-mode #planner-today .planner-habits-card{background:#332A46!important;border-color:#564477!important}
+body.night-mode #planner-today .planner-focus-card{background:#422637!important;border-color:#683C55!important}
+body.night-mode #planner-today .planner-schedule-card{background:#233A2D!important;border-color:#365943!important}
+body.night-mode #planner-today .planner-capture-card{background:#2E1E29!important;border-color:#664156!important}
+.pw-train-bar{background:var(--peach)}
+.pw-train-badge{background:#FFE0CF;color:#8B4A28}
+.pw-train-log-btn{background:var(--berry)!important;color:#fff!important}
+.pw-habit-count{color:#7659B0}
+.pw-habit-row.done .pw-habit-check,.pw-sched-check.done,.focus-row.done .focus-check{background:var(--mint-pop)!important;border-color:#8FD2AA!important;color:#2F6847!important}
+.pw-now-line::before,.pw-now-line::after{border-color:var(--blush)}
+.pw-now-text{color:var(--berry)}
+.planner-capture-btn,.planner-intention-btn{background:linear-gradient(135deg,var(--blush),var(--lilac));color:#572541}
+
+/* Journey, Career and clinical cards inherit the playful palette */
+.challenge-journey-hero{background:linear-gradient(135deg,#FFD8E8,#E8DEFF,#FFE5D1)!important;border:1px solid #EBC6D8!important;color:#48283C!important;box-shadow:var(--shadow-sm)!important}
+.challenge-journey-hero h2{color:#48283C!important}
+.challenge-journey-hero p{color:#725268}
+.challenge-journey-phase{background:var(--berry);color:#fff}
+.challenge-journey-stats .card:nth-child(1){background:#FFF0F6!important}.challenge-journey-stats .card:nth-child(2){background:#F1ECFF!important}.challenge-journey-stats .card:nth-child(3){background:#EAF9F0!important}.challenge-journey-stats .card:nth-child(4){background:#FFF3E9!important}
+.challenge-calendar-day.complete{background:var(--berry);border-color:var(--berry);color:#fff}
+.challenge-calendar-day.partial{background:#F1ECFF;border-color:var(--lilac);color:#5A4384}
+.challenge-calendar-day.current{box-shadow:0 0 0 3px rgba(245,181,209,.45);border-color:var(--berry)}
+.challenge-career-page-card{border-top-color:var(--lilac)!important;background:#F7F3FF!important}
+.challenge-career-progress span{background:linear-gradient(90deg,var(--berry),#8D6CC7)}
+.hb-details-item{border-color:#ECD4E1;background:#FFFDFE;box-shadow:0 7px 18px rgba(103,45,76,.06)}
+.hb-details-thumb{background:#FFF0F6}
+.hb-details-spec{background:#F1ECFF;color:#604A8A}
+.hb-details-video{color:var(--berry)}
+
+/* Soft global surfaces */
+.card,.card-sm,.stat-card,.feature-card,.focus-card,.bento-stat{box-shadow:var(--shadow-sm)!important;border-color:var(--border)!important}
+.card:hover,.focus-card:hover,.bento-stat:hover{box-shadow:var(--shadow)!important;border-color:#E2BFD1!important}
+.page-header h1{color:var(--text)!important}
+.card-label{color:var(--berry)}
+.stat-orb{background:linear-gradient(135deg,#F9D3E3,#DDD1FF)!important;color:#6B3151!important}
+.filter-btn.active,.page-tab.active{background:var(--berry)!important;color:#fff!important}
+
+/* Playful mobile command bar */
+.mobile-command-nav{border-color:#EACEDD!important;background:rgba(255,250,253,.97)!important;box-shadow:0 14px 35px rgba(103,45,76,.17)!important}
+.mobile-command-item.active{background:linear-gradient(135deg,var(--blush),var(--lilac));color:#572541!important}
+.mobile-command-mark{font-weight:800;color:inherit}
+body.night-mode .mobile-command-nav{background:rgba(46,30,41,.97)!important;border-color:#5A3A4D!important}
+body.night-mode .challenge-journey-hero{background:linear-gradient(135deg,#5A2B47,#44335F,#5A3A32)!important;border-color:#70445F!important;color:#FFF5FA!important}
+body.night-mode .challenge-journey-hero h2{color:#FFF5FA!important}
+body.night-mode .challenge-journey-hero p{color:#E7CCDA}
+body.night-mode .challenge-journey-stats .card:nth-child(n),body.night-mode .challenge-career-page-card,body.night-mode .hb-details-item{background:var(--card)!important}
+
+@media(max-width:960px){
+  #page-planner{padding-top:12px!important}
+  .challenge-page-tabs{margin-bottom:16px!important}
+}
+@media(max-width:600px){
+  #page-planner{padding-top:10px!important}
+  .challenge-page-tabs{width:100%;display:grid;grid-template-columns:repeat(3,1fr);overflow:visible}
+  .challenge-page-tabs .page-tab{min-width:0;padding:8px 5px;font-size:10px;white-space:normal}
+  #planner-today .challenge75-card{padding:22px 18px!important}
+  #planner-today .challenge75-card::after{right:30px;top:24px}
+  #planner-today .challenge75-grid{grid-template-columns:1fr}
+}
+
+/* v53 final contrast and 320px fit corrections */
+#planner-today .challenge75-day span{color:#6D4058}
+body.night-mode #planner-today .challenge75-day span{color:#F4D9E6}
+body.night-mode .pw-habit-count{color:#F0E5FF}
+body.night-mode .btn-ghost{background:rgba(255,255,255,.08)!important;color:#F6D8E7!important;border-color:#65465A!important}
+@media(max-width:600px){
+  #planner-today .challenge75-head{align-items:flex-start;flex-direction:column;gap:6px}
+  #planner-today .challenge75-day{font-size:28px;line-height:1.1;white-space:normal}
+  #planner-today .challenge75-title{font-size:clamp(27px,10vw,34px)!important;line-height:1.05;overflow-wrap:anywhere}
+}
