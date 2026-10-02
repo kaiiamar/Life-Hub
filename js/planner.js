@@ -1528,7 +1528,7 @@ function plannerScheduleCard(todayKey){
       html+='<div class="pw-sched-row'+(it.done?' done':'')+'">'
         +'<span class="pw-sched-dot" style="background:'+dotColor+'"></span>'
         +'<div class="pw-sched-body">'
-          +'<div class="pw-sched-check'+(it.done?' done':'')+'" onclick="'+toggle+'(\''+it.id+'\')" role="button" tabindex="0" aria-label="Toggle '+escapeHtml(it.text)+'">'+(it.done?'\u2713':'')+'</div>'
+          +'<button type="button" class="pw-sched-check'+(it.done?' done':'')+'" data-planner-control="schedule:'+it.kind+':'+it.id+'" onclick="'+toggle+'(\''+it.id+'\')" aria-label="Toggle '+escapeHtml(it.text)+'">'+(it.done?'\u2713':'')+'</button>'
           +'<span class="pw-sched-text">'+escapeHtml(it.text)+(it.kind==='commit'&&it.recur==='weekly'?' <span class="commit-recur" title="Repeats weekly">\u21BB</span>':'')+'</span>'
           +(time?'<span class="pw-sched-time">'+escapeHtml(time)+'</span>':(it.kind==='task'?'<span class="pw-sched-time pw-sched-time-task">task</span>':''))
         +'</div>'
@@ -1668,7 +1668,7 @@ function plannerFocusCard(todayKey){
     focus.forEach(function(t){
       var canEdit=(typeof openTaskEditModal==='function');
       html+='<div class="focus-row'+(t.done?' done':'')+'">'
-        +'<div class="focus-check" data-tick="focus:'+t.id+'" onclick="plannerToggleFocusDone(\''+t.id+'\')" role="button" tabindex="0" aria-label="Toggle '+escapeHtml(t.text)+'">'+(t.done?'\u2713':'')+'</div>'
+        +'<button type="button" class="focus-check" data-planner-control="focus:'+t.id+'" data-tick="focus:'+t.id+'" onclick="plannerToggleFocusDone(\''+t.id+'\')" aria-label="Toggle '+escapeHtml(t.text)+'">'+(t.done?'\u2713':'')+'</button>'
         +'<span class="focus-text"'+(canEdit?' onclick="openTaskEditModal(\''+t.id+'\')" style="cursor:pointer"':'')+'>'+escapeHtml(t.text)+'</span>'
         +'<button class="focus-remove" onclick="plannerRemoveFocus(\''+t.id+'\')" title="Remove from today\'s focus" aria-label="Remove from today\'s focus">\u00D7</button>'
       +'</div>';
@@ -1678,7 +1678,7 @@ function plannerFocusCard(todayKey){
         html+='<div class="focus-substeps">';
         subs.forEach(function(s,si){
           html+='<div class="focus-substep'+(s.done?' done':'')+'">'
-            +'<div class="focus-substep-tick" onclick="plannerToggleSubStep(\''+t.id+'\','+si+')" role="button" tabindex="0" aria-label="Toggle step '+escapeHtml(s.text)+'">'+(s.done?'\u2713':'')+'</div>'
+            +'<button type="button" class="focus-substep-tick" data-planner-control="substep:'+t.id+':'+si+'" onclick="plannerToggleSubStep(\''+t.id+'\','+si+')" aria-label="Toggle step '+escapeHtml(s.text)+'">'+(s.done?'\u2713':'')+'</button>'
             +'<span class="focus-substep-text">'+escapeHtml(s.text)+'</span>'
           +'</div>';
         });
@@ -1789,18 +1789,25 @@ function plannerCaptureCard(hostId){
 }
 
 // ── Today-tab mutations ────────────────────────────────────
-// Each one names the cards it invalidates and refreshes exactly those, in place
-// (Components §C, "Mutation → invalidated card set"). None of them re-renders
-// the whole Planner any more.
+// Stable control keys restore keyboard focus after targeted card replacement.
+function plannerActiveControlKey(){var active=document.activeElement;return active&&active.getAttribute?active.getAttribute('data-planner-control'):null}
+function plannerRestoreControlKey(key){
+  if(!key)return false;
+  var controls=document.querySelectorAll('[data-planner-control]');
+  for(var i=0;i<controls.length;i++)if(controls[i].getAttribute('data-planner-control')===key){controls[i].focus();return true}
+  return false;
+}
+
 function plannerToggleCommitment(id){
+  var controlKey=plannerActiveControlKey();
   toggleCommitment(id,localDateKey(new Date()));
-  // The schedule row changes, and the commitment count feeds the welcome card's
-  // day description.
-  refreshPlannerCards(['schedule','welcome']);
+  refreshPlannerCards(['schedule']);
+  plannerRestoreControlKey(controlKey);
 }
 
 // Complete/uncomplete a focus task via the normal task done/doneAt flow (R10.2)
 function plannerToggleFocusDone(id){
+  var controlKey=plannerActiveControlKey();
   var t=(STATE.tasks||[]).find(function(x){return x.id===id});
   if(!t)return;
   var wasDone=!!t.done;
@@ -1821,10 +1828,11 @@ function plannerToggleFocusDone(id){
   // `short` is the Short_Version's third row, which is this same task: ticking
   // it there has to redraw the reduced view — where a done task drops off the
   // list — without leaving it (R6.9).
-  refreshPlannerCards(['focus','welcome','sweep','inbox','schedule','reentry','short']);
+  refreshPlannerCards(['focus','schedule']);
   // The Inbox tab renders its own rows from this same handler and is not part of
   // the Today card registry, so it is redrawn separately.
   renderPlannerInbox();
+  plannerRestoreControlKey(controlKey);
   if(!wasDone&&t.done){
     if(typeof bloomTick==='function')bloomTick('focus:'+id);
     if(typeof showCelebrationToast==='function')showCelebrationToast('Done — '+t.text,'✓');
@@ -1840,11 +1848,13 @@ function plannerRemoveFocus(id){
 // Toggle a task's micro-step from the Planner focus card. Micro-steps render
 // inside the focus card and nowhere else.
 function plannerToggleSubStep(taskId,idx){
+  var controlKey=plannerActiveControlKey();
   var t=(STATE.tasks||[]).find(function(x){return x.id===taskId});
   if(!t||!t.subSteps||!t.subSteps[idx])return;
   t.subSteps[idx].done=!t.subSteps[idx].done;
   saveState();
   refreshPlannerCards(['focus']);
+  plannerRestoreControlKey(controlKey);
 }
 
 function plannerShowFocusChooser(){

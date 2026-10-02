@@ -440,13 +440,18 @@ function nav(page){
 
   function applyNav(){
     document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active')});
-    document.querySelectorAll('.nav-item').forEach(function(b){b.classList.remove('active')});
+    document.querySelectorAll('.nav-item').forEach(function(b){b.classList.remove('active');b.removeAttribute('aria-current')});
     document.querySelectorAll('.topnav-link').forEach(function(b){b.classList.remove('active')});
+    document.querySelectorAll('.mobile-command-item').forEach(function(b){b.classList.remove('active');b.removeAttribute('aria-current')});
     pageEl.classList.add('active');
-    document.querySelectorAll('.nav-item').forEach(function(b){if(b.getAttribute('onclick')==="nav('"+page+"')")b.classList.add('active')});
+    document.querySelectorAll('.nav-item').forEach(function(b){if(b.getAttribute('onclick')==="nav('"+page+"')"){b.classList.add('active');b.setAttribute('aria-current','page')}});
     var mainPages=['dashboard','habits','workout','skincare','gratitude'];
     var matched=false;
     document.querySelectorAll('.topnav-link').forEach(function(b){if(b.getAttribute('data-page')===page){b.classList.add('active');matched=true}});
+    document.querySelectorAll('.mobile-command-item[data-page]').forEach(function(b){if(b.getAttribute('data-page')===page){b.classList.add('active');b.setAttribute('aria-current','page')}});
+    var mobileDirect=['planner','dashboard','habits','workout'];
+    var mobileMore=document.getElementById('mobile-command-more');
+    if(mobileMore&&mobileDirect.indexOf(page)===-1){mobileMore.classList.add('active');mobileMore.setAttribute('aria-current','page')}
     // If not a main tab, highlight the More button instead
     if(!matched&&mainPages.indexOf(page)===-1){
       var moreBtn=document.getElementById('topnav-more-btn');
@@ -475,8 +480,34 @@ function subNav(section,tab){var btns=document.querySelectorAll('#page-'+section
 
 function renderPage(page){if(page==='planner')renderPlanner();if(page==='dashboard')renderDashboard();if(page==='goals')renderGoals();if(page==='habits')renderHabits();if(page==='workout'){renderWorkout();if(typeof Chart==='undefined')ensureChartJs(renderWorkout)}if(page==='finance'){renderFinance('plan');if(typeof Chart==='undefined')ensureChartJs(function(){renderFinance('plan')})}if(page==='review')renderReview();if(page==='relationships')renderRelationships();if(page==='gratitude')renderGratitude();if(page==='lists'){renderWatchlist();renderWishlist()}if(page==='skincare')renderSkincare();if(page==='tasks')renderTasksArchive()}
 
-function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('mobile-overlay').classList.toggle('open')}
-function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('mobile-overlay').classList.remove('open')}
+var sidebarReturnFocus=null;
+function setSidebarOpen(open){
+  var sidebar=document.getElementById('sidebar'),overlay=document.getElementById('mobile-overlay');
+  var topButton=document.getElementById('topnav-menu-btn'),moreButton=document.getElementById('mobile-command-more');
+  var wasOpen=!!(sidebar&&sidebar.classList.contains('open'));
+  if(open&&!wasOpen)sidebarReturnFocus=document.activeElement;
+  if(sidebar){sidebar.classList.toggle('open',!!open);sidebar.setAttribute('aria-hidden',open?'false':'true');sidebar.inert=!open}
+  if(overlay)overlay.classList.toggle('open',!!open);
+  if(topButton)topButton.setAttribute('aria-expanded',open?'true':'false');
+  if(moreButton)moreButton.setAttribute('aria-expanded',open?'true':'false');
+  var shellTargets=[document.querySelector('.topnav'),document.querySelector('.main'),document.querySelector('.mobile-command-nav')];
+  shellTargets.forEach(function(target){if(target)target.inert=!!open});
+  document.body.classList.toggle('nav-open',!!open);
+  if(open&&sidebar){setTimeout(function(){var first=sidebar.querySelector('.nav-item');if(first)first.focus()},0)}
+  else if(wasOpen&&sidebarReturnFocus&&typeof sidebarReturnFocus.focus==='function'){sidebarReturnFocus.focus();sidebarReturnFocus=null}
+}
+function toggleSidebar(){var sidebar=document.getElementById('sidebar');setSidebarOpen(!(sidebar&&sidebar.classList.contains('open')))}
+function closeSidebar(){setSidebarOpen(false)}
+document.addEventListener('keydown',function(event){
+  var sidebar=document.getElementById('sidebar');if(!sidebar||!sidebar.classList.contains('open'))return;
+  if(event.key==='Escape'){event.preventDefault();closeSidebar();return}
+  if(event.key!=='Tab')return;
+  var focusable=Array.prototype.slice.call(sidebar.querySelectorAll('button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'));
+  if(!focusable.length){event.preventDefault();return}
+  var first=focusable[0],last=focusable[focusable.length-1];
+  if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}
+  else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}
+});
 
 
 

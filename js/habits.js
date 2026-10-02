@@ -13,15 +13,33 @@ var habitDetailsOpen={};
 // habits have none and render exactly as before.
 function habitHasDetails(h){return !!(h&&Array.isArray(h.details)&&h.details.length)}
 
-function habitDetailVideoUrl(value){
-  if(typeof value!=='string'||!value)return '';
+var APPROVED_PHYSIO_VIDEO_IDS={
+  xrS2naqqB1E:true,
+  x3M43tCUCUQ:true,
+  'mH631V-5K6s':true,
+  vSrxia0hZiY:true
+};
+
+function habitDetailVideoMeta(value){
+  if(typeof value!=='string'||!value)return null;
   try{
-    var url=new URL(value);
-    var host=url.hostname.toLowerCase();
-    if(url.protocol==='https:'&&(host==='youtu.be'||host==='youtube.com'||host==='www.youtube.com'))return url.href;
-  }catch(e){}
-  return '';
+    var url=new URL(value),host=url.hostname.toLowerCase(),id='';
+    if(url.protocol!=='https:'||url.username||url.password)return null;
+    if(host==='youtu.be'){
+      var shortParts=url.pathname.split('/').filter(Boolean);
+      if(shortParts.length!==1||url.search||url.hash)return null;
+      id=shortParts[0]||'';
+    }
+    else if(host==='youtube.com'||host==='www.youtube.com'){
+      if(url.pathname==='/watch')id=url.searchParams.get('v')||'';
+      else if(/^\/(embed|shorts)\//.test(url.pathname))id=url.pathname.split('/')[2]||'';
+    }
+    if(!/^[A-Za-z0-9_-]{11}$/.test(id)||!APPROVED_PHYSIO_VIDEO_IDS[id])return null;
+    return {id:id,url:'https://youtu.be/'+id,thumbnail:'https://i.ytimg.com/vi/'+id+'/hqdefault.jpg'};
+  }catch(e){return null}
 }
+
+function habitDetailVideoUrl(value){var video=habitDetailVideoMeta(value);return video?video.url:''}
 
 function habitDetailsPanelHTML(h){
   if(!habitHasDetails(h))return '';
@@ -29,11 +47,13 @@ function habitDetailsPanelHTML(h){
     +(h.detailsTitle?'<div class="hb-details-panel-title">'+escapeHtml(h.detailsTitle)+'</div>':'')
     +'<ul class="hb-details-list">'
     +h.details.map(function(d){
-      var video=habitDetailVideoUrl(d.video);
-      return '<li class="hb-details-item"><div class="hb-details-copy"><span class="hb-details-name">'+escapeHtml(d.name||'')+'</span>'
+      var video=habitDetailVideoMeta(d.video);
+      return '<li class="hb-details-item'+(video?' has-video':'')+'">'
+        +(video?'<a class="hb-details-thumb" href="'+escapeHtml(video.url)+'" target="_blank" rel="noopener noreferrer" aria-label="Watch video demonstration: '+escapeHtml(d.name||'exercise')+'"><img src="'+escapeHtml(video.thumbnail)+'" alt="Video demonstration: '+escapeHtml(d.name||'exercise')+'" width="240" height="135" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=&quot;physio-video-placeholder.svg&quot;;this.classList.add(&quot;is-fallback&quot;)"><span>Watch demo</span></a>':'')
+        +'<div class="hb-details-content"><div class="hb-details-copy"><span class="hb-details-name">'+escapeHtml(d.name||'')+'</span>'
         +(d.note?'<span class="hb-details-note">'+escapeHtml(d.note)+'</span>':'')+'</div>'
         +'<div class="hb-details-meta">'+(d.spec?'<span class="hb-details-spec">'+escapeHtml(d.spec)+'</span>':'')
-        +(video?'<a class="hb-details-video" href="'+escapeHtml(video)+'" target="_blank" rel="noopener noreferrer">Video ↗</a>':'')+'</div>'
+        +(video?'<a class="hb-details-video" href="'+escapeHtml(video.url)+'" target="_blank" rel="noopener noreferrer">Open video ↗</a>':'')+'</div></div>'
       +'</li>';
     }).join('')
     +'</ul></div>';

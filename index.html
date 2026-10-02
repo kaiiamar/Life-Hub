@@ -6,13 +6,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Kai's Life Hub">
-<meta name="theme-color" content="#F6F3EC">
+<meta name="theme-color" content="#173F2A">
 <link rel="apple-touch-icon" href="/Life-Hub/icon-192.jpg">
 <link rel="manifest" href="/Life-Hub/manifest.json">
 <title>Kai's Life Hub 🤎</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style-new.css?v=51">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style-new.css?v=52">
 <!-- Chart.js is lazy-loaded on first visit to a chart page — see ensureChartJs() in js/navigation.js (Part 5.3) -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -25,7 +25,7 @@
   <nav class="topnav" id="topnav">
     <div class="topnav-inner">
       <div class="topnav-brand">
-        <span class="topnav-logo">🤎</span>
+        <span class="topnav-logo" aria-hidden="true">75</span>
         <span class="topnav-name">Life Hub</span>
       </div>
       <div class="topnav-links">
@@ -41,24 +41,24 @@
           <div class="topnav-dropdown" id="topnav-dropdown">
             <div class="topnav-drop-section">
               <div class="topnav-drop-label">Plan</div>
-              <button class="topnav-drop-item" onclick="nav('tasks')">✅ Tasks archive</button>
-              <button class="topnav-drop-item" onclick="nav('goals')">🎯 Goals</button>
-              <button class="topnav-drop-item" onclick="nav('finance')">💸 Finance</button>
+              <button class="topnav-drop-item" onclick="nav('tasks')">Tasks archive</button>
+              <button class="topnav-drop-item" onclick="nav('goals')">Goals</button>
+              <button class="topnav-drop-item" onclick="nav('finance')">Finance</button>
             </div>
             <div class="topnav-drop-section">
               <div class="topnav-drop-label">Reflect</div>
-              <button class="topnav-drop-item" onclick="nav('review')">🌙 Reviews</button>
-              <button class="topnav-drop-item" onclick="openInsights()">💡 Insights</button>
+              <button class="topnav-drop-item" onclick="nav('review')">Reviews</button>
+              <button class="topnav-drop-item" onclick="openInsights()">Insights</button>
             </div>
             <div class="topnav-drop-section">
               <div class="topnav-drop-label">Life</div>
-              <button class="topnav-drop-item" onclick="nav('relationships')">🤎 Relationships</button>
-              <button class="topnav-drop-item" onclick="nav('lists')">🎬 Lists</button>
+              <button class="topnav-drop-item" onclick="nav('relationships')">Relationships</button>
+              <button class="topnav-drop-item" onclick="nav('lists')">Lists</button>
             </div>
             <div class="topnav-drop-section">
               <div class="topnav-drop-label">Data</div>
-              <button class="topnav-drop-item" onclick="exportLifeHubData()">📥 Export</button>
-              <button class="topnav-drop-item" onclick="openModal('importData')">📤 Import</button>
+              <button class="topnav-drop-item" onclick="exportLifeHubData()">Export</button>
+              <button class="topnav-drop-item" onclick="openModal('importData')">Import</button>
             </div>
           </div>
         </div>
@@ -70,31 +70,43 @@
         <span class="topnav-date" id="top-bar-date"></span>
         <div id="sync-status" class="topnav-sync"></div>
       </div>
-      <button class="topnav-hamburger" onclick="toggleSidebar()">☰</button>
+      <button class="topnav-hamburger" id="topnav-menu-btn" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false" onclick="toggleSidebar()">Menu</button>
     </div>
   </nav>
-  <div class="mobile-nav-overlay" id="mobile-overlay" onclick="closeSidebar()"></div>
+  <button type="button" class="mobile-nav-overlay" id="mobile-overlay" aria-label="Close navigation" onclick="closeSidebar()"></button>
 
   <!-- MOBILE DRAWER -->
-  <nav class="sidebar" id="sidebar">
+  <nav class="sidebar" id="sidebar" aria-label="All Life Hub sections" aria-hidden="true" inert>
     <div class="sidebar-logo">
-      <h2>Life Hub 🤎</h2>
-      <span id="sidebar-date"></span>
+      <h2>75 Me</h2>
+      <span>Life Hub command centre</span>
     </div>
     <div class="nav-section">
-      <button class="nav-item active" onclick="nav('planner')">🌱 75 Me</button>
-      <button class="nav-item" onclick="nav('dashboard')">🏠 Dashboard</button>
-      <button class="nav-item" onclick="nav('goals')">🎯 Goals</button>
-      <button class="nav-item" onclick="nav('habits')">✅ Habits</button>
-      <button class="nav-item" onclick="nav('workout')">🌿 Movement</button>
-      <button class="nav-item" onclick="nav('finance')">💸 Finance</button>
-      <button class="nav-item" onclick="nav('review')">📝 Reviews</button>
-      <button class="nav-item" onclick="nav('gratitude')">🙏 Gratitude</button>
-      <button class="nav-item" onclick="openInsights()">💡 Insights</button>
-      <button class="nav-item" onclick="nav('relationships')">🤎 Relationships</button>
-      <button class="nav-item" onclick="nav('skincare')">✨ Skincare</button>
-      <button class="nav-item" onclick="nav('lists')">🎬 Lists</button>
+      <button class="nav-item active" onclick="nav('planner')">75 Me</button>
+      <button class="nav-item" onclick="nav('dashboard')">Dashboard</button>
+      <button class="nav-item" onclick="nav('goals')">Goals</button>
+      <button class="nav-item" onclick="nav('habits')">Habits</button>
+      <button class="nav-item" onclick="nav('workout')">Movement</button>
+      <button class="nav-item" onclick="nav('finance')">Finance</button>
+      <button class="nav-item" onclick="nav('review')">Reviews</button>
+      <button class="nav-item" onclick="nav('gratitude')">Gratitude</button>
+      <button class="nav-item" onclick="openInsights()">Insights</button>
+      <button class="nav-item" onclick="nav('relationships')">Relationships</button>
+      <button class="nav-item" onclick="nav('skincare')">Skincare</button>
+      <button class="nav-item" onclick="nav('lists')">Lists</button>
+      <div class="nav-label">Data &amp; archive</div>
+      <button class="nav-item" onclick="nav('tasks')">Tasks archive</button>
+      <button class="nav-item" onclick="closeSidebar();exportLifeHubData()">Export data</button>
+      <button class="nav-item" onclick="closeSidebar();openModal('importData')">Import data</button>
     </div>
+  </nav>
+
+  <nav class="mobile-command-nav" aria-label="Primary navigation">
+    <button type="button" class="mobile-command-item active" data-page="planner" aria-current="page" onclick="nav('planner')"><span class="mobile-command-mark">75</span><span>75 Me</span></button>
+    <button type="button" class="mobile-command-item" data-page="dashboard" onclick="nav('dashboard')"><span class="mobile-command-mark">DB</span><span>Dashboard</span></button>
+    <button type="button" class="mobile-command-item" data-page="habits" onclick="nav('habits')"><span class="mobile-command-mark">HB</span><span>Habits</span></button>
+    <button type="button" class="mobile-command-item" data-page="workout" onclick="nav('workout')"><span class="mobile-command-mark">MV</span><span>Movement</span></button>
+    <button type="button" class="mobile-command-item" id="mobile-command-more" aria-controls="sidebar" aria-expanded="false" onclick="toggleSidebar()"><span class="mobile-command-mark">•••</span><span>More</span></button>
   </nav>
 
   <div class="main">
@@ -829,21 +841,21 @@
 
 
 
-<script src="js/state.js?v=51"></script>
-<script src="js/persistence.js?v=51"></script>
-<script src="js/navigation.js?v=51"></script>
-<script src="js/dashboard.js?v=51"></script>
-<script src="js/habits.js?v=51"></script>
-<script src="js/workouts.js?v=51"></script>
-<script src="js/challenge.js?v=51"></script>
-<script src="js/finance.js?v=51"></script>
-<script src="js/reviews.js?v=51"></script>
-<script src="js/relationships.js?v=51"></script>
-<script src="js/gratitude.js?v=51"></script>
-<script src="js/insights.js?v=51"></script>
-<script src="js/skincare.js?v=51"></script>
-<script src="js/modals.js?v=51"></script>
-<script src="js/planner.js?v=51"></script>
-<script src="js/init.js?v=51"></script>
+<script src="js/state.js?v=52"></script>
+<script src="js/persistence.js?v=52"></script>
+<script src="js/navigation.js?v=52"></script>
+<script src="js/dashboard.js?v=52"></script>
+<script src="js/habits.js?v=52"></script>
+<script src="js/workouts.js?v=52"></script>
+<script src="js/challenge.js?v=52"></script>
+<script src="js/finance.js?v=52"></script>
+<script src="js/reviews.js?v=52"></script>
+<script src="js/relationships.js?v=52"></script>
+<script src="js/gratitude.js?v=52"></script>
+<script src="js/insights.js?v=52"></script>
+<script src="js/skincare.js?v=52"></script>
+<script src="js/modals.js?v=52"></script>
+<script src="js/planner.js?v=52"></script>
+<script src="js/init.js?v=52"></script>
 </body>
 </html>

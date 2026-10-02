@@ -49,19 +49,19 @@ function challenge75WaterStatus(dateKey){
 function challenge75DailyStatus(dateKey){
   var challenge=getChallenge75();if(!challenge)return {rows:[],done:0,total:0,water:null};
   var definitions=[
-    {key:'steps',icon:'👟',label:'10,000 steps'},
-    {key:'movement',icon:'⏱️',label:'45-minute workout · walking excluded'},
-    {key:'duolingo',icon:'🦉',label:'Duolingo'},
-    {key:'manna',icon:'📖',label:'Manna'},
-    {key:'food',icon:'🥗',label:'Whole foods · no unhealthy takeaway'},
-    {key:'alcohol',icon:'🥂',label:'Alcohol rule followed'}
+    {key:'steps',icon:'10K',label:'10,000 steps'},
+    {key:'movement',icon:'45',label:'45-minute workout · walking excluded'},
+    {key:'duolingo',icon:'DU',label:'Duolingo'},
+    {key:'manna',icon:'MN',label:'Manna'},
+    {key:'food',icon:'FD',label:'Whole foods · no unhealthy takeaway'},
+    {key:'alcohol',icon:'AL',label:'Alcohol rule followed'}
   ];
   var rows=definitions.map(function(definition){
     var habit=challenge75Habit(definition.key);
     return {key:definition.key,icon:definition.icon,label:definition.label,habitId:habit&&habit.id||null,done:!!(habit&&habit.logs&&habit.logs[dateKey])};
   });
   var water=challenge75WaterStatus(dateKey);
-  rows.push({key:'water',icon:'💧',label:'2 litres of water',habitId:null,done:water.done});
+  rows.push({key:'water',icon:'2L',label:'2 litres of water',habitId:null,done:water.done});
   return {rows:rows,done:rows.filter(function(row){return row.done}).length,total:rows.length,water:water};
 }
 
@@ -227,7 +227,7 @@ function renderChallenge75Journey(){
 function renderChallenge75CareerCard(todayKey){
   var challenge=getChallenge75();if(!challenge)return '';
   var key=todayKey||localDateKey(new Date()),phase=challenge75Phase(key),career=challenge75CareerStatus(phase==='after'?challenge.endDate:key);
-  var html='<section class="card planner-card challenge-career-page-card"><div class="planner-card-head"><span class="planner-card-title">💼 Career Focus</span><span class="planner-card-count">'+career.count+' / '+career.target+'</span></div>';
+  var html='<section class="card planner-card challenge-career-page-card"><div class="planner-card-head"><span class="planner-card-title">Career Focus</span><span class="planner-card-count">'+career.count+' / '+career.target+'</span></div>';
   html+='<div class="challenge-career-progress"><span style="width:'+Math.min(100,career.count/Math.max(1,career.target)*100)+'%"></span></div>';
   html+='<p>Three intentional blocks each week. Tailored applications, networking, CV or LinkedIn work, interview preparation and relevant skills training all count.</p>';
   if(phase==='before')html+='<div class="challenge75-rule-note">Tracking starts Monday 5 October.</div>';
