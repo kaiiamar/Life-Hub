@@ -452,7 +452,7 @@ function nav(page){
       var moreBtn=document.getElementById('topnav-more-btn');
       if(moreBtn)moreBtn.classList.add('active');
     }
-    var titles={dashboard:'Dashboard',goals:'Goals',habits:'Habits',workout:'Movement',finance:'Finance',review:'Reviews',insights:'Insights',relationships:'Relationships',gratitude:'Gratitude',watchlist:'Watch List',wishlist:'Wishlist',skincare:'Skincare',tasks:'Tasks'};
+    var titles={planner:'75 Me Challenge',dashboard:'Dashboard',goals:'Goals',habits:'Habits',workout:'Movement',finance:'Finance',review:'Reviews',insights:'Insights',relationships:'Relationships',gratitude:'Gratitude',watchlist:'Watch List',wishlist:'Wishlist',skincare:'Skincare',tasks:'Tasks'};
     var mTitle=document.getElementById('mobile-title');if(mTitle)mTitle.textContent=titles[page]||'';
     closeSidebar();
     renderPage(page);

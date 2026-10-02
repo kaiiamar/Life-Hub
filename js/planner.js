@@ -175,71 +175,58 @@ var plannerReentryRecapOpen=false;
 // Renders only the tab being shown rather than all three — the two hidden panes
 // cannot have changed since they were last drawn, and rebuilding them throws
 // away any input state they hold (R17.4).
-function switchPlannerTab(tab,btn){
-  var strip=btn&&btn.parentNode;
-  if(strip){
-    strip.querySelectorAll('.page-tab').forEach(function(b){b.classList.remove('active')});
-    btn.classList.add('active');
-  }
-  document.querySelectorAll('#page-planner .planner-tab').forEach(function(p){p.classList.remove('active')});
-  var pane=document.getElementById('planner-'+tab);
-  if(pane)pane.classList.add('active');
-  renderPlannerTab(tab);
+var plannerActiveTab='today';
+
+function plannerSetTabState(tab){
+  var next=['today','journey','career'].indexOf(tab)!==-1?tab:'today';
+  plannerActiveTab=next;
+  document.querySelectorAll('#page-planner [data-planner-tab]').forEach(function(button){
+    var active=button.getAttribute('data-planner-tab')===next;
+    button.classList.toggle('active',active);button.setAttribute('aria-selected',active?'true':'false');button.tabIndex=active?0:-1;
+  });
+  document.querySelectorAll('#page-planner .planner-tab').forEach(function(pane){pane.classList.toggle('active',pane.id==='planner-'+next)});
+  return next;
 }
 
-// Draw one Planner tab by name. Unknown names draw nothing.
+function switchPlannerTab(tab,btn){
+  var next=plannerSetTabState(tab);
+  if(btn&&typeof btn.focus==='function')btn.focus();
+  renderPlannerTab(next);
+}
+
+function plannerTabKeydown(event){
+  if(['ArrowLeft','ArrowRight','Home','End'].indexOf(event.key)===-1)return;
+  var tabs=Array.prototype.slice.call(document.querySelectorAll('#page-planner [data-planner-tab]'));
+  var index=tabs.indexOf(event.currentTarget);if(index<0)return;
+  event.preventDefault();
+  if(event.key==='Home')index=0;
+  else if(event.key==='End')index=tabs.length-1;
+  else index=(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
+  var next=tabs[index];switchPlannerTab(next.getAttribute('data-planner-tab'),next);
+}
+
+function open75MeTab(tab){
+  plannerActiveTab=['today','journey','career'].indexOf(tab)!==-1?tab:'today';
+  nav('planner');
+}
+
 function renderPlannerTab(tab){
   if(tab==='today')renderPlannerToday();
-  else if(tab==='week'){if(typeof renderPlannerWeek==='function')renderPlannerWeek()}
-  else if(tab==='inbox')renderPlannerInbox();
+  else if(tab==='journey'&&typeof renderChallenge75Journey==='function')renderChallenge75Journey();
+  else if(tab==='career'&&typeof renderPlannerCareer==='function')renderPlannerCareer();
 }
 
-// Top-level render — draws whichever tabs exist on the page
+// Render only the active pane. Hidden capture fields keep their text and every
+// pane derives fresh canonical data when it is opened.
 function renderPlanner(){
-  renderPlannerToday();
-  if(typeof renderPlannerWeek==='function')renderPlannerWeek();
-  renderPlannerInbox();
+  var next=plannerSetTabState(plannerActiveTab);
+  renderPlannerTab(next);
 }
 
-// ── Inbox tab ──────────────────────────────────────────────
+// Compatibility refresh for older task mutation paths. Inbox now lives inside
+// Career & tasks, so it is redrawn only while that pane is active.
 function renderPlannerInbox(){
-  var el=document.getElementById('planner-inbox');
-  if(!el)return;
-  var inbox=getInboxTasks();
-  // Also include done inbox tasks (completed in-place) for done styling
-  var allInbox=(STATE.tasks||[]).filter(function(t){
-    return t&&!t.dueDate&&!t.weekPriority&&!t.focusDate;
-  });
-  // Use only open inbox tasks for count / empty state
-  var openCount=inbox.length;
-
-  var html='';
-  // Header
-  html+='<div class="card planner-card pw-inbox-header-card card-quiet">';
-  html+='<div class="pw-inbox-head"><span class="pw-inbox-title">Inbox</span>'
-    +(openCount?'<span class="pw-inbox-pill">'+openCount+' to sort</span>':'')+'</div>';
-  html+='<div class="pw-inbox-helper">Empty your head here \u2014 sort it out later.</div>';
-  html+='</div>';
-
-  // Capture input — its own root id, since the Today tab renders this card too.
-  html+=plannerCaptureCard('planner-inbox-capture-card');
-
-  if(!openCount){
-    html+='<div class="card planner-card pw-inbox-empty card-quiet"><span class="pw-inbox-empty-icon">\uD83D\uDCE5</span><span class="pw-inbox-empty-text">All clear. Nothing to sort.</span></div>';
-  }else{
-    // Task cards — each is a separate card
-    inbox.forEach(function(t){
-      html+='<div class="card planner-card pw-inbox-task-card card-quiet">'
-        +'<div class="pw-inbox-task-row">'
-          +'<div class="pw-inbox-check" onclick="plannerToggleFocusDone(\''+t.id+'\')" role="button" tabindex="0" aria-label="Complete '+escapeHtml(t.text)+'"></div>'
-          +'<span class="pw-inbox-text">'+escapeHtml(t.text)+'</span>'
-          +'<button class="pw-inbox-delete" onclick="deleteInboxTask(\''+t.id+'\')" title="Delete" aria-label="Delete task">\u00D7</button>'
-        +'</div>'
-      +'</div>';
-    });
-  }
-
-  el.innerHTML=html;
+  if(plannerActiveTab==='career'&&typeof renderPlannerCareer==='function')renderPlannerCareer();
 }
 
 function deleteInboxTask(id){
@@ -287,7 +274,7 @@ var PLANNER_CARDS={
   inbox:      {host:'planner-inbox-card',    build:function(){return plannerInboxCard()}},
   short:      {host:'pc-short',              build:function(todayKey){return plannerShortVersionCard(todayKey)}}
 },
-PLANNER_INPUT_CARDS=['capture','sweep','gratitude'];
+PLANNER_INPUT_CARDS=['capture'];
 
 // The cards that change when a task joins or leaves today's focus slate — one
 // row of the mutation table in Components §C, shared by every handler that
@@ -297,7 +284,7 @@ PLANNER_INPUT_CARDS=['capture','sweep','gratitude'];
 // tasks: promoting a dated task removes its schedule row, and demoting it puts
 // the row back. R17.5 asks for every affected card, so it is declared here
 // rather than left to the next full render.
-var PLANNER_FOCUS_SLATE_CARDS=['focus','welcome','inbox','suggested','schedule'];
+var PLANNER_FOCUS_SLATE_CARDS=['focus','schedule'];
 
 // The ordered card keys for the current view mode. The Short_Version suppresses
 // the rest of the day by omission from this list, never by hiding markup that
@@ -307,8 +294,7 @@ var PLANNER_FOCUS_SLATE_CARDS=['focus','welcome','inbox','suggested','schedule']
 // two first-action cards, with the evening sweep near the end so it never
 // interrupts them and the Inbox last as the quiet sorting surface.
 function plannerTodayOrder(){
-  if(plannerViewMode==='short')return ['reentry','short'];
-  return ['reentry','welcome','challenge','monthreview','training','habits','focus','suggested','schedule','capture','waterweight','gratitude','sweep','inbox'];
+  return ['challenge','training','habits','focus','schedule','capture'];
 }
 
 // ── Quiet-day re-entry ─────────────────────────────────────
@@ -575,10 +561,8 @@ function renderPlannerToday(){
   // in-place patch compares its own build against this to tell a card appearing
   // or disappearing — which moves its neighbours — from a card merely changing.
   el.setAttribute('data-cards',present.join(','));
-  // Keep the PWA app-icon badge in sync with today's open focus count (R9.1).
+  // Keep the PWA app-icon badge in sync with today's open focus count.
   if(typeof updateAppBadge==='function')updateAppBadge();
-  // Evening sweep: fetch the AI one-liner once the card is in the DOM (§evening).
-  loadEveningSweep(todayKey);
 }
 
 // Targeted in-place patch: replace only the cards a mutation actually touched,
@@ -1445,13 +1429,13 @@ function renderPlannerWater(){
 function plannerHabitCard(){
   var today=localDateKey(new Date());
   var habits=(STATE.habits||[]).filter(function(h){
-    if(typeof challenge75OwnsHabit==='function'&&challenge75OwnsHabit(h.id))return false;
+    if(!h||!(h.id==='hip-physio-reentry-v1'||/\b(physio|rehab)\b/i.test(h.name||'')))return false;
     var s=habitDayStatus(h,today);
-    return s==='done'||s==='todo';
+    return s==='done'||s==='todo'||s==='optional';
   });
   var rows;
   if(!habits.length){
-    rows='<div class="planner-empty-line">No active rhythms due today — enjoy the breather.</div>';
+    rows='<div class="planner-empty-line">No physio or recovery rhythm is due today.</div>';
   } else {
     rows='<div class="pw-habits-list">';
     rows+=habits.map(function(h){
@@ -1475,7 +1459,7 @@ function plannerHabitCard(){
   var wavySvg='<svg class="pw-wavy-underline" viewBox="0 0 220 6" preserveAspectRatio="none" aria-hidden="true"><path d="M0 3 Q10 0 20 3 T40 3 T60 3 T80 3 T100 3 T120 3 T140 3 T160 3 T180 3 T200 3 T220 3" fill="none" stroke="var(--moss)" stroke-width="1.5" opacity="0.4"/></svg>';
   return ''
     +'<div class="card planner-card planner-habits-card" id="planner-habits-card">'
-      +'<div class="planner-card-head"><span class="planner-card-title">Habits</span>'
+      +'<div class="planner-card-head"><span class="planner-card-title">Recovery support</span>'
         +'<span class="pw-habit-count">'+doneCount+' / '+habits.length+'</span></div>'
       +wavySvg
       +rows
@@ -1645,6 +1629,7 @@ function plannerTrainingCard(todayKey){
   html+='<div class="planner-train-line"><span class="planner-train-icon">'+escapeHtml(t.icon||'🌿')+'</span>'
     +'<span class="planner-train-text">'+escapeHtml(t.label+(t.sub?' · '+t.sub:''))+'</span></div>';
   if(t.detail)html+='<div class="planner-train-pace">'+escapeHtml(t.detail)+'</div>';
+  html+='<div class="planner-train-context">This recovery plan is separate from the 45-minute challenge check. Tick that rule only after a full qualifying session; walking does not count.</div>';
 
   var logged=plannerTrainingLoggedToday(todayKey,t);
   if(logged){
@@ -2019,11 +2004,45 @@ function plannerCreateFocusTask(){
 var plannerWeekNote='';
 
 // ── This week tab ──────────────────────────────────────────
+// Compatibility renderer for legacy weekly mutation paths.
 function renderPlannerWeek(){
-  var el=document.getElementById('planner-week');
-  if(!el)return;
-  var wkKey=weekKey(new Date());
-  el.innerHTML=plannerWeekHeaderCard(wkKey)+plannerWeekPrioritiesCard(wkKey)+plannerHabitConsistencyCard(wkKey)+plannerTrainingSplitCard(wkKey)+plannerIntentionCard(wkKey)+plannerFixedTasksCard(wkKey)+plannerNextWeekCard(wkKey);
+  if(plannerActiveTab==='journey'&&typeof renderChallenge75Journey==='function')renderChallenge75Journey();
+  else if(plannerActiveTab==='career'&&typeof renderPlannerCareer==='function')renderPlannerCareer();
+}
+
+function plannerCareerDraftSnapshot(){
+  var ids=['planner-week-add-input','planner-career-capture-card-input'];
+  var active=document.activeElement;
+  return ids.map(function(id){
+    var el=document.getElementById(id);if(!el)return null;
+    var snap={id:id,value:el.value||'',focused:active===el,start:null,end:null};
+    if(snap.focused){try{snap.start=el.selectionStart;snap.end=el.selectionEnd}catch(e){}}
+    return snap;
+  }).filter(Boolean);
+}
+
+function plannerRestoreCareerDrafts(snapshots){
+  (snapshots||[]).forEach(function(snap){
+    var el=document.getElementById(snap.id);if(!el)return;
+    el.value=snap.value;
+    if(snap.focused){
+      if(typeof el.focus==='function')el.focus();
+      if(snap.start!==null&&snap.end!==null&&typeof el.setSelectionRange==='function'){try{el.setSelectionRange(snap.start,snap.end)}catch(e){}}
+    }
+  });
+}
+
+function renderPlannerCareer(){
+  var el=document.getElementById('planner-career');if(!el)return;
+  var drafts=plannerCareerDraftSnapshot();
+  var wkKey=weekKey(new Date()),todayKey=localDateKey(new Date());
+  var html=(typeof renderChallenge75CareerCard==='function'?renderChallenge75CareerCard(todayKey):'');
+  html+=plannerWeekPrioritiesCard(wkKey);
+  html+=plannerFixedTasksCard(wkKey);
+  html+=plannerCaptureCard('planner-career-capture-card');
+  html+=plannerInboxCard();
+  el.innerHTML=html;
+  plannerRestoreCareerDrafts(drafts);
 }
 
 // Week header card — "This week" + date range + 7-day strip

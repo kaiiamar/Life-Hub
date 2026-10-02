@@ -316,7 +316,7 @@ loadFromCloud(function(){
     if(!saveState({suppressUndo:true}))STATE=_reentrySnap;
   }
 
-  // ---- 75 INTENTIONAL DAYS (one-shot) ------------------------------------
+  // ---- 75 ME CHALLENGE (one-shot) ----------------------------------------
   // Seed the 5 Oct–18 Dec challenge after cloud data loads. Canonical habit,
   // water and workout records remain the only completion sources; the challenge
   // domain stores configuration only, so a missed day never mutates the dates or
@@ -397,17 +397,34 @@ loadFromCloud(function(){
     var _existingChallenge=STATE.challenges[CHALLENGE_75_ID]||{};
     var _challengeGlassMl=Number(_existingChallenge.waterGlassMl)||Number(STATE.waterSettings.glassMl)||250;
     STATE.challenges[CHALLENGE_75_ID]=Object.assign({},_existingChallenge,{
-      id:CHALLENGE_75_ID,title:'75 Intentional Days',startDate:_challengeStart,endDate:_challengeEnd,continuation:'continue',waterTargetMl:2000,waterGlassMl:_challengeGlassMl,
+      id:CHALLENGE_75_ID,title:'75 Me Challenge',startDate:_challengeStart,endDate:_challengeEnd,continuation:'continue',waterTargetMl:2000,waterGlassMl:_challengeGlassMl,
       habitIds:{steps:_challengeSteps.id,movement:_movement.id,duolingo:_duolingo.id,manna:_manna.id,food:_food.id,alcohol:_alcohol.id,career:_career.id}
     });
 
     var _challengeEvent=STATE.trainingEvents.find(function(e){return e&&e.id==='75-day-challenge-2026-10-03'})
       ||STATE.trainingEvents.find(function(e){return e&&/^75-day challenge begins$/i.test(e.name||'')&&(e.date==='2026-10-03'||e.date==='2026-10-05')});
-    if(_challengeEvent){_challengeEvent.name='75-day challenge begins';_challengeEvent.date=_challengeStart;_challengeEvent.note='75 Intentional Days · ends 18 December 2026';}
-    else STATE.trainingEvents.push({id:'75-day-challenge-2026-10-05',name:'75-day challenge begins',date:_challengeStart,note:'75 Intentional Days · ends 18 December 2026'});
+    if(_challengeEvent){_challengeEvent.name='75 Me Challenge begins';_challengeEvent.date=_challengeStart;_challengeEvent.note='75 Me Challenge · ends 18 December 2026';}
+    else STATE.trainingEvents.push({id:'75-day-challenge-2026-10-05',name:'75 Me Challenge begins',date:_challengeStart,note:'75 Me Challenge · ends 18 December 2026'});
 
     STATE.__challenge75V1=true;
     if(!saveState({suppressUndo:true}))STATE=_challengeSnap;
+  }
+
+  // ---- 75 ME PRESENTATION NAME (one-shot) --------------------------------
+  // Existing users already ran the original challenge seed. Rename only the
+  // challenge definition and its deterministic event; completion data and dates
+  // remain untouched.
+  if(!STATE.__challenge75NameV1){
+    var _challengeNameSnap=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
+    if(STATE.challenges&&STATE.challenges[CHALLENGE_75_ID])STATE.challenges[CHALLENGE_75_ID].title='75 Me Challenge';
+    (STATE.trainingEvents||[]).forEach(function(event){
+      if(!event)return;
+      if(event.id==='75-day-challenge-2026-10-03'||event.id==='75-day-challenge-2026-10-05'||/^75-day challenge begins$/i.test(event.name||'')){
+        event.name='75 Me Challenge begins';event.note='75 Me Challenge · ends 18 December 2026';
+      }
+    });
+    STATE.__challenge75NameV1=true;
+    if(!saveState({suppressUndo:true}))STATE=_challengeNameSnap;
   }
 
   // ---- RETIRE RUNNING FROM HABITS (one-shot) ------------------------------

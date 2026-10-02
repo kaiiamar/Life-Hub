@@ -1,5 +1,5 @@
 // ============================================================
-// 75 INTENTIONAL DAYS
+// 75 ME CHALLENGE
 // Calendar-based challenge overlay. A missed criterion remains incomplete;
 // it never changes the start date or resets the day number.
 // ============================================================
@@ -87,8 +87,8 @@ function challenge75PerfectDays(asOfKey){
 function challenge75CompactSummary(dateKey){
   var challenge=getChallenge75();if(!challenge)return null;
   var key=dateKey||localDateKey(new Date()),phase=challenge75Phase(key);
-  if(phase==='before')return {phase:phase,text:'75 Intentional Days · starts '+fmtDate(challenge.startDate)};
-  if(phase==='after')return {phase:phase,text:'75 Intentional Days · closed '+fmtDate(challenge.startDate)+'–'+fmtDate(challenge.endDate)};
+  if(phase==='before')return {phase:phase,text:'75 Me Challenge · starts '+fmtDate(challenge.startDate)};
+  if(phase==='after')return {phase:phase,text:'75 Me Challenge · closed '+fmtDate(challenge.startDate)+'–'+fmtDate(challenge.endDate)};
   var daily=challenge75DailyStatus(key),career=challenge75CareerStatus(key);
   return {phase:phase,text:'Challenge · Day '+challenge75DayNumber(key)+' of 75 · '+daily.done+'/'+daily.total+' today · Career '+career.count+'/'+career.target};
 }
@@ -104,7 +104,8 @@ function challenge75ToggleHabit(habitId){
   ensureHabitProvenance(habit);ensureHabitLifecycle(habit);setManualHabitCompletion(habit,today,!manual);
   if(typeof saveStateOrRollback==='function'?!saveStateOrRollback(snapshot):!saveState()){return false}
   if(typeof emitLifeHubChange==='function')emitLifeHubChange({action:'challenge-habit-toggle',entityId:habitId,dateKeys:[today],domains:['habits'],source:'challenge',rendered:true});
-  if(typeof refreshPlannerCards==='function')refreshPlannerCards(['challenge','habits','welcome','sweep','short']);
+  if(typeof plannerActiveTab!=='undefined'&&plannerActiveTab==='career'&&typeof renderPlannerCareer==='function')renderPlannerCareer();
+  else if(typeof refreshPlannerCards==='function')refreshPlannerCards(['challenge','habits']);
   if(typeof refreshDashboardIfActive==='function')refreshDashboardIfActive();
   if(restoreFocus){var replacement=document.querySelector(selector);if(replacement)replacement.focus()}
   return true;
@@ -121,7 +122,7 @@ function renderChallenge75Card(todayKey){
   var challenge=getChallenge75();if(!challenge)return '';
   var key=todayKey||localDateKey(new Date()),phase=challenge75Phase(key);
   var html='<div class="card planner-card challenge75-card" id="planner-challenge-card">';
-  html+='<div class="challenge75-head"><div><div class="challenge75-kicker">75 INTENTIONAL DAYS</div><div class="challenge75-title">'+escapeHtml(challenge.title||'75 Intentional Days')+'</div></div>';
+  html+='<div class="challenge75-head"><div><div class="challenge75-kicker">75 ME CHALLENGE</div><div class="challenge75-title">75 Me Challenge</div></div>';
   if(phase==='active')html+='<div class="challenge75-day">Day '+challenge75DayNumber(key)+'<span>/75</span></div>';
   html+='</div>';
 
@@ -135,7 +136,7 @@ function renderChallenge75Card(todayKey){
     html+='<div class="challenge75-before">Career Focus final week · '+finalCareer.count+'/'+finalCareer.target+'</div>';
     html+='<div class="challenge75-rule-note">The challenge is closed; your history stays available in Habits and Movement.</div>';
   }else{
-    var daily=challenge75DailyStatus(key),career=challenge75CareerStatus(key);
+    var daily=challenge75DailyStatus(key);
     html+='<div class="challenge75-progress"><span style="width:'+(challenge75DayNumber(key)/75*100)+'%"></span></div>';
     html+='<div class="challenge75-summary">Today · '+daily.done+' of '+daily.total+'</div>';
     html+='<div class="challenge75-grid">'+daily.rows.map(function(row){
@@ -147,14 +148,94 @@ function renderChallenge75Card(todayKey){
       return '<button type="button" data-challenge-habit="'+escapeHtml(row.habitId||'')+'" class="challenge75-row'+(row.done?' done':'')+'"'+(row.habitId?' onclick="challenge75ToggleHabit(\''+row.habitId+'\')"':' disabled')+' aria-pressed="'+(row.done?'true':'false')+'">'
         +'<span class="challenge75-check">'+(row.done?'✓':row.icon)+'</span><span class="challenge75-label">'+escapeHtml(row.label)+'</span></button>';
     }).join('')+'</div>';
-    html+='<div class="challenge75-career"><div><strong>💼 Career Focus</strong><span>Applications · networking · CV/LinkedIn · interviews · skills training</span></div>';
-    if(career.habit){
-      if(career.met&&!career.todayDone)html+='<span class="challenge75-career-count done">✓ '+career.count+'/'+career.target+'</span>';
-      else html+='<button type="button" data-challenge-habit="'+escapeHtml(career.habit.id)+'" class="challenge75-career-count'+(career.todayDone?' done':'')+'" onclick="challenge75ToggleHabit(\''+career.habit.id+'\')">'+(career.todayDone?'✓ ':'')+career.count+'/'+career.target+'</button>';
-    }
-    html+='</div>';
-    html+='<div class="challenge75-rule-note">Walking counts toward steps, not the 45-minute workout. Planned balanced restaurant meals and pre-decided special occasions are allowed. Missed something? Continue tomorrow—never restart.</div>';
+    html+='<div class="challenge75-rule-note">Walking counts toward steps, not the 45-minute workout. Recovery guidance always wins. Missed something? Continue tomorrow—never restart.</div>';
   }
   html+='</div>';
+  return html;
+}
+
+// ── Dedicated 75 Me page views ─────────────────────────────────────────────
+function challenge75DateKeys(){
+  var challenge=getChallenge75();if(!challenge)return [];
+  var keys=[];
+  for(var day=habitDate(challenge.startDate);localDateKey(day)<=challenge.endDate;day=habitAddDays(day,1))keys.push(localDateKey(day));
+  return keys;
+}
+
+function challenge75JourneyModel(asOfKey){
+  var challenge=getChallenge75();if(!challenge)return null;
+  var today=asOfKey||localDateKey(new Date());
+  var cutoff=today<challenge.startDate?null:(today>challenge.endDate?challenge.endDate:today);
+  var dateKeys=challenge75DateKeys(),doneChecks=0,elapsedDays=0,perfectDays=0,weeks={};
+  var days=dateKeys.map(function(key,index){
+    var daily=challenge75DailyStatus(key),elapsed=!!cutoff&&key<=cutoff,state='future';
+    if(elapsed){
+      elapsedDays++;doneChecks+=daily.done;
+      if(daily.done===daily.total){state='complete';perfectDays++}
+      else if(daily.done>0)state='partial';
+      else state='open';
+    }
+    if(key===today&&challenge75Phase(today)==='active')state='current '+state;
+    var wk=weekKey(habitDate(key));
+    if(!weeks[wk])weeks[wk]={key:wk,dates:[],elapsedDates:[],doneChecks:0,totalChecks:0,perfectDays:0};
+    weeks[wk].dates.push(key);
+    if(elapsed){weeks[wk].elapsedDates.push(key);weeks[wk].doneChecks+=daily.done;weeks[wk].totalChecks+=daily.total;if(daily.done===daily.total)weeks[wk].perfectDays++}
+    return {key:key,number:index+1,state:state,done:daily.done,total:daily.total};
+  });
+  var careerHabit=challenge75Habit('career');
+  var weekRows=Object.keys(weeks).sort().map(function(key,index){
+    var week=weeks[key],last=week.elapsedDates.length?week.elapsedDates[week.elapsedDates.length-1]:null;
+    var career={count:0,target:3,met:false};
+    if(careerHabit&&last){var progress=getHabitProgress(careerHabit,key,last);career={count:progress.count,target:progress.target||3,met:progress.met}}
+    return {number:index+1,key:key,dates:week.dates,elapsed:week.elapsedDates.length,doneChecks:week.doneChecks,totalChecks:week.totalChecks,perfectDays:week.perfectDays,career:career};
+  });
+  return {challenge:challenge,today:today,phase:challenge75Phase(today),dayNumber:challenge75DayNumber(today),days:days,weeks:weekRows,elapsedDays:elapsedDays,remainingDays:75-elapsedDays,doneChecks:doneChecks,totalChecks:elapsedDays*7,perfectDays:perfectDays};
+}
+
+function renderChallenge75Journey(){
+  var el=document.getElementById('planner-journey');if(!el)return;
+  var model=challenge75JourneyModel(localDateKey(new Date()));
+  if(!model){el.innerHTML='<div class="card planner-card"><div class="planner-empty-line">The 75 Me journey is not configured yet.</div></div>';return}
+  var phaseLabel=model.phase==='before'?'Starts 5 October':model.phase==='after'?'Journey complete':'Day '+model.dayNumber+' of 75';
+  var html='<section class="challenge-journey-hero card"><div><div class="challenge75-kicker">75 ME CHALLENGE</div><h2>Your journey</h2><p>5 October–18 December · Keep going after imperfect days.</p></div><div class="challenge-journey-phase">'+escapeHtml(phaseLabel)+'</div></section>';
+  html+='<div class="challenge-journey-stats">'
+    +'<div class="card"><strong>'+model.elapsedDays+'</strong><span>days elapsed</span></div>'
+    +'<div class="card"><strong>'+model.perfectDays+'</strong><span>fully checked days</span></div>'
+    +'<div class="card"><strong>'+model.doneChecks+(model.totalChecks?' / '+model.totalChecks:'')+'</strong><span>daily checks</span></div>'
+    +'<div class="card"><strong>'+model.remainingDays+'</strong><span>days remaining</span></div>'
+  +'</div>';
+  html+='<section class="card planner-card challenge-calendar-card"><div class="planner-card-head"><span class="planner-card-title">The 75 days</span><span class="planner-card-hint">read-only progress</span></div>';
+  html+='<div class="challenge-calendar" role="list" aria-label="75 Me Challenge calendar">'+model.days.map(function(day){
+    var dateLabel=habitDate(day.key).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+    return '<div role="listitem" class="challenge-calendar-day '+day.state+'" title="'+escapeHtml(dateLabel+' · '+day.done+'/'+day.total)+'" aria-label="Day '+day.number+', '+escapeHtml(dateLabel)+', '+day.done+' of '+day.total+' checks"><span>'+day.number+'</span><small>'+day.done+'/'+day.total+'</small></div>';
+  }).join('')+'</div><div class="challenge-calendar-legend"><span><i class="complete"></i>7/7</span><span><i class="partial"></i>in progress</span><span><i class="open"></i>no checks</span><span><i class="future"></i>future</span></div></section>';
+  html+='<section class="card planner-card challenge-weeks-card"><div class="planner-card-head"><span class="planner-card-title">Week by week</span></div><div class="challenge-week-list">'+model.weeks.map(function(week){
+    var start=fmtDate(week.dates[0]),end=fmtDate(week.dates[week.dates.length-1]);
+    var checks=week.elapsed?week.doneChecks+'/'+week.totalChecks:'Not started';
+    var career=week.elapsed?'Career '+week.career.count+'/'+week.career.target:'Career —';
+    return '<div class="challenge-week-row"><span class="challenge-week-num">W'+week.number+'</span><span class="challenge-week-dates">'+escapeHtml(start+'–'+end)+'</span><span>'+checks+'</span><span>'+career+'</span><span>'+week.perfectDays+' full day'+(week.perfectDays===1?'':'s')+'</span></div>';
+  }).join('')+'</div></section>';
+  html+='<section class="card planner-card challenge-rules-card"><div class="planner-card-head"><span class="planner-card-title">Your rules & guardrails</span></div><div class="challenge-rules-grid">'
+    +'<div><strong>Keep going</strong><span>A missed check stays on that day. Never restart the calendar.</span></div>'
+    +'<div><strong>Move safely</strong><span>Walking counts for steps, not the 45-minute workout. Clinical guidance always wins.</span></div>'
+    +'<div><strong>Eat intentionally</strong><span>Whole foods and no unhealthy takeaway; planned balanced restaurant meals are allowed.</span></div>'
+    +'<div><strong>Drink intentionally</strong><span>2L water daily. Alcohol only for special occasions decided in advance.</span></div>'
+  +'</div></section>';
+  el.innerHTML=html;
+}
+
+function renderChallenge75CareerCard(todayKey){
+  var challenge=getChallenge75();if(!challenge)return '';
+  var key=todayKey||localDateKey(new Date()),phase=challenge75Phase(key),career=challenge75CareerStatus(phase==='after'?challenge.endDate:key);
+  var html='<section class="card planner-card challenge-career-page-card"><div class="planner-card-head"><span class="planner-card-title">💼 Career Focus</span><span class="planner-card-count">'+career.count+' / '+career.target+'</span></div>';
+  html+='<div class="challenge-career-progress"><span style="width:'+Math.min(100,career.count/Math.max(1,career.target)*100)+'%"></span></div>';
+  html+='<p>Three intentional blocks each week. Tailored applications, networking, CV or LinkedIn work, interview preparation and relevant skills training all count.</p>';
+  if(phase==='before')html+='<div class="challenge75-rule-note">Tracking starts Monday 5 October.</div>';
+  else if(phase==='after')html+='<div class="challenge75-rule-note">Final challenge week · '+career.count+'/'+career.target+' blocks recorded.</div>';
+  else if(career.habit){
+    if(career.met&&!career.todayDone)html+='<span class="challenge-career-met">✓ Weekly target met</span>';
+    else html+='<button type="button" data-challenge-habit="'+escapeHtml(career.habit.id)+'" class="btn '+(career.todayDone?'btn-ghost':'btn-accent')+'" onclick="challenge75ToggleHabit(\''+career.habit.id+'\')">'+(career.todayDone?'Undo today\'s block':'Log a Career Focus block')+'</button>';
+  }
+  html+='</section>';
   return html;
 }

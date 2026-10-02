@@ -12,7 +12,7 @@
 <title>Kai's Life Hub 🤎</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style-new.css?v=50">
+<link rel="stylesheet" href="style-new.css?v=51">
 <!-- Chart.js is lazy-loaded on first visit to a chart page — see ensureChartJs() in js/navigation.js (Part 5.3) -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -30,7 +30,7 @@
       </div>
       <div class="topnav-links">
         <div class="topnav-pill-indicator" id="topnav-pill"></div>
-        <button class="topnav-link active" data-page="planner" onclick="nav('planner')">Planner</button>
+        <button class="topnav-link active" data-page="planner" onclick="nav('planner')">75 Me</button>
         <button class="topnav-link" data-page="dashboard" onclick="nav('dashboard')">Dashboard</button>
         <button class="topnav-link" data-page="habits" onclick="nav('habits')">Habits</button>
         <button class="topnav-link" data-page="workout" onclick="nav('workout')">Movement</button>
@@ -82,7 +82,7 @@
       <span id="sidebar-date"></span>
     </div>
     <div class="nav-section">
-      <button class="nav-item active" onclick="nav('planner')">🗓️ Planner</button>
+      <button class="nav-item active" onclick="nav('planner')">🌱 75 Me</button>
       <button class="nav-item" onclick="nav('dashboard')">🏠 Dashboard</button>
       <button class="nav-item" onclick="nav('goals')">🎯 Goals</button>
       <button class="nav-item" onclick="nav('habits')">✅ Habits</button>
@@ -99,32 +99,32 @@
 
   <div class="main">
 
-    <!-- ══ PLANNER ══ -->
+    <!-- ══ 75 ME CHALLENGE ══ -->
     <div class="page active" id="page-planner">
       <div class="page-header">
         <div class="header-row">
           <div>
-            <h1>Planner</h1>
-            <p>Today's focus and this week's plan, all in one place.</p>
+            <h1>75 Me Challenge</h1>
+            <p>Seventy-five intentional days for health, faith, learning and your next chapter.</p>
           </div>
         </div>
       </div>
 
-      <!-- Planner tabs -->
-      <div class="page-tabs" style="margin-bottom:16px">
-        <button class="page-tab active" onclick="switchPlannerTab('today',this)">Today</button>
-        <button class="page-tab" onclick="switchPlannerTab('week',this)">This week</button>
-        <button class="page-tab" onclick="switchPlannerTab('inbox',this)">Inbox</button>
+      <!-- 75 Me tabs -->
+      <div class="page-tabs challenge-page-tabs" role="tablist" aria-label="75 Me Challenge views" style="margin-bottom:16px">
+        <button class="page-tab active" id="planner-tab-today" data-planner-tab="today" role="tab" aria-selected="true" aria-controls="planner-today" onclick="switchPlannerTab('today',this)" onkeydown="plannerTabKeydown(event)">Today</button>
+        <button class="page-tab" id="planner-tab-journey" data-planner-tab="journey" role="tab" aria-selected="false" aria-controls="planner-journey" onclick="switchPlannerTab('journey',this)" onkeydown="plannerTabKeydown(event)">Journey</button>
+        <button class="page-tab" id="planner-tab-career" data-planner-tab="career" role="tab" aria-selected="false" aria-controls="planner-career" onclick="switchPlannerTab('career',this)" onkeydown="plannerTabKeydown(event)">Career &amp; tasks</button>
       </div>
 
       <!-- TODAY TAB -->
-      <div class="planner-tab active" id="planner-today"></div>
+      <div class="planner-tab active" id="planner-today" role="tabpanel" aria-labelledby="planner-tab-today"></div>
 
-      <!-- THIS WEEK TAB -->
-      <div class="planner-tab" id="planner-week"></div>
+      <!-- JOURNEY TAB -->
+      <div class="planner-tab" id="planner-journey" role="tabpanel" aria-labelledby="planner-tab-journey"></div>
 
-      <!-- INBOX TAB -->
-      <div class="planner-tab" id="planner-inbox"></div>
+      <!-- CAREER & TASKS TAB -->
+      <div class="planner-tab" id="planner-career" role="tabpanel" aria-labelledby="planner-tab-career"></div>
     </div>
 
     <!-- ══ DASHBOARD ══ -->
@@ -829,21 +829,21 @@
 
 
 
-<script src="js/state.js?v=50"></script>
-<script src="js/persistence.js?v=50"></script>
-<script src="js/navigation.js?v=50"></script>
-<script src="js/dashboard.js?v=50"></script>
-<script src="js/habits.js?v=50"></script>
-<script src="js/workouts.js?v=50"></script>
-<script src="js/challenge.js?v=50"></script>
-<script src="js/finance.js?v=50"></script>
-<script src="js/reviews.js?v=50"></script>
-<script src="js/relationships.js?v=50"></script>
-<script src="js/gratitude.js?v=50"></script>
-<script src="js/insights.js?v=50"></script>
-<script src="js/skincare.js?v=50"></script>
-<script src="js/modals.js?v=50"></script>
-<script src="js/planner.js?v=50"></script>
-<script src="js/init.js?v=50"></script>
+<script src="js/state.js?v=51"></script>
+<script src="js/persistence.js?v=51"></script>
+<script src="js/navigation.js?v=51"></script>
+<script src="js/dashboard.js?v=51"></script>
+<script src="js/habits.js?v=51"></script>
+<script src="js/workouts.js?v=51"></script>
+<script src="js/challenge.js?v=51"></script>
+<script src="js/finance.js?v=51"></script>
+<script src="js/reviews.js?v=51"></script>
+<script src="js/relationships.js?v=51"></script>
+<script src="js/gratitude.js?v=51"></script>
+<script src="js/insights.js?v=51"></script>
+<script src="js/skincare.js?v=51"></script>
+<script src="js/modals.js?v=51"></script>
+<script src="js/planner.js?v=51"></script>
+<script src="js/init.js?v=51"></script>
 </body>
 </html>
