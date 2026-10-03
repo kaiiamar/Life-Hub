@@ -18,8 +18,8 @@ function _lifeHubPageActive(page){var el=document.getElementById('page-'+page);r
 document.addEventListener('lifehub:change',function(event){
   var detail=event.detail||{};if(detail.rendered||detail.source==='sync')return;
   var domains=detail.domains||[],habitsChanged=domains.indexOf('habits')!==-1;
-  var movementChanged=domains.indexOf('workouts')!==-1||domains.indexOf('metrics')!==-1;
-  var challengeChanged=domains.indexOf('challenges')!==-1||domains.indexOf('water')!==-1||domains.indexOf('waterSettings')!==-1;
+  var movementChanged=domains.indexOf('workouts')!==-1||domains.indexOf('metrics')!==-1||domains.indexOf('trainingSessions')!==-1||domains.indexOf('weeklyCheckIns')!==-1;
+  var challengeChanged=domains.indexOf('challenges')!==-1||domains.indexOf('water')!==-1||domains.indexOf('waterSettings')!==-1||domains.indexOf('dailyCheckIns')!==-1||domains.indexOf('reading')!==-1||domains.indexOf('cycle')!==-1;
   if(habitsChanged&&_lifeHubPageActive('habits')&&typeof renderHabits==='function')renderHabits();
   if((habitsChanged||movementChanged||challengeChanged)&&_lifeHubPageActive('planner')&&typeof renderPlanner==='function')renderPlanner();
   if((habitsChanged||movementChanged||challengeChanged)&&typeof refreshDashboardIfActive==='function')refreshDashboardIfActive();
@@ -98,7 +98,7 @@ loadFromCloud(function(){
   // new; `netWorthSnapshots` and `waterSettings` are written by live code but
   // were never registered here (Data Models → "Registration is required in
   // three places").
-  var migrateKeys=['goals','habits','workouts','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','relationships','gratitude','wishlist','watchlist','debtPayments','reminders','water','dailyPriorities','trainingEvents','trainingPlan','challenges','tasks','commitments','weeklyIntentions','weeklyIntention','sweep','companion','netWorthSnapshots','waterSettings'];
+  var migrateKeys=['goals','habits','workouts','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','relationships','gratitude','wishlist','watchlist','debtPayments','reminders','water','dailyPriorities','trainingEvents','trainingPlan','trainingSessions','dailyCheckIns','reading','cycle','weeklyCheckIns','challenges','tasks','commitments','weeklyIntentions','weeklyIntention','sweep','companion','netWorthSnapshots','waterSettings'];
   migrateKeys.forEach(function(k){if(!STATE[k])STATE[k]=JSON.parse(JSON.stringify(DEFAULT_STATE[k]||(k==='tasks'?[]:{})))});
   if(!STATE.tasks)STATE.tasks=[];
   if(!STATE.metrics.projectsDone)STATE.metrics.projectsDone=[];
@@ -192,7 +192,7 @@ loadFromCloud(function(){
     STATE.trainingPlan={
       template:JSON.parse(JSON.stringify(TRAINING_TEMPLATE)),
       program:JSON.parse(JSON.stringify(BODY_COMPOSITION_PROGRAM)),
-      checks:{},
+      checks:(STATE.trainingPlan&&STATE.trainingPlan.checks)||{},
       planVersion:LIFEHUB_PLAN_VERSION
     };
     STATE.trainingEvents=(STATE.trainingEvents||[]).filter(function(e){
@@ -394,10 +394,10 @@ loadFromCloud(function(){
     if(!Number(STATE.waterSettings.target))STATE.waterSettings.target=8;
     if(!Number(STATE.waterSettings.glassMl))STATE.waterSettings.glassMl=250;
 
-    var _existingChallenge=STATE.challenges[CHALLENGE_75_ID]||{};
+    var _existingChallenge=STATE.challenges[LEGACY_CHALLENGE_75_ID]||{};
     var _challengeGlassMl=Number(_existingChallenge.waterGlassMl)||Number(STATE.waterSettings.glassMl)||250;
-    STATE.challenges[CHALLENGE_75_ID]=Object.assign({},_existingChallenge,{
-      id:CHALLENGE_75_ID,title:'75 Me Challenge',startDate:_challengeStart,endDate:_challengeEnd,continuation:'continue',waterTargetMl:2000,waterGlassMl:_challengeGlassMl,
+    STATE.challenges[LEGACY_CHALLENGE_75_ID]=Object.assign({},_existingChallenge,{
+      id:LEGACY_CHALLENGE_75_ID,title:'75 Me Challenge',startDate:_challengeStart,endDate:_challengeEnd,continuation:'continue',waterTargetMl:2000,waterGlassMl:_challengeGlassMl,
       habitIds:{steps:_challengeSteps.id,movement:_movement.id,duolingo:_duolingo.id,manna:_manna.id,food:_food.id,alcohol:_alcohol.id,career:_career.id}
     });
 
@@ -416,7 +416,7 @@ loadFromCloud(function(){
   // remain untouched.
   if(!STATE.__challenge75NameV1){
     var _challengeNameSnap=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
-    if(STATE.challenges&&STATE.challenges[CHALLENGE_75_ID])STATE.challenges[CHALLENGE_75_ID].title='75 Me Challenge';
+    if(STATE.challenges&&STATE.challenges[LEGACY_CHALLENGE_75_ID])STATE.challenges[LEGACY_CHALLENGE_75_ID].title='75 Me Challenge';
     (STATE.trainingEvents||[]).forEach(function(event){
       if(!event)return;
       if(event.id==='75-day-challenge-2026-10-03'||event.id==='75-day-challenge-2026-10-05'||/^75-day challenge begins$/i.test(event.name||'')){
@@ -425,6 +425,62 @@ loadFromCloud(function(){
     });
     STATE.__challenge75NameV1=true;
     if(!saveState({suppressUndo:true}))STATE=_challengeNameSnap;
+  }
+
+  // ---- WINTER ARC: 75 ME TRAINING PLAN V1 (one-shot) ---------------------
+  // Activate the immutable dated definition without rewriting the legacy v6
+  // prescription, old challenge, generic workouts, runs, weight, water or habit
+  // history. New evidence stores start empty; only an existing sleep value is
+  // copied into a missing daily check-in field.
+  if(!STATE.__winterArcV1||!STATE.challenges||!STATE.challenges['winter-arc-75-me-v1']||STATE.challenges['winter-arc-75-me-v1'].startDate!=='2026-10-05'||STATE.challenges['winter-arc-75-me-v1'].endDate!=='2026-12-18'){
+    var _winterSnap=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
+    var _winterPlan=typeof WINTER_ARC_TRAINING_V1!=='undefined'?WINTER_ARC_TRAINING_V1:null;
+    if(_winterPlan){
+      if(!STATE.trainingSessions||Array.isArray(STATE.trainingSessions))STATE.trainingSessions={};
+      if(!STATE.dailyCheckIns||Array.isArray(STATE.dailyCheckIns))STATE.dailyCheckIns={};
+      if(!STATE.weeklyCheckIns||Array.isArray(STATE.weeklyCheckIns))STATE.weeklyCheckIns={};
+      if(!STATE.reading||Array.isArray(STATE.reading))STATE.reading={sessions:{},activeSessionId:null};
+      if(!STATE.reading.sessions||Array.isArray(STATE.reading.sessions))STATE.reading.sessions={};
+      if(STATE.reading.activeSessionId===undefined)STATE.reading.activeSessionId=null;
+      if(!STATE.cycle||Array.isArray(STATE.cycle))STATE.cycle={};
+      if(!STATE.cycle.settings||Array.isArray(STATE.cycle.settings))STATE.cycle.settings={};
+      if(!Number(STATE.cycle.settings.defaultLengthDays))STATE.cycle.settings.defaultLengthDays=_winterPlan.cycle.defaultLengthDays;
+      if(!Array.isArray(STATE.cycle.observedStarts))STATE.cycle.observedStarts=[];
+      if(!Array.isArray(STATE.cycle.estimates)||!STATE.cycle.estimates.length)STATE.cycle.estimates=_winterPlan.cycle.estimatedStarts.slice();
+      STATE.cycle.estimateLabel=_winterPlan.cycle.predictionLabel;
+      STATE.cycle.knownReference={date:_winterPlan.cycle.knownDate,cycleDay:_winterPlan.cycle.knownCycleDay};
+
+      Object.keys(STATE.mood||{}).forEach(function(key){
+        var sleep=Number(STATE.mood[key]&&STATE.mood[key].sleep);
+        if(!Number.isFinite(sleep)||sleep<0)return;
+        if(!STATE.dailyCheckIns[key])STATE.dailyCheckIns[key]={date:key};
+        if(STATE.dailyCheckIns[key].sleepHours===undefined)STATE.dailyCheckIns[key].sleepHours=sleep;
+      });
+
+      function _winterHabit(id,name,icon,anchor){
+        var habit=(STATE.habits||[]).find(function(item){return item&&item.id===id});
+        if(habit)return habit;
+        habit={id:id,name:name,freq:'daily',badge:'per',icon:icon,anchor:anchor,note:'Canonical 75 Me evidence.',startDate:_winterPlan.startDate,lifecycle:{version:1,inactivePeriods:[]},integrationKeys:[],provenanceVersion:1,logProvenance:{},logs:{}};
+        STATE.habits.push(habit);return habit;
+      }
+      var _legacyChallenge=STATE.challenges&&STATE.challenges['intentional-75-2026'];
+      var _duolingoId=_legacyChallenge&&_legacyChallenge.habitIds&&_legacyChallenge.habitIds.duolingo;
+      var _mannaId=_legacyChallenge&&_legacyChallenge.habitIds&&_legacyChallenge.habitIds.manna;
+      var _duolingo=(STATE.habits||[]).find(function(h){return h&&h.id===_duolingoId})||_winterHabit('challenge-duolingo-v1','Duolingo','🦉','evening');
+      var _manna=(STATE.habits||[]).find(function(h){return h&&h.id===_mannaId})||_winterHabit('challenge-manna-v1','Manna','📖','morning');
+      ['steps','movement','food','alcohol'].forEach(function(key){var id=_legacyChallenge&&_legacyChallenge.habitIds&&_legacyChallenge.habitIds[key],habit=(STATE.habits||[]).find(function(item){return item&&item.id===id});if(!habit)return;if(typeof ensureHabitLifecycle==='function')ensureHabitLifecycle(habit);var ranges=habit.lifecycle&&habit.lifecycle.inactivePeriods||[],open=ranges.find(function(range){return range&&range.kind==='archived'&&range.to===null});if(open){if(open.from>_winterPlan.startDate)open.from=_winterPlan.startDate}else ranges.push({kind:'archived',from:_winterPlan.startDate,to:null})});
+      if(!STATE.challenges||Array.isArray(STATE.challenges))STATE.challenges={};
+      var _winterExisting=STATE.challenges[_winterPlan.challenge.id]||{};
+      STATE.challenges[_winterPlan.challenge.id]=Object.assign({},_winterExisting,{
+        id:_winterPlan.challenge.id,title:'Winter Arc: 75 Me',startDate:_winterPlan.startDate,endDate:_winterPlan.endDate,
+        continuation:'continue',definitionVersion:1,planId:_winterPlan.id,planVersion:_winterPlan.version,
+        activatedAt:_winterExisting.activatedAt||new Date().toISOString(),waterTargetMl:_winterPlan.nutrition.waterTargetMl,
+        waterGlassMl:Number(_winterExisting.waterGlassMl)||Number(STATE.waterSettings&&STATE.waterSettings.glassMl)||250,
+        ruleIds:_winterPlan.challenge.rules.map(function(rule){return rule.id}),habitIds:{duolingo:_duolingo.id,manna:_manna.id}
+      });
+      STATE.__winterArcV1=true;
+      if(!saveState({suppressUndo:true}))STATE=_winterSnap;
+    }
   }
 
   // ---- RETIRE RUNNING FROM HABITS (one-shot) ------------------------------
@@ -659,7 +715,21 @@ function bloomTick(key){
 // ============================================================
 var NOTIF_API='https://lifehub-notifications.vercel.app';// Set to your Vercel URL after deploy, e.g. 'https://lifehub-notifications.vercel.app'
 
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){})}
+var _lifeHubVisibleDay=localDateKey(new Date()),_lifeHubDayTimer=null;
+function refreshLifeHubDayBoundary(){var next=localDateKey(new Date());if(next!==_lifeHubVisibleDay){_lifeHubVisibleDay=next;if(typeof _rerenderCurrentPage==='function')_rerenderCurrentPage();if(typeof updateAppBadge==='function')updateAppBadge()}clearTimeout(_lifeHubDayTimer);var now=new Date(),tomorrow=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1,0,0,1);_lifeHubDayTimer=setTimeout(refreshLifeHubDayBoundary,Math.max(1000,tomorrow-now))}
+refreshLifeHubDayBoundary();
+window.addEventListener('pageshow',function(){refreshLifeHubDayBoundary();if(typeof _refreshFromCloud==='function')_refreshFromCloud()});
+window.addEventListener('storage',function(event){if(event.key!==KEY||!event.newValue)return;try{var incoming=JSON.parse(event.newValue),check=validateLifeHubState(incoming,{importMode:false,requireCore:true});if(!check.ok)return;STATE=incoming;if(typeof _localSnapshots!=='undefined')_localSnapshots=_clone(STATE);if(typeof _rerenderCurrentPage==='function')_rerenderCurrentPage()}catch(error){console.warn('Cross-tab state refresh failed:',error)}});
+
+if('serviceWorker' in navigator){
+  var _lifeHubReloading=false;
+  function offerLifeHubUpdate(worker){if(!worker||typeof _showTrustNotice!=='function')return;_showTrustNotice('A fresh Life Hub version is ready.','Update now',function(){worker.postMessage({type:'SKIP_WAITING'})},'Later',function(){_hideTrustNotice()})}
+  navigator.serviceWorker.addEventListener('controllerchange',function(){if(_lifeHubReloading)return;_lifeHubReloading=true;window.location.reload()});
+  navigator.serviceWorker.register('sw.js').then(function(registration){
+    if(registration.waiting)offerLifeHubUpdate(registration.waiting);
+    registration.addEventListener('updatefound',function(){var worker=registration.installing;if(!worker)return;worker.addEventListener('statechange',function(){if(worker.state==='installed'&&navigator.serviceWorker.controller)offerLifeHubUpdate(worker)})});
+  }).catch(function(error){console.warn('Service worker registration failed:',error)});
+}
 
 function setupReminders(){
   if(!('Notification' in window)){return}

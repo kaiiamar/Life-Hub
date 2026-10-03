@@ -1,7 +1,7 @@
 // ============================================================
 // REVISIONED DOMAIN PERSISTENCE
 // ============================================================
-var LIFEHUB_SCHEMA_VERSION=4;
+var LIFEHUB_SCHEMA_VERSION=5;
 var LIFEHUB_QUEUE_KEY='lifehub_sync_queue_v2';
 var LIFEHUB_CONFLICT_KEY='lifehub_sync_conflicts_v2';
 var LIFEHUB_META_KEY='lifehub_local_meta_v2';
@@ -199,7 +199,8 @@ function validateHabitDomainData(data){
 
 function _validateChallengeRecords(challenges,habits,add){
   if(!_isPlainRecord(challenges))return;
-  var requiredHabitKeys=['steps','movement','duolingo','manna','food','alcohol','career'];
+  var legacyHabitKeys=['steps','movement','duolingo','manna','food','alcohol','career'];
+  var winterRuleIds=['steps','workout','water','duolingo','reading','manna','alcohol','eating'];
   var habitIds=Object.create(null);(Array.isArray(habits)?habits:[]).forEach(function(h){if(h&&typeof h.id==='string')habitIds[h.id]=true});
   Object.keys(challenges).forEach(function(id){
     var challenge=challenges[id],path='state.challenges.'+id;
@@ -216,27 +217,60 @@ function _validateChallengeRecords(challenges,habits,add){
     if(challenge.continuation!=='continue')add(path+'.continuation','must be continue');
     if(!Number.isFinite(challenge.waterTargetMl)||challenge.waterTargetMl<=0)add(path+'.waterTargetMl','must be a positive number');
     if(!Number.isFinite(challenge.waterGlassMl)||challenge.waterGlassMl<=0)add(path+'.waterGlassMl','must be a positive number');
+    if(challenge.definitionVersion===1&&challenge.planId==='winter-arc-75-me-2026'){
+      if(challenge.startDate!=='2026-10-05'||challenge.endDate!=='2026-12-18')add(path+'.startDate','must match the immutable Winter Arc dates');
+      if(challenge.planVersion!==1)add(path+'.planVersion','must be 1');
+      if(!Array.isArray(challenge.ruleIds)||challenge.ruleIds.length!==8||new Set(challenge.ruleIds).size!==8||winterRuleIds.some(function(rule){return challenge.ruleIds.indexOf(rule)===-1}))add(path+'.ruleIds','must contain the eight Winter Arc rules exactly once');
+      if(!_isPlainRecord(challenge.habitIds))add(path+'.habitIds','must be an object');
+      else ['duolingo','manna'].forEach(function(key){var value=challenge.habitIds[key];if(typeof value!=='string'||!habitIds[value])add(path+'.habitIds.'+key,'must reference an existing habit')});
+      return;
+    }
     if(!_isPlainRecord(challenge.habitIds))add(path+'.habitIds','must be an object');
     else{
       var references=[];
-      requiredHabitKeys.forEach(function(key){
+      legacyHabitKeys.forEach(function(key){
         var value=challenge.habitIds[key];
         if(typeof value!=='string'||!/^[A-Za-z0-9_-]{1,80}$/.test(value))add(path+'.habitIds.'+key,'must reference a valid habit id');
-        else{
-          references.push(value);
-          if(!habitIds[value])add(path+'.habitIds.'+key,'must reference an existing habit');
-        }
+        else{references.push(value);if(!habitIds[value])add(path+'.habitIds.'+key,'must reference an existing habit')}
       });
       if(new Set(references).size!==references.length)add(path+'.habitIds','must reference seven distinct habits');
     }
   });
 }
 
+function _validateWinterArcDomains(state,add){
+  if(_isPlainRecord(state.dailyCheckIns))Object.keys(state.dailyCheckIns).forEach(function(key){
+    var row=state.dailyCheckIns[key],path='state.dailyCheckIns.'+key;if(!_validDateKey(key)){add(path,'key must be a valid date');return}if(!_isPlainRecord(row)){add(path,'must be an object');return}
+    if(row.date!==undefined&&row.date!==key)add(path+'.date','must match its date key');
+    [['hipPain',0,10],['sleepHours',0,24],['steps',0,200000],['proteinG',0,1000],['calories',0,20000]].forEach(function(rule){var v=row[rule[0]];if(v!==undefined&&(!Number.isFinite(v)||v<rule[1]||v>rule[2]))add(path+'.'+rule[0],'is outside its allowed range')});
+    if(row.alcoholState!==undefined&&['none','special-occasion','outside-plan'].indexOf(row.alcoholState)===-1)add(path+'.alcoholState','is invalid');
+    if(row.balancedPortionsConfirmed!==undefined&&typeof row.balancedPortionsConfirmed!=='boolean')add(path+'.balancedPortionsConfirmed','must be boolean');
+  });
+  if(_isPlainRecord(state.trainingSessions))Object.keys(state.trainingSessions).forEach(function(id){
+    var session=state.trainingSessions[id],path='state.trainingSessions.'+id;if(!_isPlainRecord(session)){add(path,'must be an object');return}if(session.id!==id)add(path+'.id','must match its occurrence key');if(!_validDateKey(session.date))add(path+'.date','must be a valid date');if(session.planId!=='winter-arc-75-me-2026'||session.planVersion!==1)add(path+'.planId','must reference Winter Arc v1');if(['planned','in-progress','completed'].indexOf(session.status)===-1)add(path+'.status','is invalid');if(!Array.isArray(session.exercises))add(path+'.exercises','must be an array');if(!Number.isFinite(Number(session.durationSec))||Number(session.durationSec)<0)add(path+'.durationSec','must be non-negative');
+    var canonical=typeof winterArcOccurrence==='function'&&_validDateKey(session.date)?winterArcOccurrence(session.date):null;if(!canonical)add(path+'.date','must fall inside the Winter Arc block');else if(id!==canonical.id)add(path+'.id','must be the deterministic occurrence id');
+    if(session.occurrenceId!==id)add(path+'.occurrenceId','must match the deterministic occurrence id');
+    var rawVariant=canonical&&session.code===canonical.code&&session.kind===canonical.kind&&session.qualifies===true,recoveryVariant=canonical&&session.code==='REC-SAFETY'&&session.kind==='recovery'&&session.qualifies===true,restVariant=canonical&&session.code==='REST-SAFETY'&&session.kind==='rest'&&session.qualifies===false;
+    if(canonical&&!rawVariant&&!recoveryVariant&&!restVariant)add(path+'.code','must be a canonical or safety-override variant');
+    if(session.status==='completed'&&(typeof session.startedAt!=='string'||typeof session.completedAt!=='string'))add(path+'.completedAt','completed sessions require start and completion timestamps');
+    var expectedDefs=[],canonicalExerciseDefs={};if(canonical&&rawVariant&&canonical.kind==='strength'){expectedDefs=(canonical.exercises||[]).filter(function(def){var count=def.phaseSets&&def.phaseSets[canonical.phase.key]!==undefined?def.phaseSets[canonical.phase.key]:canonical.phase.mainSets;return count>0});expectedDefs.forEach(function(def){canonicalExerciseDefs[def.id]=def});if(!Array.isArray(session.exercises)||session.exercises.length!==expectedDefs.length)add(path+'.exercises','must contain every scheduled exercise')}
+    var exerciseIds={},setIds={};
+    (Array.isArray(session.exercises)?session.exercises:[]).forEach(function(ex,ei){var ep=path+'.exercises['+ei+']';if(!_isPlainRecord(ex)||typeof ex.id!=='string'||typeof ex.exerciseId!=='string'){add(ep,'must have stable IDs');return}if(ex.id!==id+'__'+ex.exerciseId)add(ep+'.id','must be deterministic');if(exerciseIds[ex.exerciseId])add(ep+'.exerciseId','must be unique');exerciseIds[ex.exerciseId]=true;var scheduledDef=canonical&&canonical.exercises&&(canonical.exercises||[]).find(function(def){return def.id===ex.exerciseId}),allowed=!!scheduledDef;if(!allowed)add(ep+'.exerciseId','is not part of the scheduled occurrence');if(scheduledDef&&scheduledDef.mode==='ladder'){var maxRung=Math.max(1,Number(scheduledDef.rungs||7));if(!Number.isFinite(Number(ex.rung))||Number(ex.rung)<1||Number(ex.rung)>maxRung)add(ep+'.rung','must be within the exercise ladder');if(ex.nextRung!==undefined&&(Number(ex.nextRung)<1||Number(ex.nextRung)>maxRung))add(ep+'.nextRung','must be within the exercise ladder')}var expectedDef=canonicalExerciseDefs[ex.exerciseId];if(expectedDef){var expectedSets=expectedDef.mode==='skill'?1:(expectedDef.phaseSets&&expectedDef.phaseSets[canonical.phase.key]!==undefined?expectedDef.phaseSets[canonical.phase.key]:canonical.phase.mainSets);if(!Array.isArray(ex.sets)||ex.sets.length!==expectedSets)add(ep+'.sets','must match the scheduled set count')}if(!Array.isArray(ex.sets))add(ep+'.sets','must be an array');(Array.isArray(ex.sets)?ex.sets:[]).forEach(function(set,si){var sp=ep+'.sets['+si+']';if(!_isPlainRecord(set)||typeof set.id!=='string')add(sp,'must have a stable ID');else{if(set.id!==ex.id+'__s'+(si+1))add(sp+'.id','must be deterministic');if(setIds[set.id])add(sp+'.id','must be unique');setIds[set.id]=true;if(set.pain!==undefined&&['None','Niggle','Stop'].indexOf(set.pain)===-1)add(sp+'.pain','is invalid');if(set.effort!==undefined&&['Easy','Right','Hard'].indexOf(set.effort)===-1)add(sp+'.effort','is invalid');if(set.done!==undefined&&typeof set.done!=='boolean')add(sp+'.done','must be boolean')}})});
+  });
+  if(_isPlainRecord(state.reading)){
+    if(!_isPlainRecord(state.reading.sessions))add('state.reading.sessions','must be an object');
+    else Object.keys(state.reading.sessions).forEach(function(id){var item=state.reading.sessions[id],path='state.reading.sessions.'+id;if(!_isPlainRecord(item)||item.id!==id)add(path,'must be an ID-keyed record');else{if(!_validDateKey(item.date))add(path+'.date','must be a valid date');if(['active','completed'].indexOf(item.status)===-1)add(path+'.status','is invalid');if(item.elapsedSec!==undefined&&(!Number.isFinite(item.elapsedSec)||item.elapsedSec<0))add(path+'.elapsedSec','must be non-negative')}});
+    if(state.reading.activeSessionId!==null&&state.reading.activeSessionId!==undefined&&(!state.reading.sessions||!state.reading.sessions[state.reading.activeSessionId]))add('state.reading.activeSessionId','must reference a reading session');
+  }
+  if(_isPlainRecord(state.weeklyCheckIns))Object.keys(state.weeklyCheckIns).forEach(function(key){if(!_validDateKey(key)||new Date(key+'T12:00:00').getDay()!==1)add('state.weeklyCheckIns.'+key,'must use a Monday date key')});
+  if(_isPlainRecord(state.cycle)){if(!Array.isArray(state.cycle.observedStarts))add('state.cycle.observedStarts','must be an array');else state.cycle.observedStarts.forEach(function(key){if(!_validDateKey(key))add('state.cycle.observedStarts','contains an invalid date')});if(!Array.isArray(state.cycle.estimates))add('state.cycle.estimates','must be an array')}
+}
+
 function validateLifeHubState(state,options){
   options=options||{};
   if(state&&typeof state==='object'&&!Array.isArray(state))normalizeLifeHubHabits(state);
   var errors=[];var nodes=0;var stringBytes=0;var dangerous=Object.create(null);dangerous.__proto__=true;dangerous.prototype=true;dangerous.constructor=true;
-  var typeRules={goals:'array',habits:'array',workouts:'array',prs:'object',income:'array',expenses:'array',accounts:'array',debts:'array',savingsGoals:'array',metrics:'object',weeklyPlans:'object',reviews:'object',dailyPriorities:'object',trainingEvents:'array',challenges:'object',journal:'object',mood:'object',dailyHighlights:'object',skincare:'object',tasks:'array',relationships:'array',gratitude:'array',wishlist:'array',watchlist:'array',roadmapChecklist:'object',debtPayments:'array',plannedPayments:'array',reminders:'array',water:'object',waterSettings:'object',commitments:'array',netWorthSnapshots:'array',sweep:'object',companion:'object'};
+  var typeRules={goals:'array',habits:'array',workouts:'array',prs:'object',income:'array',expenses:'array',accounts:'array',debts:'array',savingsGoals:'array',metrics:'object',weeklyPlans:'object',reviews:'object',dailyPriorities:'object',trainingEvents:'array',challenges:'object',trainingSessions:'object',dailyCheckIns:'object',reading:'object',cycle:'object',weeklyCheckIns:'object',journal:'object',mood:'object',dailyHighlights:'object',skincare:'object',tasks:'array',relationships:'array',gratitude:'array',wishlist:'array',watchlist:'array',roadmapChecklist:'object',debtPayments:'array',plannedPayments:'array',reminders:'array',water:'object',waterSettings:'object',commitments:'array',netWorthSnapshots:'array',sweep:'object',companion:'object'};
   function add(path,message){if(errors.length<12)errors.push(path+': '+message)}
   function walk(value,path,depth){
     nodes++;if(nodes>100000){add(path,'too many values');return}if(depth>24){add(path,'nesting is too deep');return}
@@ -260,6 +294,7 @@ function validateLifeHubState(state,options){
     Object.keys(typeRules).forEach(function(key){if(state[key]===undefined){if(options.requireCore)add('state.'+key,'required data area is missing');return}var expected=typeRules[key];var actual=Array.isArray(state[key])?'array':(state[key]===null?'null':typeof state[key]);if(actual!==expected)add('state.'+key,'expected '+expected)});
     _validateHabitRecords(state.habits,add);
     _validateChallengeRecords(state.challenges,state.habits,add);
+    _validateWinterArcDomains(state,add);
     if(options.requireCore&&state.trainingPlan===undefined)add('state.trainingPlan','required data area is missing');
     if(options.requireCore&&state.weeklyIntention===undefined)add('state.weeklyIntention','required data area is missing');
     if(state.trainingPlan!==undefined&&state.trainingPlan!==null&&(typeof state.trainingPlan!=='object'||Array.isArray(state.trainingPlan)))add('state.trainingPlan','expected object or null');
@@ -451,6 +486,38 @@ function _mergeHabitDomainChange(pending,remote){
   return {clean:false,reason:'delete-vs-edit',localCandidate:merged.local.present?_clone(merged.local.value):null,localDeleted:!merged.local.present,cloudCandidate:merged.cloud.present?_clone(merged.cloud.value):null,cloudDeleted:!merged.cloud.present,conflicts:[{habitId:'domain',fields:['record']}]};
 }
 
+var LIFEHUB_KEYED_MERGE_DOMAINS={trainingSessions:true,dailyCheckIns:true,weeklyCheckIns:true};
+function _mergeKeyedDomainChange(pending,remote){
+  if(!pending||pending.baseKnown!==true)return {clean:false,reason:'missing-base'};
+  var baseSlot=_slot(!pending.baseDeleted,pending.baseData),localSlot=_slot(!pending.deleted,pending.data),remoteSlot=_slot(!remote.deleted,remote.data);
+  if(baseSlot.present&&localSlot.present&&remoteSlot.present&&_isPlainRecord(baseSlot.value)&&_isPlainRecord(localSlot.value)&&_isPlainRecord(remoteSlot.value)){
+    var base=baseSlot.value,local=localSlot.value,cloud=remoteSlot.value,keys={},localOut={},cloudOut={},conflicts=[];
+    Object.keys(base).concat(Object.keys(local),Object.keys(cloud)).forEach(function(key){keys[key]=true});
+    Object.keys(keys).sort().forEach(function(key){
+      var merged=_mergeSlot(_slot(Object.prototype.hasOwnProperty.call(base,key),base[key]),_slot(Object.prototype.hasOwnProperty.call(local,key),local[key]),_slot(Object.prototype.hasOwnProperty.call(cloud,key),cloud[key]));
+      if(merged.conflict){conflicts.push({recordId:key,fields:['record']});_assignSlot(localOut,key,merged.local);_assignSlot(cloudOut,key,merged.cloud)}
+      else{_assignSlot(localOut,key,merged.result);_assignSlot(cloudOut,key,merged.result)}
+    });
+    return {clean:conflicts.length===0,merged:conflicts.length?null:localOut,deleted:false,localCandidate:localOut,localDeleted:false,cloudCandidate:cloudOut,cloudDeleted:false,conflicts:conflicts};
+  }
+  var mergedSlot=_mergeSlot(baseSlot,localSlot,remoteSlot);
+  if(!mergedSlot.conflict)return {clean:true,merged:mergedSlot.result.present?_clone(mergedSlot.result.value):null,deleted:!mergedSlot.result.present,localCandidate:mergedSlot.result.present?_clone(mergedSlot.result.value):null,cloudCandidate:mergedSlot.result.present?_clone(mergedSlot.result.value):null};
+  return {clean:false,reason:'delete-vs-edit',localCandidate:mergedSlot.local.present?_clone(mergedSlot.local.value):null,localDeleted:!mergedSlot.local.present,cloudCandidate:mergedSlot.cloud.present?_clone(mergedSlot.cloud.value):null,cloudDeleted:!mergedSlot.cloud.present,conflicts:[{recordId:'domain',fields:['record']}]};
+}
+
+function _mergeReadingDomainChange(pending,remote){
+  if(!pending||pending.baseKnown!==true)return {clean:false,reason:'missing-base'};
+  var base=pending.baseDeleted?null:pending.baseData,local=pending.deleted?null:pending.data,cloud=remote.deleted?null:remote.data;
+  if(!_isPlainRecord(base)||!_isPlainRecord(local)||!_isPlainRecord(cloud)||!_isPlainRecord(base.sessions)||!_isPlainRecord(local.sessions)||!_isPlainRecord(cloud.sessions))return _mergeKeyedDomainChange(pending,remote);
+  var sessionPending={baseKnown:true,baseDeleted:false,deleted:false,baseData:base.sessions,data:local.sessions};
+  var sessionRemote={deleted:false,data:cloud.sessions},sessions=_mergeKeyedDomainChange(sessionPending,sessionRemote);
+  var active=_mergeSlot(_slot(Object.prototype.hasOwnProperty.call(base,'activeSessionId'),base.activeSessionId),_slot(Object.prototype.hasOwnProperty.call(local,'activeSessionId'),local.activeSessionId),_slot(Object.prototype.hasOwnProperty.call(cloud,'activeSessionId'),cloud.activeSessionId));
+  var localOut={sessions:sessions.clean?sessions.merged:sessions.localCandidate},cloudOut={sessions:sessions.clean?sessions.merged:sessions.cloudCandidate},conflicts=(sessions.conflicts||[]).slice();
+  if(active.conflict){conflicts.push({recordId:'activeSessionId',fields:['value']});_assignSlot(localOut,'activeSessionId',active.local);_assignSlot(cloudOut,'activeSessionId',active.cloud)}else{_assignSlot(localOut,'activeSessionId',active.result);_assignSlot(cloudOut,'activeSessionId',active.result)}
+  if(localOut.activeSessionId===undefined)localOut.activeSessionId=null;if(cloudOut.activeSessionId===undefined)cloudOut.activeSessionId=null;
+  return {clean:conflicts.length===0,merged:conflicts.length?null:localOut,deleted:false,localCandidate:localOut,localDeleted:false,cloudCandidate:cloudOut,cloudDeleted:false,conflicts:conflicts};
+}
+
 function _queueDomain(domain,value,deleted,force){
   if(!_validDomainName(domain))return;
   var existing=_pendingDomains[domain];var cloudHas=Object.prototype.hasOwnProperty.call(_cloudData,domain);
@@ -570,8 +637,10 @@ function _writeOneDomain(domain){
       var writeData=pending.data,writeDeleted=!!pending.deleted,merge=null;
       if(revision!==Number(pending.baseRevision||0)){
         var remoteInfo={data:remote.data,deleted:!!remote.deleted,revision:revision,updatedAt:_timestampText(remote.updatedAt)};
-        if(domain!=='habits')return {conflict:true,remote:remoteInfo};
-        merge=_mergeHabitDomainChange(pending,remoteInfo);
+        if(domain==='habits')merge=_mergeHabitDomainChange(pending,remoteInfo);
+        else if(domain==='reading')merge=_mergeReadingDomainChange(pending,remoteInfo);
+        else if(LIFEHUB_KEYED_MERGE_DOMAINS[domain])merge=_mergeKeyedDomainChange(pending,remoteInfo);
+        else return {conflict:true,remote:remoteInfo};
         if(!merge.clean)return {conflict:true,remote:remoteInfo,merge:merge};
         writeDeleted=merge.deleted===true;writeData=writeDeleted?null:_clone(merge.merged);
       }
@@ -583,7 +652,15 @@ function _writeOneDomain(domain){
     _domainRevisions[domain]=result.revision;_domainExists[domain]=true;_persistRevisionMetadata();
     if(result.deleted)delete _cloudData[domain];else _cloudData[domain]=_clone(result.data);
     if(_pendingDomains[domain]!==pending){
-      if(domain!=='habits'){
+      var replacement=_pendingDomains[domain];
+      if(domain==='reading'||LIFEHUB_KEYED_MERGE_DOMAINS[domain]){
+        var rebaseBase={baseKnown:true,baseDeleted:!!pending.deleted,baseData:pending.deleted?null:_clone(pending.data),deleted:!!replacement.deleted,data:replacement.deleted?null:_clone(replacement.data)};
+        var rebaseRemote={deleted:!!result.deleted,data:result.deleted?null:_clone(result.data),revision:result.revision};
+        var rebased=domain==='reading'?_mergeReadingDomainChange(rebaseBase,rebaseRemote):_mergeKeyedDomainChange(rebaseBase,rebaseRemote);
+        if(!rebased.clean){_recordConflict(domain,replacement,rebaseRemote,rebased);return}
+        replacement.deleted=rebased.deleted===true;replacement.data=replacement.deleted?null:_clone(rebased.merged);_applyDomain(STATE,domain,{data:replacement.data,deleted:replacement.deleted});_localSnapshots=_clone(STATE);_persistLocalState();
+      }
+      if(domain!=='habits'&&_pendingDomains[domain]){
         _pendingDomains[domain].baseRevision=result.revision;_pendingDomains[domain].baseKnown=true;_pendingDomains[domain].baseData=result.deleted?null:_clone(result.data);_pendingDomains[domain].baseDeleted=!!result.deleted;
       }
       _persistQueue();return;
@@ -687,8 +764,11 @@ function _refreshFromCloud(recoveryOperation){
       var remoteInfo={data:record.data,deleted:!!record.deleted,revision:revision,updatedAt:_timestampText(record.updatedAt)};
       var pending=_pendingDomains[domain];
       if(pending){
-        if(domain==='habits'){
-          var merge=_mergeHabitDomainChange(pending,remoteInfo);
+        var merge=null;
+        if(domain==='habits')merge=_mergeHabitDomainChange(pending,remoteInfo);
+        else if(domain==='reading')merge=_mergeReadingDomainChange(pending,remoteInfo);
+        else if(LIFEHUB_KEYED_MERGE_DOMAINS[domain])merge=_mergeKeyedDomainChange(pending,remoteInfo);
+        if(merge){
           if(merge.clean){
             pending.data=merge.deleted?null:_clone(merge.merged);pending.deleted=merge.deleted===true;
             pending.baseRevision=revision;pending.baseKnown=true;pending.baseData=record.deleted?null:_clone(record.data);pending.baseDeleted=!!record.deleted;pending.queuedAt=new Date().toISOString();

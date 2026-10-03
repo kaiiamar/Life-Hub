@@ -1612,45 +1612,24 @@ function plannerTrainingLoggedToday(dateKey,planned){
   return match?(match.type||match.name||planned.logType):null;
 }
 
-// Today's recovery-first movement card. The root ID stays stable so targeted
-// Planner refreshes can replace it without rebuilding the whole Today view.
+// Today's dated Winter Arc session. Before the block it previews Day 1; during
+// the block it resolves the exact occurrence and applies the morning safety rule.
 function plannerTrainingCard(todayKey){
-  if(typeof todaysTrainingSession!=='function')return '';
-  var t=todaysTrainingSession(todayKey);
-  if(!t)return '';
-
-  var isRecovery=t.trainingType==='recovery';
-  var isCycle=t.trainingType==='cycle';
-  var isSwim=t.trainingType==='swim';
-  var badge=isRecovery?'':'<span class="pw-train-badge">'+(isCycle?'EASY CYCLE':isSwim?'OPTIONAL CARDIO':'MOVEMENT')+'</span>';
+  if(typeof effectiveWinterArcOccurrence!=='function')return '';
+  var p=typeof winterArcPlan==='function'?winterArcPlan():null;if(!p)return '';
+  var key=todayKey||localDateKey(new Date()),inBlock=key>=p.startDate&&key<=p.endDate,lookup=inBlock?key:(key<p.startDate?p.startDate:p.endDate),t=effectiveWinterArcOccurrence(lookup);if(!t)return '';
+  var session=(STATE.trainingSessions||{})[t.id],status=session&&session.status;
+  var badge=inBlock?'W'+t.week+' · '+String(t.phase.key).toUpperCase():'PREVIEW';
   var html='<div class="card planner-card planner-training-card" id="planner-training-card">';
-  html+='<span class="pw-train-watermark" aria-hidden="true">'+escapeHtml(t.icon||'🌿')+'</span>';
-  html+='<div class="planner-card-head"><span class="planner-card-title"><span class="pw-train-bar"></span>Today\'s movement</span>'+badge+'</div>';
-  html+='<div class="planner-train-line"><span class="planner-train-icon">'+escapeHtml(t.icon||'🌿')+'</span>'
-    +'<span class="planner-train-text">'+escapeHtml(t.label+(t.sub?' · '+t.sub:''))+'</span></div>';
-  if(t.detail)html+='<div class="planner-train-pace">'+escapeHtml(t.detail)+'</div>';
-  html+='<div class="planner-train-context">This recovery plan is separate from the 45-minute challenge check. Tick that rule only after a full qualifying session; walking does not count.</div>';
-
-  var logged=plannerTrainingLoggedToday(todayKey,t);
-  if(logged){
-    html+='<div class="planner-train-done">'+escapeHtml(logged)+' ✓ logged</div>';
-  }else{
-    html+='<div class="planner-train-actions">';
-    if(isCycle){
-      html+='<button class="btn btn-sm pw-train-log-btn" onclick="quickLogToday(\'Easy cycle\')">Log easy cycle 🚲</button>';
-      html+='<button class="btn btn-sm btn-ghost" onclick="nav(\'habits\')">Physio + steps</button>';
-    }else if(isSwim){
-      html+='<button class="btn btn-sm pw-train-log-btn" onclick="quickLogToday(\'Beginner swim\')">Log beginner swim 🏊</button>';
-      html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Easy cycle\')">Easy cycle instead</button>';
-      html+='<button class="btn btn-sm btn-ghost" onclick="nav(\'habits\')">Physio + steps</button>';
-    }else{
-      html+='<button class="btn btn-sm pw-train-log-btn" onclick="nav(\'habits\')">Open physio + steps 🌿</button>';
-    }
-    html+='</div>';
-  }
-
-  html+='</div>';
-  return html;
+  html+='<div class="planner-card-head"><span class="planner-card-title"><span class="pw-train-bar"></span>'+(inBlock?'Today’s plan':'Your Winter Arc plan')+'</span><span class="pw-train-badge">'+escapeHtml(badge)+'</span></div>';
+  html+='<div class="planner-train-line"><span class="planner-train-icon">'+escapeHtml(t.kind==='strength'?'🏋🏽‍♀️':t.kind==='cardio'?'💓':t.kind==='rest'?'🛌':'🌸')+'</span><span class="planner-train-text">'+escapeHtml(t.code+' · '+t.label)+'</span></div>';
+  html+='<div class="planner-train-pace">'+escapeHtml(t.durationMin+' minutes · '+t.phase.mainSets+' main sets · RIR '+t.phase.rir)+'</div>';
+  if(inBlock)html+='<div class="wa-safety-mini '+escapeHtml(t.safety.level)+'"><strong>'+escapeHtml(t.safety.title)+'</strong><span>'+escapeHtml(t.safety.message)+'</span>'+(t.safety.contactPhysio?'<span>Two mornings at 3+ — message your physio.</span>':'')+'</div>';
+  else html+='<div class="planner-train-context">Day 1 is Monday 5 October. The plan is dated through Friday 18 December, so every phase and session stays anchored.</div>';
+  html+='<div class="planner-train-actions">';
+  if(inBlock)html+='<button type="button" class="btn btn-sm pw-train-log-btn" onclick="openWinterArcWorkout(\''+key+'\')">'+(status==='completed'?'View summary':status==='in-progress'?'Resume session':'Start session')+'</button><button type="button" class="btn btn-sm btn-ghost" onclick="openWinterArcCheckIn(\''+key+'\')">Daily check-in</button>'+(t.kind!=='recovery'&&t.kind!=='rest'?'<button type="button" class="btn btn-sm btn-ghost" onclick="chooseWinterArcRecovery(\''+key+'\')">Swap to Recovery</button>':'');
+  else html+='<button type="button" class="btn btn-sm pw-train-log-btn" onclick="nav(\'workout\')">See the plan</button>';
+  html+='</div></div>';return html;
 }
 
 // "Daily Focus (1–3)" — lined-notebook style with rounded-square checkboxes.

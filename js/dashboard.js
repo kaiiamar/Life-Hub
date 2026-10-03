@@ -68,6 +68,7 @@ function dayHadActivity(dateKey){
   if(Number((STATE.water||{})[dateKey]||0)>0)return true;
   if((STATE.tasks||[]).some(function(t){return t.done&&t.doneAt===dateKey}))return true;
   if((STATE.workouts||[]).some(function(w){return w.date===dateKey&&(w.type||'').toLowerCase()!=='rest'}))return true;
+  if(Object.keys(STATE.trainingSessions||{}).some(function(id){var s=STATE.trainingSessions[id];return s&&s.date===dateKey&&s.status==='completed'}))return true;
   if((((STATE.metrics||{}).run)||[]).some(function(r){return r.date===dateKey}))return true;
   if((STATE.gratitude||[]).some(function(e){return e.date===dateKey}))return true;
   return false;
@@ -195,8 +196,9 @@ function dashboardTrainingCount(days){
   var sessions=(STATE.workouts||[]).filter(function(w){
     return w&&days.indexOf(w.date)!==-1&&String(w.type||w.name||'').toLowerCase()!=='rest'&&String(w.name||'').toLowerCase()!=='rest day';
   }).length;
+  var typed=Object.keys(STATE.trainingSessions||{}).filter(function(id){var s=STATE.trainingSessions[id];return s&&s.status==='completed'&&days.indexOf(s.date)!==-1}).length;
   var runs=(((STATE.metrics||{}).run)||((STATE.metrics||{}).runs)||[]).filter(function(r){return r&&days.indexOf(r.date)!==-1}).length;
-  return sessions+runs;
+  return sessions+typed+runs;
 }
 
 function dashboardMoodStats(days){
@@ -265,6 +267,7 @@ function buildDashboardViewModel(){
   }
 
   var recentSessions=(STATE.workouts||[]).filter(function(w){return w&&String(w.type||w.name||'').toLowerCase()!=='rest'&&String(w.name||'').toLowerCase()!=='rest day'}).map(function(w){return {date:w.date,title:w.name||w.type||'Training session',detail:(w.muscleGroups||[]).join(', ')||'Training',icon:/hyrox/i.test((w.name||'')+' '+(w.type||''))?'⚡':'🏋️'}});
+  Object.keys(STATE.trainingSessions||{}).forEach(function(id){var session=STATE.trainingSessions[id];if(session&&session.status==='completed')recentSessions.push({date:session.date,title:session.label||session.code||'Winter Arc session',detail:Math.floor(Number(session.durationSec||0)/60)+' min · Winter Arc',icon:session.kind==='strength'?'🏋🏽‍♀️':'💓'})});
   (((STATE.metrics||{}).run)||((STATE.metrics||{}).runs)||[]).forEach(function(run){recentSessions.push({date:run.date,title:Number(run.distance||0)+'km run',detail:run.time||run.note||'Run',icon:'🏃'})});
   recentSessions.sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''))});
 

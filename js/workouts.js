@@ -496,8 +496,17 @@ function quickLogToday(type){
   return record;
 }
 
+function allTrainingHistory(){
+  var legacy=(STATE.workouts||[]).slice();
+  var typed=Object.keys(STATE.trainingSessions||{}).map(function(id){var s=STATE.trainingSessions[id];return {id:s.id,date:s.date,type:'Winter Arc',name:s.label||s.code||'Winter Arc session',note:s.status==='completed'?Math.floor(Number(s.durationSec||0)/60)+' min':s.status==='in-progress'?'In progress':'Planned',isWinterArc:true,status:s.status}});
+  var runs=((STATE.metrics||{}).run||[]).map(function(r){return {id:r.id,date:r.date,type:'Run',name:'Run',note:(r.distance?r.distance+'km':'')+(r.time?' · '+r.time:'')+(r.note?' · '+r.note:''),isRun:true}});
+  return legacy.concat(typed,runs).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')});
+}
+
 function sessionCard(w){
-  var typeLabel=w.type||w.name||'Session';var deleteFn=w.isRun?'deleteRunFromWorkout':'deleteWorkout';
+  var typeLabel=w.type||w.name||'Session';
+  if(w.isWinterArc)return '<div class="workout-card wa-history-card"><button type="button" class="wa-history-open" onclick="openWinterArcWorkout(\''+w.date+'\')"><span class="workout-title">'+escapeHtml(w.name)+'</span><span class="workout-meta">'+fmtDate(w.date)+(w.note?' · '+escapeHtml(w.note):'')+'</span></button><span class="badge badge-fit">'+escapeHtml(w.status==='in-progress'?'Resume':'Winter Arc')+'</span><button type="button" class="btn btn-sm btn-danger" onclick="deleteWinterArcSession(\''+w.id+'\')" aria-label="Delete '+escapeHtml(w.name)+'">&#215;</button></div>';
+  var deleteFn=w.isRun?'deleteRunFromWorkout':'deleteWorkout';
   return '<div class="workout-card"><div class="workout-header"><div style="flex:1"><div class="workout-title">'+escapeHtml(typeLabel)+'</div><div class="workout-meta">'+fmtDate(w.date)+(w.note?' · '+escapeHtml(w.note):'')+'</div></div><div style="display:flex;gap:6px;align-items:center"><span class="badge badge-fit">'+escapeHtml(typeLabel)+'</span><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();'+deleteFn+'(\''+w.id+'\')">&#215;</button></div></div></div>';
 }
 
@@ -513,12 +522,9 @@ function deleteWorkout(id){
 
 function renderAllWorkouts(){
   var el=document.getElementById('all-workouts');if(!el)return;
-  // Merge gym sessions AND runs into one unified history (runs live in metrics.run).
-  var sessions=(STATE.workouts||[]).slice();
-  var runs=((STATE.metrics||{}).run||[]).map(function(r){
-    return {id:r.id,date:r.date,type:'Run',name:'Run',note:(r.distance?r.distance+'km':'')+(r.time?' · '+r.time:'')+(r.note?' · '+r.note:''),isRun:true};
-  });
-  var all=sessions.concat(runs).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')});
+  // Legacy workouts and runs remain unchanged; typed Winter Arc occurrences are
+  // composed at read time so History is unified without duplicating evidence.
+  var all=allTrainingHistory();
   if(!all.length){el.innerHTML='<div class="empty">No sessions yet</div>';return}
   var fEl=document.getElementById('muscle-filters');
   if(fEl){
@@ -533,11 +539,7 @@ function filterWorkouts(type,btn){
   document.querySelectorAll('#muscle-filters .filter-btn').forEach(function(b){b.classList.remove('active')});
   btn.classList.add('active');
   var el=document.getElementById('all-workouts');if(!el)return;
-  var sessions=(STATE.workouts||[]).slice();
-  var runs=((STATE.metrics||{}).run||[]).map(function(r){
-    return {id:r.id,date:r.date,type:'Run',name:'Run',note:(r.distance?r.distance+'km':'')+(r.time?' · '+r.time:'')+(r.note?' · '+r.note:''),isRun:true};
-  });
-  var all=sessions.concat(runs).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')});
+  var all=allTrainingHistory();
   var filtered=type==='All'?all:all.filter(function(w){return (w.type||'Other')===type});
   el.innerHTML=filtered.length?filtered.map(function(w){return sessionCard(w)}).join(''):'<div class="empty">No sessions for '+type+'</div>';
 }

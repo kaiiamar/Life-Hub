@@ -12,7 +12,7 @@
 <title>Kai's Life Hub 🤎</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style-new.css?v=53">
+<link rel="stylesheet" href="style-new.css?v=54">
 <!-- Chart.js is lazy-loaded on first visit to a chart page — see ensureChartJs() in js/navigation.js (Part 5.3) -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -355,11 +355,11 @@
       <div class="page-header">
         <div class="header-row">
           <div>
-            <h1>Training</h1>
-            <p>Your recovery-first movement plan, physio rhythm and body trends in one place.</p>
+            <h1>Winter Arc training</h1>
+            <p>Your dated 75-day plan, safe progression, physio and body trends in one place.</p>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn" onclick="openModal('quickLog')">+ Log movement</button>
+            <button class="btn" onclick="openWinterArcCheckIn(localDateKey(new Date()))">Daily check-in</button>
           </div>
         </div>
       </div>
@@ -383,8 +383,8 @@
               <div style="font-size:13px;color:var(--text2)" id="training-week-target">— sessions this week</div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button class="btn btn-accent" onclick="quickLogToday('Easy cycle')">+ Easy cycle</button>
-              <button class="btn" onclick="quickLogToday('Beginner swim')">+ Beginner swim</button>
+              <button class="btn btn-accent" onclick="subNav('workout','myplan')">Open this week’s plan</button>
+              <button class="btn" onclick="openWinterArcCheckIn(localDateKey(new Date()))">Daily check-in</button>
               <button class="btn btn-ghost" onclick="openModal('quickLog')">Other movement</button>
             </div>
           </div>
@@ -427,8 +427,8 @@
       <div class="sub-page" id="workout-myplan">
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-            <div class="card-label" style="margin:0">🌿 Injury re-entry plan</div>
-            <span style="font-size:11px;color:var(--text3)">Day 1 = Monday</span>
+            <div class="card-label" style="margin:0">Winter Arc · dated plan</div>
+            <span style="font-size:11px;color:var(--text3)">5 Oct–18 Dec 2026</span>
           </div>
           <div id="myplan-schedule"></div>
         </div>
@@ -437,7 +437,7 @@
       <!-- Fuel tab: nutrition plan for the training block -->
       <div class="sub-page" id="workout-fuel">
         <div class="page-intro" style="margin-bottom:16px">
-          <div style="font-size:13px;color:var(--text2)">Recovery comes first. Keep protein and regular meals steady; use enough energy to support physio, walking and gentle cardio.</div>
+          <div style="font-size:13px;color:var(--text2)">Fuel the full block: 1,900 kcal target, 140g protein and enough water to train and recover safely.</div>
         </div>
         <div id="training-fuel"></div>
       </div>
@@ -841,21 +841,23 @@
 
 
 
-<script src="js/state.js?v=53"></script>
-<script src="js/persistence.js?v=53"></script>
-<script src="js/navigation.js?v=53"></script>
-<script src="js/dashboard.js?v=53"></script>
-<script src="js/habits.js?v=53"></script>
-<script src="js/workouts.js?v=53"></script>
-<script src="js/challenge.js?v=53"></script>
-<script src="js/finance.js?v=53"></script>
-<script src="js/reviews.js?v=53"></script>
-<script src="js/relationships.js?v=53"></script>
-<script src="js/gratitude.js?v=53"></script>
-<script src="js/insights.js?v=53"></script>
-<script src="js/skincare.js?v=53"></script>
-<script src="js/modals.js?v=53"></script>
-<script src="js/planner.js?v=53"></script>
-<script src="js/init.js?v=53"></script>
+<script src="js/state.js?v=54"></script>
+<script src="js/persistence.js?v=54"></script>
+<script src="js/navigation.js?v=54"></script>
+<script src="js/training-plan-v1.js?v=54"></script>
+<script src="js/dashboard.js?v=54"></script>
+<script src="js/habits.js?v=54"></script>
+<script src="js/workouts.js?v=54"></script>
+<script src="js/winter-arc.js?v=54"></script>
+<script src="js/challenge.js?v=54"></script>
+<script src="js/finance.js?v=54"></script>
+<script src="js/reviews.js?v=54"></script>
+<script src="js/relationships.js?v=54"></script>
+<script src="js/gratitude.js?v=54"></script>
+<script src="js/insights.js?v=54"></script>
+<script src="js/skincare.js?v=54"></script>
+<script src="js/modals.js?v=54"></script>
+<script src="js/planner.js?v=54"></script>
+<script src="js/init.js?v=54"></script>
 </body>
 </html>

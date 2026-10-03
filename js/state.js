@@ -176,6 +176,13 @@ var DEFAULT_STATE = {
   dailyPriorities:{},
   trainingEvents:[],
   trainingPlan:null,
+  // Winter Arc execution is keyed by deterministic occurrence ID. Historical
+  // generic workouts remain in `workouts` and are never rewritten into this map.
+  trainingSessions:{},
+  dailyCheckIns:{},
+  reading:{sessions:{},activeSessionId:null},
+  cycle:{settings:{defaultLengthDays:30},observedStarts:[],estimates:['2026-10-16','2026-11-15','2026-12-15']},
+  weeklyCheckIns:{},
   // Personal challenge definitions are seeded after cloud data loads.
   challenges:{},
   journal:{},mood:{},dailyHighlights:{},
