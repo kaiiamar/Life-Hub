@@ -12,7 +12,7 @@
 <title>Kai's Life Hub 🤎</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style-new.css?v=54">
+<link rel="stylesheet" href="style-new.css?v=55">
 <!-- Chart.js is lazy-loaded on first visit to a chart page — see ensureChartJs() in js/navigation.js (Part 5.3) -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -366,7 +366,6 @@
 
       <div class="page-tabs">
         <button class="page-tab active" onclick="subNav('workout','overview')">Overview</button>
-        <button class="page-tab" onclick="subNav('workout','myplan')">💪 My Plan</button>
         <button class="page-tab" onclick="subNav('workout','fuel')">🍽️ Fuel</button>
         <button class="page-tab" onclick="subNav('workout','body')">💪 Body</button>
         <button class="page-tab" onclick="subNav('workout','history')">📖 History</button>
@@ -383,7 +382,6 @@
               <div style="font-size:13px;color:var(--text2)" id="training-week-target">— sessions this week</div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button class="btn btn-accent" onclick="subNav('workout','myplan')">Open this week’s plan</button>
               <button class="btn" onclick="openWinterArcCheckIn(localDateKey(new Date()))">Daily check-in</button>
               <button class="btn btn-ghost" onclick="openModal('quickLog')">Other movement</button>
             </div>
@@ -420,17 +418,6 @@
             <button class="btn btn-sm" onclick="openModal('addEvent')">+ Add event</button>
           </div>
           <div id="training-events"></div>
-        </div>
-      </div>
-
-      <!-- Weekly schedule -->
-      <div class="sub-page" id="workout-myplan">
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-            <div class="card-label" style="margin:0">Winter Arc · dated plan</div>
-            <span style="font-size:11px;color:var(--text3)">5 Oct–18 Dec 2026</span>
-          </div>
-          <div id="myplan-schedule"></div>
         </div>
       </div>
 
@@ -841,23 +828,23 @@
 
 
 
-<script src="js/state.js?v=54"></script>
-<script src="js/persistence.js?v=54"></script>
-<script src="js/navigation.js?v=54"></script>
-<script src="js/training-plan-v1.js?v=54"></script>
-<script src="js/dashboard.js?v=54"></script>
-<script src="js/habits.js?v=54"></script>
-<script src="js/workouts.js?v=54"></script>
-<script src="js/winter-arc.js?v=54"></script>
-<script src="js/challenge.js?v=54"></script>
-<script src="js/finance.js?v=54"></script>
-<script src="js/reviews.js?v=54"></script>
-<script src="js/relationships.js?v=54"></script>
-<script src="js/gratitude.js?v=54"></script>
-<script src="js/insights.js?v=54"></script>
-<script src="js/skincare.js?v=54"></script>
-<script src="js/modals.js?v=54"></script>
-<script src="js/planner.js?v=54"></script>
-<script src="js/init.js?v=54"></script>
+<script src="js/state.js?v=55"></script>
+<script src="js/persistence.js?v=55"></script>
+<script src="js/navigation.js?v=55"></script>
+<script src="js/training-plan-v1.js?v=55"></script>
+<script src="js/dashboard.js?v=55"></script>
+<script src="js/habits.js?v=55"></script>
+<script src="js/workouts.js?v=55"></script>
+<script src="js/winter-arc.js?v=55"></script>
+<script src="js/challenge.js?v=55"></script>
+<script src="js/finance.js?v=55"></script>
+<script src="js/reviews.js?v=55"></script>
+<script src="js/relationships.js?v=55"></script>
+<script src="js/gratitude.js?v=55"></script>
+<script src="js/insights.js?v=55"></script>
+<script src="js/skincare.js?v=55"></script>
+<script src="js/modals.js?v=55"></script>
+<script src="js/planner.js?v=55"></script>
+<script src="js/init.js?v=55"></script>
 </body>
 </html>

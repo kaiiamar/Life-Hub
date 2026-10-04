@@ -5,7 +5,7 @@
 // supersedes the ?v= query strings on the script/style tags in index.html
 // (those are left in place — harmless). On activate, only stale Life Hub
 // shell/runtime caches are deleted; unrelated origin caches are preserved.
-var VERSION='v54';
+var VERSION='v55';
 var SHELL_PREFIX='lifehub-shell-';
 var RUNTIME_PREFIX='lifehub-runtime-';
 var CACHE=SHELL_PREFIX+VERSION;
@@ -55,7 +55,7 @@ self.addEventListener('install',function(e){
           console.warn('Shell asset was not cached:',asset,err);
         });
       }));
-    }).then(function(){return self.skipWaiting()})
+    })
   );
 });
 
@@ -71,13 +71,7 @@ self.addEventListener('activate',function(e){
         var owned=k.indexOf(SHELL_PREFIX)===0||k.indexOf(RUNTIME_PREFIX)===0;
         if(owned&&k!==CACHE&&k!==RUNTIME_CACHE)return caches.delete(k);
       }));
-    }).then(function(){return self.clients.claim()}).then(function(){
-      // One-release bridge: v53 pages do not know how to react to the new
-      // worker. Navigate them once after v54 claims control so they load the
-      // schema-compatible v54 shell. Remove this bridge after v54 is universal.
-      if(VERSION!=='v54')return;
-      return self.clients.matchAll({type:'window',includeUncontrolled:true}).then(function(clients){return Promise.all(clients.map(function(client){return client.navigate(client.url)}))});
-    })
+    }).then(function(){return self.clients.claim()})
   );
 });
 

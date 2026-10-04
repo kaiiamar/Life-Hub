@@ -5724,3 +5724,6 @@ body.night-mode .wa-exercise,body.night-mode .wa-set-row,body.night-mode .wa-ste
 .wa-stop-callout{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.wa-stop-callout .btn{margin-left:auto;background:#fff;border-color:#D98CA1;color:#87213F}.wa-pr{display:inline-flex;margin-left:6px;padding:2px 6px;border-radius:999px;background:var(--butter);color:#694900;font-size:9px;letter-spacing:.08em;vertical-align:middle}
 
 .wa-history-card{display:flex;align-items:center;gap:10px}.wa-history-open{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:3px;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer;font:inherit}.wa-history-open:focus-visible{outline:3px solid var(--berry);outline-offset:4px;border-radius:8px}
+
+.wa-logger-footer-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.wa-stop-callout>span{flex:1;min-width:180px}
+@media(max-width:600px){.wa-logger-footer-actions{width:100%}.wa-logger-footer-actions .btn{flex:1;justify-content:center}}

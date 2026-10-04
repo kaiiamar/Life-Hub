@@ -162,7 +162,6 @@ function todaysTrainingSession(dateKey){
 
 function renderWorkout(){
   renderTrainingOverview();
-  renderMyPlanSchedule();
   renderAllWorkouts();
 }
 
@@ -505,7 +504,7 @@ function allTrainingHistory(){
 
 function sessionCard(w){
   var typeLabel=w.type||w.name||'Session';
-  if(w.isWinterArc)return '<div class="workout-card wa-history-card"><button type="button" class="wa-history-open" onclick="openWinterArcWorkout(\''+w.date+'\')"><span class="workout-title">'+escapeHtml(w.name)+'</span><span class="workout-meta">'+fmtDate(w.date)+(w.note?' · '+escapeHtml(w.note):'')+'</span></button><span class="badge badge-fit">'+escapeHtml(w.status==='in-progress'?'Resume':'Winter Arc')+'</span><button type="button" class="btn btn-sm btn-danger" onclick="deleteWinterArcSession(\''+w.id+'\')" aria-label="Delete '+escapeHtml(w.name)+'">&#215;</button></div>';
+  if(w.isWinterArc){var offDateDraft=w.status==='in-progress'&&w.date!==localDateKey(new Date()),badge=offDateDraft?'Preview draft':w.status==='in-progress'?'Resume':'Winter Arc';return '<div class="workout-card wa-history-card"><button type="button" class="wa-history-open" onclick="openWinterArcWorkout(\''+w.date+'\')"><span class="workout-title">'+escapeHtml(w.name)+'</span><span class="workout-meta">'+fmtDate(w.date)+(w.note?' · '+escapeHtml(w.note):'')+(offDateDraft?' · open to discard':'')+'</span></button><span class="badge badge-fit">'+escapeHtml(badge)+'</span><button type="button" class="btn btn-sm btn-danger" onclick="deleteWinterArcSession(\''+w.id+'\')" aria-label="Delete '+escapeHtml(w.name)+'">&#215;</button></div>'}
   var deleteFn=w.isRun?'deleteRunFromWorkout':'deleteWorkout';
   return '<div class="workout-card"><div class="workout-header"><div style="flex:1"><div class="workout-title">'+escapeHtml(typeLabel)+'</div><div class="workout-meta">'+fmtDate(w.date)+(w.note?' · '+escapeHtml(w.note):'')+'</div></div><div style="display:flex;gap:6px;align-items:center"><span class="badge badge-fit">'+escapeHtml(typeLabel)+'</span><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();'+deleteFn+'(\''+w.id+'\')">&#215;</button></div></div></div>';
 }
@@ -602,54 +601,6 @@ function trainingRunPace(r){
   var pace=secs/dist,m=Math.floor(pace/60),s=Math.round(pace%60);
   if(s===60){m++;s=0}
   return m+':'+('0'+s).slice(-2);
-}
-
-// ── Weekly injury re-entry plan ──
-// Renders recovery, cycling and optional beginner-swim rows. Physio and steps
-// remain habits so their cadence and completion history are tracked correctly.
-function renderMyPlanSchedule(){
-  var el=document.getElementById('myplan-schedule');if(!el)return;
-  var plan=getTrainingPlan();
-  var wk=weekKey(new Date());
-  var wdays=(typeof weekDays==='function')?weekDays(wk):null; // Mon→Sun
-  var todayIdx=(new Date().getDay()+6)%7;
-  var kindColors={cycle:'var(--sky)',swim:'var(--mint)',recovery:'var(--text3)'};
-  var dayNames={Mon:'Monday',Tue:'Tuesday',Wed:'Wednesday',Thu:'Thursday',Fri:'Friday',Sat:'Saturday',Sun:'Sunday'};
-  var program=plan.program||BODY_COMPOSITION_PROGRAM;
-  var html='<div class="train-plan-block-head">'
-    +'<div class="train-plan-block-week">'+escapeHtml(program.name)+' · '+escapeHtml(program.phase)+'</div>'
-    +'<div class="train-plan-block-race">'+escapeHtml(program.focus)+'</div>'
-  +'</div>';
-  html+='<div class="train-plan-painrule">'+escapeHtml(program.recovery)+'</div>';
-  html+='<div class="train-plan-list">';
-  plan.template.forEach(function(d,i){
-    var isToday=i===todayIdx;
-    var dateKey=wdays?wdays[i]:null;
-    var accepted=d.acceptedLogTypes||[];
-    var logged=dateKey&&(STATE.workouts||[]).find(function(w){
-      var type=String(w.type||w.name||'').toLowerCase();
-      return w.date===dateKey&&accepted.some(function(candidate){return type===String(candidate).toLowerCase()});
-    });
-    html+='<div class="train-plan-day'+(isToday?' is-today':'')+'" style="border-left:4px solid '+(kindColors[d.kind]||kindColors.recovery)+'">';
-    html+='<div class="train-plan-head"><div class="train-plan-head-main">';
-    html+='<div class="train-plan-dayname">'+(dayNames[d.day]||d.day)+(isToday?' · Today':'')+(d.required===false&&d.logType?' · Optional':'')+'</div>';
-    html+='<div class="train-plan-label">'+escapeHtml((d.icon?d.icon+' ':'')+d.label)+'</div>';
-    html+='<div class="train-plan-sub">'+escapeHtml(d.sub||'')+'</div>';
-    html+='</div></div>';
-    if(d.logType&&dateKey){
-      if(logged){
-        html+='<div class="train-plan-runlog done"><span>✓ '+escapeHtml(logged.type||logged.name||d.logType)+' logged</span></div>';
-      }else if(isToday){
-        html+='<div class="train-plan-runlog"><button class="btn btn-sm btn-accent" onclick="quickLogToday(\''+String(d.logType).replace(/'/g,"\\'")+'\')">Log '+escapeHtml(d.logType)+' ✓</button>';
-        if(d.kind==='swim')html+='<button class="btn btn-sm btn-ghost" onclick="quickLogToday(\'Easy cycle\')">Choose easy cycle</button>';
-        html+='</div>';
-      }
-    }
-    html+='</div>';
-  });
-  html+='</div>';
-  html+='<div class="train-plan-hint">Hip physio and the gradual 10k-step goal are tracked in Habits. The Saturday swim is optional; an easy cycle is always a valid swap.</div>';
-  el.innerHTML=html;
 }
 
 // ── Fuel tab ──
@@ -777,45 +728,3 @@ function renderTrainingFuel(){
 
   el.innerHTML=html;
 }
-
-function toggleTrainDay(sessionId){
-  var body=document.getElementById('trainbody-'+sessionId);
-  var chev=document.getElementById('chev-'+sessionId);
-  if(!body)return;
-  var open=body.classList.toggle('open');
-  if(chev)chev.style.transform=open?'rotate(90deg)':'';
-}
-
-function toggleTrainEx(sessionId,exIdx){
-  var plan=getTrainingPlan();
-  var wk=weekKey(new Date());
-  if(!plan.checks[wk])plan.checks[wk]={};
-  if(!plan.checks[wk][sessionId])plan.checks[wk][sessionId]={};
-  plan.checks[wk][sessionId][exIdx]=!plan.checks[wk][sessionId][exIdx];
-  saveState();
-  // Re-render but keep this day expanded
-  renderMyPlanSchedule();
-  var body=document.getElementById('trainbody-'+sessionId);
-  var chev=document.getElementById('chev-'+sessionId);
-  if(body){body.classList.add('open');if(chev)chev.style.transform='rotate(90deg)'}
-  // If every exercise done, log the session + celebrate
-  var def=workoutDef(sessionId);
-  var checks=plan.checks[wk][sessionId]||{};
-  var allDone=def&&def.exercises.every(function(ex,xi){return checks[xi]});
-  if(allDone){
-    var today=localDateKey(new Date());
-    var typeLabel=sessionId.indexOf('lower-')===0?'Lower':sessionId.indexOf('upper-')===0?'Upper':'Strength';
-    var already=(STATE.workouts||[]).some(function(w){return w.date===today&&w.type===typeLabel});
-    if(!already){
-      var snapshot=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
-      if(!STATE.workouts)STATE.workouts=[];
-      var record={id:g(),date:today,type:typeLabel,name:def.title,note:'Plan complete'};STATE.workouts.push(record);
-      applyHabitSource('lifehub.workout.any',today,'workout',record.id);
-      if(!saveStateOrRollback(snapshot)){renderMyPlanSchedule();return}
-      emitLifeHubChange({action:'workout-create',entityId:record.id,dateKeys:[today],domains:['workouts','habits'],source:'training-plan'});
-      fireConfetti({count:120,duration:2600});
-      showCelebrationToast(def.title.split('—')[0].trim()+' complete — logged!','💪');
-    }
-  }
-}
-
