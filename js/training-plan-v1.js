@@ -1,4 +1,4 @@
-// Winter Arc: 75 Me Training Plan v1.0
+// Winter Arc: 75 Me Training Plan v1.1
 // This immutable definition is the single source of truth for the dated block.
 // Execution records reference stable plan/session/exercise IDs and never copy a
 // mutable weekly template into historical data.
@@ -48,8 +48,38 @@
     ]
   };
 
+  var DAILY_CORE={
+    version:1,
+    label:'Daily core coverage',
+    durationMin:6,
+    guidance:'Keep three reps in reserve, breathe normally, and stop for hip, joint or back pain. Chest symptoms or full illness still mean full rest.',
+    coverage:{
+      A:{type:'embedded',label:'A7 dead bug / hollow hold'},
+      Z2:{type:'supplemental',label:'Dead bug + side plank',cardioMinutes:39},
+      REC:{type:'embedded',label:'10-minute recovery core block'},
+      B:{type:'embedded',label:'B7 plank'},
+      INT:{type:'supplemental',label:'Bird dog + Pallof press',cardioMinutes:39},
+      C:{type:'embedded',label:'C7 Pallof press'},
+      AR:{type:'supplemental',label:'90/90 breathing + bird dog',cardioMinutes:39}
+    },
+    supplemental:{
+      Z2:[
+        {id:'DC1',name:'Dead bug',mode:'reps',unit:'reps',loadType:'bodyweight',fixedSets:2,coreMicrodose:true,restSec:30,sides:'each',reps:{foundation:[6,8],build:[6,8],strength:[6,8]}},
+        {id:'DC2',name:'Side plank from knees',mode:'time',loadType:'time',fixedSets:2,coreMicrodose:true,restSec:30,sides:'each',timeRangeSec:{foundation:[15,20],build:[15,20],strength:[15,20]}}
+      ],
+      INT:[
+        {id:'DC3',name:'Bird dog',mode:'reps',unit:'reps',loadType:'bodyweight',fixedSets:2,coreMicrodose:true,restSec:30,sides:'each',reps:{foundation:[6,8],build:[6,8],strength:[6,8]}},
+        {id:'DC4',name:'Pallof press',mode:'reps',unit:'reps',loadType:'cable',startLoadKg:5,incrementKg:2.5,fixedSets:2,coreMicrodose:true,restSec:30,sides:'each',reps:{foundation:[10,12],build:[10,12],strength:[10,12]}}
+      ],
+      AR:[
+        {id:'DC5',name:'90/90 breathing with abdominal brace',mode:'breathing',unit:'breaths',loadType:'bodyweight',fixedSets:1,coreMicrodose:true,noProgression:true,restSec:20,reps:{foundation:[5,5],build:[5,5],strength:[5,5]}},
+        {id:'DC3',name:'Bird dog',mode:'reps',unit:'reps',loadType:'bodyweight',fixedSets:2,coreMicrodose:true,restSec:30,sides:'each',reps:{foundation:[6,8],build:[6,8],strength:[6,8]}}
+      ]
+    }
+  };
+
   var PLAN={
-    id:'winter-arc-75-me-2026',version:1,title:'Winter Arc: 75 Me Training Plan v1.0',
+    id:'winter-arc-75-me-2026',version:1,contentRevision:'1.1',title:'Winter Arc: 75 Me Training Plan v1.1',
     startDate:'2026-10-05',endDate:'2026-12-18',dayCount:75,weekCount:11,weekStartsOn:1,
     safety:{precedence:'Physio or GP guidance always wins.',chest:'Chest symptoms or full illness mean full rest and clinician guidance.',duringSet:'Any hip or joint pain during a set: stop, then swap or skip.',morning:[
       {min:0,max:1,action:'planned',label:'Follow the planned session.'},
@@ -92,15 +122,16 @@
     ],
     weekPattern:[
       {dow:1,code:'A',label:'Gym A · Lower foundations',kind:'strength',durationMin:45,includePhysio:true,qualifies:true},
-      {dow:2,code:'Z2',label:'Zone 2',kind:'cardio',durationMin:45,effort:'4–5/10',options:['Bike','Cross-trainer','Incline walk','Two 25-minute brisk walks'],qualifies:true},
+      {dow:2,code:'Z2',label:'Zone 2 + core',kind:'cardio',durationMin:45,effort:'4–5/10',options:['39 minutes bike','39 minutes cross-trainer','39 minutes incline walk','Brisk walking blocks totalling 39 minutes'],qualifies:true},
       {dow:3,code:'REC',label:'Recovery',kind:'recovery',durationMin:45,includePhysio:true,blocks:[['Physio',15],['Core',10],['Mobility',5],['Easy walk or bike',15]],qualifies:true},
       {dow:4,code:'B',label:'Gym B · Upper & pull-up skill',kind:'strength',durationMin:45,includePhysio:true,qualifies:true},
-      {dow:5,code:'INT',label:'Intervals',kind:'cardio',durationMin:45,qualifies:true},
+      {dow:5,code:'INT',label:'Intervals + core',kind:'cardio',durationMin:45,qualifies:true},
       {dow:6,code:'C',label:'Gym C · Full body',kind:'strength',durationMin:45,includePhysio:true,qualifies:true},
-      {dow:0,code:'AR',label:'Active recovery',kind:'recovery',durationMin:45,options:['Easy bike','Two 25-minute walks','Front-crawl swim'],qualifies:true}
+      {dow:0,code:'AR',label:'Active recovery + core',kind:'recovery',durationMin:45,options:['39 minutes easy bike','Brisk walking blocks totalling 39 minutes','39 minutes front-crawl swim'],qualifies:true}
     ],
     intervals:{foundation:{label:'Bike · 8 × 1 min work / 1 min easy',rounds:8,workSec:60,recoverySec:60},build:{label:'Bike · 10 × 1 min work / 1 min easy',rounds:10,workSec:60,recoverySec:60},deload:{label:'Bike · 6 moderate × 1 min / 1 min easy',rounds:6,workSec:60,recoverySec:60},strength:{label:'SkiErg 10 × 30 sec / 90 sec or bike 6 × 2 min / 2 min',options:[{rounds:10,workSec:30,recoverySec:90},{rounds:6,workSec:120,recoverySec:120}]},taper:{label:'Bike · 6 × 1 min work / 1 min easy',rounds:6,workSec:60,recoverySec:60}},
     physio:PHYSIO,
+    dailyCore:DAILY_CORE,
     exercises:EXERCISES,
     progression:{efforts:['Easy','Right','Hard'],pain:['None','Niggle','Stop'],phaseFormula:'Epley',deloadLoadFactor:0.9,reductionFactor:0.9,timeIncrementSec:5,ladderMaxReps:10,ladderResetReps:6,bodyweightAddKg:8}
   };

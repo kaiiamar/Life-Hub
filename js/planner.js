@@ -1623,7 +1623,8 @@ function plannerTrainingCard(todayKey){
   var html='<div class="card planner-card planner-training-card" id="planner-training-card">';
   html+='<div class="planner-card-head"><span class="planner-card-title"><span class="pw-train-bar"></span>'+(inBlock?'Today’s plan':'Your Winter Arc plan')+'</span><span class="pw-train-badge">'+escapeHtml(badge)+'</span></div>';
   html+='<div class="planner-train-line"><span class="planner-train-icon">'+escapeHtml(t.kind==='strength'?'🏋🏽‍♀️':t.kind==='cardio'?'💓':t.kind==='rest'?'🛌':'🌸')+'</span><span class="planner-train-text">'+escapeHtml(t.code+' · '+t.label)+'</span></div>';
-  html+='<div class="planner-train-pace">'+escapeHtml(t.durationMin+' minutes · '+t.phase.mainSets+' main sets · RIR '+t.phase.rir)+'</div>';
+  html+='<div class="planner-train-pace">'+escapeHtml(t.durationMin+' minutes · '+(t.kind==='strength'?t.phase.mainSets+' main sets · ':'')+'RIR '+t.phase.rir)+'</div>';
+  if(t.core)html+='<div class="wa-core-note"><strong>Daily core included</strong><span>'+escapeHtml(t.core.label)+(t.core.type==='supplemental'?' · about 6 minutes':'')+'</span></div>';
   if(inBlock)html+='<div class="wa-safety-mini '+escapeHtml(t.safety.level)+'"><strong>'+escapeHtml(t.safety.title)+'</strong><span>'+escapeHtml(t.safety.message)+'</span>'+(t.safety.contactPhysio?'<span>Two mornings at 3+ — message your physio.</span>':'')+'</div>';
   else html+='<div class="planner-train-context">Day 1 is Monday 5 October. The plan is dated through Friday 18 December, so every phase and session stays anchored.</div>';
   html+='<div class="planner-train-actions">';

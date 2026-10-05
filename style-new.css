@@ -5727,3 +5727,6 @@ body.night-mode .wa-exercise,body.night-mode .wa-set-row,body.night-mode .wa-ste
 
 .wa-logger-footer-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.wa-stop-callout>span{flex:1;min-width:180px}
 @media(max-width:600px){.wa-logger-footer-actions{width:100%}.wa-logger-footer-actions .btn{flex:1;justify-content:center}}
+
+/* Winter Arc v1.1 daily core coverage */
+.wa-core-note{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding:9px 11px;border:1px solid #D9CFF4;border-radius:11px;background:#F5F1FF;color:#5D3E8E;font-size:12px}.wa-core-note strong{color:#48283C}.wa-core-chip{display:inline-flex;align-items:center;margin-top:9px;padding:5px 9px;border-radius:999px;background:#EEE7FF;color:#5D3E8E;font-size:10px;font-weight:800;letter-spacing:.03em}.wa-core-exercise{border-color:#D9CFF4;background:#FBF9FF}body.night-mode .wa-core-note,body.night-mode .wa-core-chip{background:#3B3150;color:#E1D6FF;border-color:#5A4B79}
