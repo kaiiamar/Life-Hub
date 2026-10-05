@@ -718,7 +718,7 @@ function renderDashMoodMini(){
   var moodEm=['','😞','😐','🙂','😊','🤩'];
   var moodLabels=['','Low','Flat','Okay','Good','Great'];
   if(m.mood){
-    el.innerHTML='<div class="dash-mood-mini-done"><span class="dash-mood-mini-emoji" aria-hidden="true">'+moodEm[m.mood]+'</span><span class="sr-only">Mood: '+moodLabels[m.mood]+'</span><button class="dash-mood-mini-edit" onclick="openModal(\'logMood\',\''+today+'\')">Edit check-in</button></div>';
+    el.innerHTML='<div class="dash-mood-mini-done"><span class="dash-mood-mini-emoji" aria-hidden="true">'+moodEm[m.mood]+'</span><span class="sr-only">Mood: '+moodLabels[m.mood]+'</span><button class="dash-mood-mini-edit" onclick="openModal(\'logMood\',\''+today+'\')">Edit mood</button></div>';
   }else{
     el.innerHTML='<div class="dash-mood-mini-row" aria-label="Log today\'s mood">'
       +['😞','😐','🙂','😊','🤩'].map(function(e,i){

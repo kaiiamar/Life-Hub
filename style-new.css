@@ -5763,3 +5763,14 @@ body.night-mode .wa-exercise,body.night-mode .wa-set-row,body.night-mode .wa-ste
   overflow-wrap:anywhere;
   line-height:1.25;
 }
+
+
+/* v58 — focused 75 Me evidence dialogs */
+.wa-evidence-error{margin:10px 0;padding:9px 11px;border:1px solid #E9AFC0;border-radius:10px;background:#FFF0F4;color:#8A2948;font-size:12px}
+.wa-evidence-choice{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:3px;margin-top:9px;padding:13px 14px;border:1px solid var(--border);border-radius:13px;background:var(--paper2);color:var(--text);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s ease,background .15s ease}
+.wa-evidence-choice:hover,.wa-evidence-choice:focus-visible{border-color:var(--berry);outline:none;box-shadow:0 0 0 3px rgba(185,63,119,.12)}
+.wa-evidence-choice.selected{border-color:var(--berry);background:#FFF0F6}
+.wa-evidence-choice strong{font-size:14px}.wa-evidence-choice span{font-size:11px;line-height:1.4;color:var(--text2)}
+.wa-evidence-divider{display:flex;align-items:center;gap:9px;margin:16px 0 8px;color:var(--text3);font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.wa-evidence-divider::before,.wa-evidence-divider::after{content:'';height:1px;flex:1;background:var(--border)}
+.wa-evidence-hint{margin:-4px 0 12px;font-size:11px;line-height:1.45;color:var(--text3)}
+body.night-mode .wa-evidence-choice.selected{background:#47273A;border-color:#C9739D}body.night-mode .wa-evidence-error{background:#492634;color:#FFD5E2;border-color:#754052}

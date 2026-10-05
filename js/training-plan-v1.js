@@ -1,4 +1,4 @@
-// Winter Arc: 75 Me Training Plan v1.1
+// Winter Arc: 75 Me Training Plan v1.2
 // This immutable definition is the single source of truth for the dated block.
 // Execution records reference stable plan/session/exercise IDs and never copy a
 // mutable weekly template into historical data.
@@ -79,13 +79,18 @@
   };
 
   var PLAN={
-    id:'winter-arc-75-me-2026',version:1,contentRevision:'1.1',title:'Winter Arc: 75 Me Training Plan v1.1',
+    id:'winter-arc-75-me-2026',version:1,contentRevision:'1.2',title:'Winter Arc: 75 Me Training Plan v1.2',
     startDate:'2026-10-05',endDate:'2026-12-18',dayCount:75,weekCount:11,weekStartsOn:1,
-    safety:{precedence:'Physio or GP guidance always wins.',chest:'Chest symptoms or full illness mean full rest and clinician guidance.',duringSet:'Any hip or joint pain during a set: stop, then swap or skip.',morning:[
-      {min:0,max:1,action:'planned',label:'Follow the planned session.'},
-      {min:2,max:2,action:'hold-lower',label:'Upper body as planned. No lower-body increases; split steps.'},
-      {min:3,max:10,action:'recovery',label:'Replace the plan with the Recovery session.'}
-    ],persistent:'Hip pain of 3+ on two consecutive mornings: message your physio.'},
+    safety:{
+      precedence:'Physio or GP guidance always wins.',
+      chest:'Chest symptoms or full illness mean full rest and clinician guidance.',
+      duringSet:'Any hip, joint or back pain during a set: stop, then swap or skip.',
+      choices:[
+        {key:'planned',label:'Train as planned'},
+        {key:'recovery',label:'Use Recovery instead'},
+        {key:'rest',label:'Full rest today'}
+      ]
+    },
     nutrition:{caloriesTarget:1900,caloriesFloor:1700,caloriesRuleMax:2100,proteinTargetG:140,proteinRuleMinG:120,fatTargetG:62,carbsTargetG:200,waterTargetMl:2000,gymWaterRangeMl:[2500,3000]},
     checkIns:[
       {id:'baseline',from:'2026-10-03',to:'2026-10-05',label:'Baseline'},
