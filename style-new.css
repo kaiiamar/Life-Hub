@@ -5730,3 +5730,36 @@ body.night-mode .wa-exercise,body.night-mode .wa-set-row,body.night-mode .wa-ste
 
 /* Winter Arc v1.1 daily core coverage */
 .wa-core-note{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding:9px 11px;border:1px solid #D9CFF4;border-radius:11px;background:#F5F1FF;color:#5D3E8E;font-size:12px}.wa-core-note strong{color:#48283C}.wa-core-chip{display:inline-flex;align-items:center;margin-top:9px;padding:5px 9px;border-radius:999px;background:#EEE7FF;color:#5D3E8E;font-size:10px;font-weight:800;letter-spacing:.03em}.wa-core-exercise{border-color:#D9CFF4;background:#FBF9FF}body.night-mode .wa-core-note,body.night-mode .wa-core-chip{background:#3B3150;color:#E1D6FF;border-color:#5A4B79}
+
+
+/* v57 — challenge tile geometry: reserve the full playful check size. */
+#planner-today .challenge75-row{
+  grid-template-columns:34px minmax(0,1fr)!important;
+  grid-template-rows:auto auto;
+  grid-template-areas:"check label" "check meta";
+  column-gap:10px!important;
+  row-gap:3px;
+  align-items:start;
+}
+#planner-today .challenge75-check{
+  grid-area:check;
+  box-sizing:border-box;
+  align-self:center;
+  justify-self:start;
+  flex:0 0 34px;
+}
+#planner-today .challenge75-label{
+  grid-area:label;
+  min-width:0;
+  margin:0;
+  padding:0;
+  line-height:1.3;
+}
+#planner-today .challenge75-meta{
+  grid-area:meta;
+  min-width:0;
+  margin:0;
+  padding:0;
+  overflow-wrap:anywhere;
+  line-height:1.25;
+}
