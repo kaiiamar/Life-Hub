@@ -499,7 +499,7 @@ function quickLogToday(type){
 
 function allTrainingHistory(){
   var legacy=(STATE.workouts||[]).slice();
-  var typed=Object.keys(STATE.trainingSessions||{}).map(function(id){var s=STATE.trainingSessions[id];return {id:s.id,date:s.date,type:'Winter Arc',name:s.label||s.code||'Winter Arc session',note:s.status==='completed'?Math.floor(Number(s.durationSec||0)/60)+' min':s.status==='in-progress'?'In progress':'Planned',isWinterArc:true,status:s.status}});
+  var typed=Object.keys(STATE.trainingSessions||{}).map(function(id){var s=STATE.trainingSessions[id];return {id:s.id,date:s.date,type:'Winter Arc',name:s.label||s.code||'Winter Arc session',note:s.status==='completed'?(Number(s.durationSec||0)>0?Math.floor(Number(s.durationSec)/60)+' min':'Completed'):s.status==='in-progress'?'In progress':'Planned',isWinterArc:true,status:s.status}});
   var runs=((STATE.metrics||{}).run||[]).map(function(r){return {id:r.id,date:r.date,type:'Run',name:'Run',note:(r.distance?r.distance+'km':'')+(r.time?' · '+r.time:'')+(r.note?' · '+r.note:''),isRun:true}});
   return legacy.concat(typed,runs).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')});
 }

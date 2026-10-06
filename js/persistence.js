@@ -1,7 +1,7 @@
 // ============================================================
 // REVISIONED DOMAIN PERSISTENCE
 // ============================================================
-var LIFEHUB_SCHEMA_VERSION=6;
+var LIFEHUB_SCHEMA_VERSION=7;
 var LIFEHUB_QUEUE_KEY='lifehub_sync_queue_v2';
 var LIFEHUB_CONFLICT_KEY='lifehub_sync_conflicts_v2';
 var LIFEHUB_META_KEY='lifehub_local_meta_v2';
@@ -245,6 +245,7 @@ function _validateWinterArcDomains(state,add){
     [['hipPain',0,10],['sleepHours',0,24],['steps',0,200000],['proteinG',0,1000],['calories',0,20000]].forEach(function(rule){var v=row[rule[0]];if(v!==undefined&&(!Number.isFinite(v)||v<rule[1]||v>rule[2]))add(path+'.'+rule[0],'is outside its allowed range')});
     if(row.alcoholState!==undefined&&['none','special-occasion','outside-plan'].indexOf(row.alcoholState)===-1)add(path+'.alcoholState','is invalid');
     if(row.balancedPortionsConfirmed!==undefined&&typeof row.balancedPortionsConfirmed!=='boolean')add(path+'.balancedPortionsConfirmed','must be boolean');
+    if(row.manualConfirmations!==undefined){if(!_isPlainRecord(row.manualConfirmations))add(path+'.manualConfirmations','must be an object');else{Object.keys(row.manualConfirmations).forEach(function(ruleId){if(['reading','workout'].indexOf(ruleId)===-1)add(path+'.manualConfirmations.'+ruleId,'is not supported');else if(row.manualConfirmations[ruleId]!==true)add(path+'.manualConfirmations.'+ruleId,'must be true or omitted')})}}
     if(row.sessionChoice!==undefined&&['recovery','rest'].indexOf(row.sessionChoice)===-1)add(path+'.sessionChoice','must be recovery or rest');
   });
   if(_isPlainRecord(state.trainingSessions))Object.keys(state.trainingSessions).forEach(function(id){

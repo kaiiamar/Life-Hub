@@ -267,7 +267,7 @@ function buildDashboardViewModel(){
   }
 
   var recentSessions=(STATE.workouts||[]).filter(function(w){return w&&String(w.type||w.name||'').toLowerCase()!=='rest'&&String(w.name||'').toLowerCase()!=='rest day'}).map(function(w){return {date:w.date,title:w.name||w.type||'Training session',detail:(w.muscleGroups||[]).join(', ')||'Training',icon:/hyrox/i.test((w.name||'')+' '+(w.type||''))?'⚡':'🏋️'}});
-  Object.keys(STATE.trainingSessions||{}).forEach(function(id){var session=STATE.trainingSessions[id];if(session&&session.status==='completed')recentSessions.push({date:session.date,title:session.label||session.code||'Winter Arc session',detail:Math.floor(Number(session.durationSec||0)/60)+' min · Winter Arc',icon:session.kind==='strength'?'🏋🏽‍♀️':'💓'})});
+  Object.keys(STATE.trainingSessions||{}).forEach(function(id){var session=STATE.trainingSessions[id];if(session&&session.status==='completed')recentSessions.push({date:session.date,title:session.label||session.code||'Winter Arc session',detail:(Number(session.durationSec||0)>0?Math.floor(Number(session.durationSec)/60)+' min':'Completed')+' · Winter Arc',icon:session.kind==='strength'?'🏋🏽‍♀️':'💓'})});
   (((STATE.metrics||{}).run)||((STATE.metrics||{}).runs)||[]).forEach(function(run){recentSessions.push({date:run.date,title:Number(run.distance||0)+'km run',detail:run.time||run.note||'Run',icon:'🏃'})});
   recentSessions.sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''))});
 

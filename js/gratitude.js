@@ -99,24 +99,19 @@ function renderMetricsWater(){
     return '<div style="text-align:center"><div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">'+dayLabel+'</div><div style="height:80px;background:var(--bg3);border-radius:10px;position:relative;overflow:hidden;display:flex;align-items:flex-end"><div style="width:100%;height:'+pct+'%;background:linear-gradient(180deg,#7CA5C2,#A5C4DC);transition:height 0.5s var(--ease)"></div></div><div style="font-size:11px;font-weight:600;color:var(--fg);margin-top:6px">'+d.count+'/'+target+'</div></div>';
   }).join('')+'</div>';
 }
+function setWaterGlasses(dateKey,count,options){
+  options=options||{};var key=String(dateKey||''),value=Number(count);if((typeof _validDateKey==='function'&&!_validDateKey(key))||key>localDateKey(new Date())||!Number.isInteger(value)||value<0||value>100)return false;var snapshot=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));if(!STATE.water)STATE.water={};if(value===0)delete STATE.water[key];else STATE.water[key]=value;if(typeof saveStateOrRollback==='function'?!saveStateOrRollback(snapshot):!saveState()){return false}if(typeof emitLifeHubChange==='function')emitLifeHubChange({action:'water-update',dateKeys:[key],domains:['water'],source:'water',rendered:!!options.rendered});return true;
+}
 function logWaterGlass(count){
-  var today=localDateKey(new Date());
-  if(!STATE.water)STATE.water={};
-  var prev=STATE.water[today]||0;
-  STATE.water[today]=Math.max(0,count);
-  saveState();
-  if(typeof emitLifeHubChange==='function')emitLifeHubChange({action:'water-update',dateKeys:[today],domains:['water'],source:'water',rendered:true});
+  var today=localDateKey(new Date()),prev=Number((STATE.water||{})[today]||0);if(!setWaterGlasses(today,Math.max(0,Math.round(Number(count)||0)),{rendered:true}))return false;
   renderMetricsWater();
-  if(typeof renderPlannerWater === 'function') renderPlannerWater();
+  if(typeof renderPlannerWater==='function')renderPlannerWater();
   if(typeof refreshDashboardIfActive==='function')refreshDashboardIfActive();
-  // Celebrate hitting the daily target (crossing, not already there)
   var target=Number((STATE.waterSettings&&STATE.waterSettings.target)||8);
-  if(prev<target&&STATE.water[today]>=target){
-    celebrateOnce('water-goal',function(){
-      fireConfetti({count:60,duration:1800,colors:['#7CA5C2','#A5C4DC','#5A8FB0','#89B5D1']});
-      showCelebrationToast('Hydration goal hit!','💧');
-    });
+  if(prev<target&&Number((STATE.water||{})[today]||0)>=target){
+    celebrateOnce('water-goal',function(){fireConfetti({count:60,duration:1800,colors:['#7CA5C2','#A5C4DC','#5A8FB0','#89B5D1']});showCelebrationToast('Hydration goal hit!','💧')});
   }
+  return true;
 }
 
 function saveWaterSettings(){
