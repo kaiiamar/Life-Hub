@@ -1631,7 +1631,7 @@ function plannerTrainingCard(todayKey){
   if(inBlock){
     if(t.kind==='rest')html+='<span class="planner-train-done">Full rest selected</span><button type="button" class="btn btn-sm btn-ghost" onclick="restoreWinterArcPlan(\''+key+'\')">Restore planned session</button>';
     else{
-      html+='<button type="button" class="btn btn-sm pw-train-log-btn" onclick="openWinterArcWorkout(\''+key+'\')">'+(status==='completed'?'View summary':status==='in-progress'?'Resume session':'Start session')+'</button>';
+      html+='<button type="button" class="btn btn-sm pw-train-log-btn" data-training-date="'+key+'" onclick="openWinterArcWorkout(\''+key+'\')">'+(status==='completed'?'View summary':status==='in-progress'?'Resume session':'Start session')+'</button>';
       if(t.originalCode)html+='<button type="button" class="btn btn-sm btn-ghost" onclick="restoreWinterArcPlan(\''+key+'\')">Restore planned session</button>';
       else if(t.kind!=='recovery')html+='<button type="button" class="btn btn-sm btn-ghost" onclick="chooseWinterArcRecovery(\''+key+'\')">Use Recovery instead</button>';
       html+='<button type="button" class="btn btn-sm btn-ghost" onclick="chooseWinterArcFullRest(\''+key+'\')">Full rest today</button>';

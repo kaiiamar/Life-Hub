@@ -432,10 +432,11 @@ function ensureChartJs(cb){
   document.head.appendChild(s);
 }
 
-function nav(page){
+function nav(page,onComplete){
   // Transition out current page
   var current=document.querySelector('.page.active');
   var pageEl=document.getElementById('page-'+page);
+  var shellPage=page==='winter-arc'?'workout':page;
   if(!pageEl)return;
 
   function applyNav(){
@@ -444,25 +445,26 @@ function nav(page){
     document.querySelectorAll('.topnav-link').forEach(function(b){b.classList.remove('active')});
     document.querySelectorAll('.mobile-command-item').forEach(function(b){b.classList.remove('active');b.removeAttribute('aria-current')});
     pageEl.classList.add('active');
-    document.querySelectorAll('.nav-item').forEach(function(b){if(b.getAttribute('onclick')==="nav('"+page+"')"){b.classList.add('active');b.setAttribute('aria-current','page')}});
+    document.querySelectorAll('.nav-item').forEach(function(b){if(b.getAttribute('onclick')==="nav('"+shellPage+"')"){b.classList.add('active');b.setAttribute('aria-current','page')}});
     var mainPages=['dashboard','habits','workout','skincare','gratitude'];
     var matched=false;
-    document.querySelectorAll('.topnav-link').forEach(function(b){if(b.getAttribute('data-page')===page){b.classList.add('active');matched=true}});
-    document.querySelectorAll('.mobile-command-item[data-page]').forEach(function(b){if(b.getAttribute('data-page')===page){b.classList.add('active');b.setAttribute('aria-current','page')}});
+    document.querySelectorAll('.topnav-link').forEach(function(b){if(b.getAttribute('data-page')===shellPage){b.classList.add('active');matched=true}});
+    document.querySelectorAll('.mobile-command-item[data-page]').forEach(function(b){if(b.getAttribute('data-page')===shellPage){b.classList.add('active');b.setAttribute('aria-current','page')}});
     var mobileDirect=['planner','dashboard','habits','workout'];
     var mobileMore=document.getElementById('mobile-command-more');
-    if(mobileMore&&mobileDirect.indexOf(page)===-1){mobileMore.classList.add('active');mobileMore.setAttribute('aria-current','page')}
+    if(mobileMore&&mobileDirect.indexOf(shellPage)===-1){mobileMore.classList.add('active');mobileMore.setAttribute('aria-current','page')}
     // If not a main tab, highlight the More button instead
-    if(!matched&&mainPages.indexOf(page)===-1){
+    if(!matched&&mainPages.indexOf(shellPage)===-1){
       var moreBtn=document.getElementById('topnav-more-btn');
       if(moreBtn)moreBtn.classList.add('active');
     }
-    var titles={planner:'75 Me Challenge',dashboard:'Dashboard',goals:'Goals',habits:'Habits',workout:'Movement',finance:'Finance',review:'Reviews',insights:'Insights',relationships:'Relationships',gratitude:'Gratitude',watchlist:'Watch List',wishlist:'Wishlist',skincare:'Skincare',tasks:'Tasks'};
+    var titles={planner:'75 Me Challenge',dashboard:'Dashboard',goals:'Goals',habits:'Habits',workout:'Movement',finance:'Finance',review:'Reviews',insights:'Insights',relationships:'Relationships',gratitude:'Gratitude',watchlist:'Watch List',wishlist:'Wishlist',skincare:'Skincare',tasks:'Tasks','winter-arc':'Winter Arc Session'};
     var mTitle=document.getElementById('mobile-title');if(mTitle)mTitle.textContent=titles[page]||'';
     closeSidebar();
     renderPage(page);
     if(page==='roadmap')refreshRoadmapLiveCards();
     window.scrollTo({top:0,behavior:'smooth'});
+    if(typeof onComplete==='function')setTimeout(onComplete,0);
   }
 
   if(current&&current!==pageEl){
@@ -476,9 +478,24 @@ function nav(page){
   }
 }
 
-function subNav(section,tab){var btns=document.querySelectorAll('#page-'+section+' .page-tab');var pages=document.querySelectorAll('#page-'+section+' .sub-page');btns.forEach(function(b){b.classList.remove('active')});pages.forEach(function(p){p.classList.remove('active')});event.target.classList.add('active');var spEl=document.getElementById(section+'-'+tab);if(spEl)spEl.classList.add('active');if(section==='finance'){renderFinance(tab);if(typeof Chart==='undefined')ensureChartJs(function(){renderFinance(tab)});if(tab!=='overview')refreshRoadmapLiveCards()}if(section==='workout'){if(tab==='history')renderAllWorkouts();if(tab==='body'){renderTrainingBody();if(typeof Chart==='undefined')ensureChartJs(renderTrainingBody)}if(tab==='fuel')renderTrainingFuel();if(tab==='overview')renderTrainingOverview()}if(section==='review'){if(tab==='monthly')renderMonthlyReview()}if(section==='lists'){var addBtn=document.getElementById('lists-add-btn');if(tab==='watch'){renderWatchlist();if(addBtn)addBtn.setAttribute('onclick',"openModal('addWatchItem')")}else if(tab==='wish'){renderWishlist();if(addBtn)addBtn.setAttribute('onclick',"openModal('addWishItem')")}}}
+function subNav(section,tab,trigger){
+  var btns=document.querySelectorAll('#page-'+section+' .page-tab'),pages=document.querySelectorAll('#page-'+section+' .sub-page');
+  var activeButton=trigger||Array.prototype.find.call(btns,function(button){var configured=button.getAttribute('data-tab');var action=button.getAttribute('onclick')||'';return configured===tab||action.indexOf("'"+tab+"'")!==-1})||(window.event&&window.event.currentTarget);
+  btns.forEach(function(button){button.classList.remove('active');button.setAttribute('aria-selected','false');button.setAttribute('tabindex','-1')});
+  pages.forEach(function(page){page.classList.remove('active')});
+  if(activeButton){activeButton.classList.add('active');activeButton.setAttribute('aria-selected','true');activeButton.setAttribute('tabindex','0')}
+  var spEl=document.getElementById(section+'-'+tab);if(spEl)spEl.classList.add('active');
+  if(section==='finance'){renderFinance(tab);if(typeof Chart==='undefined')ensureChartJs(function(){renderFinance(tab)});if(tab!=='overview')refreshRoadmapLiveCards()}
+  if(section==='workout'){if(tab==='calendar'&&typeof renderTrainingCalendar==='function')renderTrainingCalendar();if(tab==='history')renderAllWorkouts();if(tab==='body'){renderTrainingBody();if(typeof Chart==='undefined')ensureChartJs(renderTrainingBody)}if(tab==='fuel')renderTrainingFuel();if(tab==='overview')renderTrainingOverview()}
+  if(section==='review'){if(tab==='monthly')renderMonthlyReview()}
+  if(section==='lists'){var addBtn=document.getElementById('lists-add-btn');if(tab==='watch'){renderWatchlist();if(addBtn)addBtn.setAttribute('onclick',"openModal('addWatchItem')")}else if(tab==='wish'){renderWishlist();if(addBtn)addBtn.setAttribute('onclick',"openModal('addWishItem')")}}
+}
 
-function renderPage(page){if(page==='planner')renderPlanner();if(page==='dashboard')renderDashboard();if(page==='goals')renderGoals();if(page==='habits')renderHabits();if(page==='workout'){renderWorkout();if(typeof Chart==='undefined')ensureChartJs(renderWorkout)}if(page==='finance'){renderFinance('plan');if(typeof Chart==='undefined')ensureChartJs(function(){renderFinance('plan')})}if(page==='review')renderReview();if(page==='relationships')renderRelationships();if(page==='gratitude')renderGratitude();if(page==='lists'){renderWatchlist();renderWishlist()}if(page==='skincare')renderSkincare();if(page==='tasks')renderTasksArchive()}
+function trainingTabKeydown(event){
+  if(['ArrowLeft','ArrowRight','Home','End'].indexOf(event.key)===-1)return;var tabs=Array.prototype.slice.call(document.querySelectorAll('#page-workout .page-tab[data-tab]')),index=tabs.indexOf(event.currentTarget),next=index;if(event.key==='Home')next=0;else if(event.key==='End')next=tabs.length-1;else if(event.key==='ArrowRight')next=(index+1)%tabs.length;else next=(index-1+tabs.length)%tabs.length;event.preventDefault();var target=tabs[next];if(target){target.focus();subNav('workout',target.getAttribute('data-tab'),target)}
+}
+
+function renderPage(page){if(page==='planner')renderPlanner();if(page==='dashboard')renderDashboard();if(page==='goals')renderGoals();if(page==='habits')renderHabits();if(page==='workout'){renderWorkout();var bodyTab=document.getElementById('workout-body');if(bodyTab&&bodyTab.classList.contains('active')&&typeof Chart==='undefined')ensureChartJs(renderTrainingBody)}if(page==='finance'){renderFinance('plan');if(typeof Chart==='undefined')ensureChartJs(function(){renderFinance('plan')})}if(page==='review')renderReview();if(page==='relationships')renderRelationships();if(page==='gratitude')renderGratitude();if(page==='lists'){renderWatchlist();renderWishlist()}if(page==='skincare')renderSkincare();if(page==='tasks')renderTasksArchive();if(page==='winter-arc'&&typeof renderWinterArcPage==='function')renderWinterArcPage();}
 
 var sidebarReturnFocus=null;
 function setSidebarOpen(open){

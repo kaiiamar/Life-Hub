@@ -1,4 +1,5 @@
 var activeSessionId=null;
+var trainingCalendarCursor=null;
 var runCharts={};
 
 // Stub for legacy session viewing
@@ -162,6 +163,7 @@ function todaysTrainingSession(dateKey){
 
 function renderWorkout(){
   renderTrainingOverview();
+  if(typeof renderTrainingCalendar==='function')renderTrainingCalendar();
   renderAllWorkouts();
 }
 
@@ -502,9 +504,27 @@ function allTrainingHistory(){
   return legacy.concat(typed,runs).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')});
 }
 
+function trainingCalendarMonthKey(date){return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')}
+function changeTrainingCalendarMonth(delta){var parts=(trainingCalendarCursor||trainingCalendarMonthKey(new Date())).split('-').map(Number),date=new Date(parts[0],parts[1]-1+Number(delta||0),1);trainingCalendarCursor=trainingCalendarMonthKey(date);renderTrainingCalendar()}
+function resetTrainingCalendarMonth(){trainingCalendarCursor=trainingCalendarMonthKey(new Date());renderTrainingCalendar()}
+function renderTrainingCalendar(){
+  var el=document.getElementById('training-calendar');if(!el)return;var cursor=trainingCalendarCursor||trainingCalendarMonthKey(new Date()),parts=cursor.split('-').map(Number),year=parts[0],month=parts[1]-1,first=new Date(year,month,1),daysInMonth=new Date(year,month+1,0).getDate(),lead=(first.getDay()+6)%7,today=localDateKey(new Date()),history=allTrainingHistory();trainingCalendarCursor=cursor;
+  var monthLabel=first.toLocaleDateString('en-GB',{month:'long',year:'numeric'}),html='<div class="training-calendar-head"><div><div class="card-label">All workouts</div><h2 id="training-calendar-title">'+escapeHtml(monthLabel)+'</h2></div><div class="training-calendar-nav"><button type="button" onclick="changeTrainingCalendarMonth(-1)" aria-label="Previous month">←</button><button type="button" onclick="resetTrainingCalendarMonth()">Today</button><button type="button" onclick="changeTrainingCalendarMonth(1)" aria-label="Next month">→</button></div></div>';
+  html+='<div class="training-calendar-weekdays" aria-hidden="true">'+['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(function(day){return '<span>'+day+'</span>'}).join('')+'</div><div class="training-calendar-grid" role="grid" aria-label="'+escapeHtml(monthLabel)+' workouts">';
+  for(var blank=0;blank<lead;blank++)html+='<span class="training-calendar-blank" aria-hidden="true"></span>';
+  for(var day=1;day<=daysInMonth;day++){
+    var key=year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0'),occurrence=typeof winterArcOccurrence==='function'?winterArcOccurrence(key):null,session=occurrence&&(STATE.trainingSessions||{})[occurrence.id],items=history.filter(function(item){return item.date===key&&!item.isWinterArc}),state=session?session.status:(occurrence?'planned':items.length?'activity':'empty'),primary=session?(session.code+' · '+session.label):(occurrence?(occurrence.code+' · '+occurrence.label):''),extraLabels=items.map(function(item){return item.name||item.type||'Movement'}),label=primary||extraLabels[0]||'No workout',tag=session?(session.status==='completed'?'Done':session.status==='in-progress'?'Active':'Planned'):(occurrence?'Plan':items.length?(items.length+' logged'):'');
+    var inner='<span class="training-calendar-date">'+day+'</span>'+(label?'<span class="training-calendar-session">'+escapeHtml(label)+'</span>':'')+(extraLabels.length?'<span class="training-calendar-extra">'+escapeHtml(extraLabels.join(' · '))+'</span>':'')+(tag?'<span class="training-calendar-tag">'+escapeHtml(tag+(extraLabels.length?' · +'+extraLabels.length:''))+'</span>':'');
+    var ariaDetails=[label].concat(extraLabels).filter(Boolean).join(', ');
+    if(occurrence)html+='<button type="button" role="gridcell" data-training-date="'+key+'" class="training-calendar-day '+state+(extraLabels.length?' has-extra':'')+(key===today?' today':'')+'" onclick="openWinterArcWorkout(\''+key+'\')" aria-label="'+escapeHtml(fmtDate(key)+': '+ariaDetails+', '+tag)+'">'+inner+'</button>';
+    else html+='<div role="gridcell" class="training-calendar-day '+state+(key===today?' today':'')+'" aria-label="'+escapeHtml(fmtDate(key)+': '+ariaDetails)+'">'+inner+'</div>';
+  }
+  html+='</div><div class="training-calendar-legend"><span><i class="planned"></i>Planned</span><span><i class="in-progress"></i>In progress</span><span><i class="completed"></i>Completed</span><span><i class="activity"></i>Other movement</span></div>';el.innerHTML=html;
+}
+
 function sessionCard(w){
   var typeLabel=w.type||w.name||'Session';
-  if(w.isWinterArc){var offDateDraft=w.status==='in-progress'&&w.date!==localDateKey(new Date()),badge=offDateDraft?'Preview draft':w.status==='in-progress'?'Resume':'Winter Arc';return '<div class="workout-card wa-history-card"><button type="button" class="wa-history-open" onclick="openWinterArcWorkout(\''+w.date+'\')"><span class="workout-title">'+escapeHtml(w.name)+'</span><span class="workout-meta">'+fmtDate(w.date)+(w.note?' · '+escapeHtml(w.note):'')+(offDateDraft?' · open to discard':'')+'</span></button><span class="badge badge-fit">'+escapeHtml(badge)+'</span><button type="button" class="btn btn-sm btn-danger" onclick="deleteWinterArcSession(\''+w.id+'\')" aria-label="Delete '+escapeHtml(w.name)+'">&#215;</button></div>'}
+  if(w.isWinterArc){var offDateDraft=w.status==='in-progress'&&w.date!==localDateKey(new Date()),badge=offDateDraft?'Preview draft':w.status==='in-progress'?'Resume':'Winter Arc';return '<div class="workout-card wa-history-card"><button type="button" class="wa-history-open" data-training-date="'+w.date+'" onclick="openWinterArcWorkout(\''+w.date+'\')"><span class="workout-title">'+escapeHtml(w.name)+'</span><span class="workout-meta">'+fmtDate(w.date)+(w.note?' · '+escapeHtml(w.note):'')+(offDateDraft?' · open to discard':'')+'</span></button><span class="badge badge-fit">'+escapeHtml(badge)+'</span><button type="button" class="btn btn-sm btn-danger" onclick="deleteWinterArcSession(\''+w.id+'\')" aria-label="Delete '+escapeHtml(w.name)+'">&#215;</button></div>'}
   var deleteFn=w.isRun?'deleteRunFromWorkout':'deleteWorkout';
   return '<div class="workout-card"><div class="workout-header"><div style="flex:1"><div class="workout-title">'+escapeHtml(typeLabel)+'</div><div class="workout-meta">'+fmtDate(w.date)+(w.note?' · '+escapeHtml(w.note):'')+'</div></div><div style="display:flex;gap:6px;align-items:center"><span class="badge badge-fit">'+escapeHtml(typeLabel)+'</span><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();'+deleteFn+'(\''+w.id+'\')">&#215;</button></div></div></div>';
 }

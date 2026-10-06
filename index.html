@@ -12,7 +12,7 @@
 <title>Kai's Life Hub 🤎</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style-new.css?v=58">
+<link rel="stylesheet" href="style-new.css?v=61">
 <!-- Chart.js is lazy-loaded on first visit to a chart page — see ensureChartJs() in js/navigation.js (Part 5.3) -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -361,15 +361,16 @@
         </div>
       </div>
 
-      <div class="page-tabs">
-        <button class="page-tab active" onclick="subNav('workout','overview')">Overview</button>
-        <button class="page-tab" onclick="subNav('workout','fuel')">🍽️ Fuel</button>
-        <button class="page-tab" onclick="subNav('workout','body')">💪 Body</button>
-        <button class="page-tab" onclick="subNav('workout','history')">📖 History</button>
+      <div class="page-tabs" role="tablist" aria-label="Training views">
+        <button class="page-tab active" type="button" role="tab" data-tab="overview" aria-selected="true" aria-controls="workout-overview" onclick="subNav('workout','overview',this)" onkeydown="trainingTabKeydown(event)">Overview</button>
+        <button class="page-tab" type="button" role="tab" data-tab="calendar" aria-selected="false" aria-controls="workout-calendar" tabindex="-1" onclick="subNav('workout','calendar',this)" onkeydown="trainingTabKeydown(event)">🗓️ Calendar</button>
+        <button class="page-tab" type="button" role="tab" data-tab="fuel" aria-selected="false" aria-controls="workout-fuel" tabindex="-1" onclick="subNav('workout','fuel',this)" onkeydown="trainingTabKeydown(event)">🍽️ Fuel</button>
+        <button class="page-tab" type="button" role="tab" data-tab="body" aria-selected="false" aria-controls="workout-body" tabindex="-1" onclick="subNav('workout','body',this)" onkeydown="trainingTabKeydown(event)">💪 Body</button>
+        <button class="page-tab" type="button" role="tab" data-tab="history" aria-selected="false" aria-controls="workout-history" tabindex="-1" onclick="subNav('workout','history',this)" onkeydown="trainingTabKeydown(event)">📖 History</button>
       </div>
 
       <!-- Overview: session counter + streak + events -->
-      <div class="sub-page active" id="workout-overview">
+      <div class="sub-page active" id="workout-overview" role="tabpanel">
         <!-- Weekly counter -->
         <div class="card" style="margin-bottom:16px;padding:24px 28px">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px">
@@ -418,7 +419,7 @@
       </div>
 
       <!-- Fuel tab: nutrition plan for the training block -->
-      <div class="sub-page" id="workout-fuel">
+      <div class="sub-page" id="workout-fuel" role="tabpanel">
         <div class="page-intro" style="margin-bottom:16px">
           <div style="font-size:13px;color:var(--text2)">Fuel the full block: 1,900 kcal target, 140g protein and enough water to train and recover safely.</div>
         </div>
@@ -426,7 +427,7 @@
       </div>
 
       <!-- Body tab: weight, photos, measurements -->
-      <div class="sub-page" id="workout-body">
+      <div class="sub-page" id="workout-body" role="tabpanel">
         <div class="grid-3" style="margin-bottom:20px" id="training-body-stats"></div>
         <div class="grid-2" style="margin-bottom:16px">
           <div class="card">
@@ -443,13 +444,41 @@
         </div>
       </div>
 
+      <!-- Calendar: planned and logged movement by month -->
+      <div class="sub-page" id="workout-calendar" role="tabpanel">
+        <section class="card training-calendar-card" aria-labelledby="training-calendar-title">
+          <div id="training-calendar"></div>
+        </section>
+      </div>
+
       <!-- History: session log -->
-      <div class="sub-page" id="workout-history">
+      <div class="sub-page" id="workout-history" role="tabpanel">
         <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap" id="muscle-filters"></div>
         <div id="all-workouts"></div>
       </div>
 
     </div><!-- end page-workout -->
+
+    <!-- ══ WINTER ARC SESSION ══ -->
+    <div class="page" id="page-winter-arc">
+      <section class="winter-arc-session-page" aria-labelledby="winter-arc-page-title">
+        <header class="winter-arc-page-header">
+          <button type="button" class="winter-arc-back" id="winter-arc-back" onclick="closeWinterArcPage()" aria-label="Back to training">← <span>Training</span></button>
+          <div class="winter-arc-page-heading">
+            <span id="winter-arc-page-kicker">WINTER ARC</span>
+            <h1 id="winter-arc-page-title">Session</h1>
+          </div>
+        </header>
+        <div id="winter-arc-content" class="winter-arc-page-content"></div>
+      </section>
+      <div id="winter-arc-rest-overlay" class="winter-arc-rest-overlay" hidden>
+        <div class="winter-arc-rest-popup" role="timer" aria-live="assertive" aria-label="Rest countdown">
+          <span>Rest</span>
+          <strong id="winter-arc-rest-clock">0:00</strong>
+          <button type="button" id="winter-arc-rest-skip" onclick="winterArcSkipRestFromPopup()">Skip rest</button>
+        </div>
+      </div>
+    </div>
 
     <!-- ══ FINANCE ══ -->
     <div class="page" id="page-finance">
@@ -824,23 +853,23 @@
 
 
 
-<script src="js/state.js?v=58"></script>
-<script src="js/persistence.js?v=58"></script>
-<script src="js/navigation.js?v=58"></script>
-<script src="js/training-plan-v1.js?v=58"></script>
-<script src="js/dashboard.js?v=58"></script>
-<script src="js/habits.js?v=58"></script>
-<script src="js/workouts.js?v=58"></script>
-<script src="js/winter-arc.js?v=58"></script>
-<script src="js/challenge.js?v=58"></script>
-<script src="js/finance.js?v=58"></script>
-<script src="js/reviews.js?v=58"></script>
-<script src="js/relationships.js?v=58"></script>
-<script src="js/gratitude.js?v=58"></script>
-<script src="js/insights.js?v=58"></script>
-<script src="js/skincare.js?v=58"></script>
-<script src="js/modals.js?v=58"></script>
-<script src="js/planner.js?v=58"></script>
-<script src="js/init.js?v=58"></script>
+<script src="js/state.js?v=61"></script>
+<script src="js/persistence.js?v=61"></script>
+<script src="js/navigation.js?v=61"></script>
+<script src="js/training-plan-v1.js?v=61"></script>
+<script src="js/dashboard.js?v=61"></script>
+<script src="js/habits.js?v=61"></script>
+<script src="js/workouts.js?v=61"></script>
+<script src="js/winter-arc.js?v=61"></script>
+<script src="js/challenge.js?v=61"></script>
+<script src="js/finance.js?v=61"></script>
+<script src="js/reviews.js?v=61"></script>
+<script src="js/relationships.js?v=61"></script>
+<script src="js/gratitude.js?v=61"></script>
+<script src="js/insights.js?v=61"></script>
+<script src="js/skincare.js?v=61"></script>
+<script src="js/modals.js?v=61"></script>
+<script src="js/planner.js?v=61"></script>
+<script src="js/init.js?v=61"></script>
 </body>
 </html>
