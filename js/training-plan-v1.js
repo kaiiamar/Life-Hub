@@ -109,7 +109,7 @@
         {id:'reading',label:'Read for 15 minutes',icon:'📚',evidence:'reading',targetSeconds:900},
         {id:'manna',label:'Manna',icon:'📖',evidence:'habit',habitKey:'manna'},
         {id:'alcohol',label:'Alcohol: special occasions only',icon:'🥂',evidence:'alcohol'},
-        {id:'eating',label:'Eat well',icon:'🍓',evidence:'nutrition',proteinMinG:120,caloriesMin:1700,caloriesMax:2100}
+        {id:'eating',label:'Whole foods, no takeaway',icon:'🍓',evidence:'manual-confirmation',confirmationKey:'eating'}
       ]
     },
     phases:[
