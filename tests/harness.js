@@ -24,6 +24,7 @@ function defaultState(){
     water:{},
     waterSettings:{glassMl:250},
     habits:[
+      {id:'steps-towards-10k-v1',name:'10,000 steps',freq:'daily',badge:'fit',anchor:'anytime',icon:'👟',note:'',startDate:'2026-10-05',logs:{},integrationKeys:['lifehub.steps.10000'],provenanceVersion:1,logProvenance:{},lifecycle:{version:1,inactivePeriods:[{kind:'archived',from:'2026-12-19',to:null}]}},
       {id:'duolingo-habit',name:'Duolingo',freq:'daily',badge:'per',anchor:'anytime',icon:'',note:'',startDate:'2026-10-05',logs:{},integrationKeys:[],provenanceVersion:1,logProvenance:{},lifecycle:{version:1,inactivePeriods:[]}},
       {id:'manna-habit',name:'Manna',freq:'daily',badge:'per',anchor:'anytime',icon:'',note:'',startDate:'2026-10-05',logs:{},integrationKeys:[],provenanceVersion:1,logProvenance:{},lifecycle:{version:1,inactivePeriods:[]}}
     ],
@@ -31,7 +32,7 @@ function defaultState(){
       'winter-arc-75-me-v1':{
         id:'winter-arc-75-me-v1',title:'Winter Arc: 75 Me',startDate:'2026-10-05',endDate:'2026-12-18',continuation:'continue',waterTargetMl:2000,waterGlassMl:250,definitionVersion:1,planId:'winter-arc-75-me-2026',planVersion:1,
         ruleIds:['steps','workout','water','duolingo','reading','manna','alcohol','eating'],
-        habitIds:{duolingo:'duolingo-habit',manna:'manna-habit'}
+        habitIds:{steps:'steps-towards-10k-v1',duolingo:'duolingo-habit',manna:'manna-habit'}
       }
     }
   };
@@ -43,8 +44,9 @@ export function createHarness(options={}){
   installClock(window,options.today||'2026-10-10');
   window.STATE=options.state||defaultState();
   window.localDateKey=function(value){const d=value instanceof window.Date?value:new window.Date(value);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
-  window.saveStateOrRollback=function(){return true};
-  window.emitLifeHubChange=function(){};
+  const emitted=[];
+  window.saveStateOrRollback=function(snapshot){if(options.saveResult===false){window.STATE=window.JSON.parse(window.JSON.stringify(snapshot));return false}return true};
+  window.emitLifeHubChange=function(detail){emitted.push(window.JSON.parse(window.JSON.stringify(detail)))};
   window.refreshPlannerCards=function(){};
   window.showCelebrationToast=function(){};
   window.escapeHtml=function(value){return String(value).replace(/[&<>"']/g,function(char){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]})};
@@ -55,13 +57,16 @@ export function createHarness(options={}){
   window.weekKey=function(date){const next=new window.Date(date);const shift=(next.getDay()+6)%7;next.setDate(next.getDate()-shift);return window.localDateKey(next)};
   window.getHabitProgress=function(habit,start,end){let count=0;Object.keys(habit.logs||{}).forEach(function(key){if(key>=start&&key<=end&&habit.logs[key]===true)count++});return {count:count,target:3,met:count>=3}};
   window.getHabitDayState=function(){return 'active'};
+  window.habitStreak=function(){return 0};
+  window.habitIsActiveOnDate=function(habit,key){if(habit&&habit.startDate&&key<habit.startDate)return false;return !(habit&&habit.lifecycle&&habit.lifecycle.inactivePeriods||[]).some(function(range){return range&&key>=range.from&&(range.to===null||key<range.to)})};
   window.habitManualCompleted=function(habit,key){return !!(habit.logs&&habit.logs[key])};
   window.toggleHabit=function(id,key){const habit=window.STATE.habits.find(function(item){return item.id===id});if(!habit)return false;if(habit.logs[key])delete habit.logs[key];else habit.logs[key]=true;return true};
   window.closeModal=function(){window.document.getElementById('modal').style.display='none'};
+  window.eval(source('js/habits.js'));
   window.eval(source('js/training-plan-v1.js'));
   window.eval(source('js/winter-arc.js'));
   window.eval(source('js/challenge.js'));
-  return {window,document:window.document,state:window.STATE,loadPersistence:function(){window.eval(source('js/persistence.js'))}};
+  return {window,document:window.document,state:window.STATE,emitted:emitted,loadPersistence:function(){window.eval(source('js/persistence.js'))}};
 }
 
 export {ROOT,source};

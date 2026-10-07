@@ -3,8 +3,8 @@
 var journalMoodVals={mood:0,energy:0};
 function habitIntegrationFields(selected){
   selected=Array.isArray(selected)?selected:[];
-  var options=typeof HABIT_INTEGRATION_META!=='undefined'?HABIT_INTEGRATION_META:[];
-  return '<fieldset class="habit-integration-field"><legend>Complete from Life Hub activity <span>(optional)</span></legend><div class="habit-integration-options">'+options.map(function(item){
+  var options=typeof HABIT_INTEGRATION_META!=='undefined'?HABIT_INTEGRATION_META:[],hidden=options.filter(function(item){return item.internal&&selected.indexOf(item.key)!==-1}),selectable=options.filter(function(item){return !item.internal});
+  return hidden.map(function(item){return '<input type="hidden" name="m-hintegration" value="'+item.key+'">'}).join('')+'<fieldset class="habit-integration-field"><legend>Complete from Life Hub activity <span>(optional)</span></legend><div class="habit-integration-options">'+selectable.map(function(item){
     var checked=selected.indexOf(item.key)!==-1?' checked':'';
     return '<label><input type="checkbox" name="m-hintegration" value="'+item.key+'"'+checked+'><span>'+escapeHtml(item.label)+'</span></label>';
   }).join('')+'</div><p>Manual ticks stay independent when linked activity is added or removed.</p></fieldset>';

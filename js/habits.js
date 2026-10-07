@@ -91,6 +91,7 @@ var HABIT_ANCHORS={
 // persistence allowlist so any archived run habit that still carries it
 // continues to validate; it is simply not selectable on new or edited habits.
 var HABIT_INTEGRATION_META=[
+  {key:'lifehub.steps.10000',label:'10,000 steps',sourceKind:'challenge',internal:true},
   {key:'lifehub.workout.any',label:'Any workout',sourceKind:'workout'},
   {key:'lifehub.workout.hyrox',label:'Hyrox workout',sourceKind:'workout'},
   {key:'lifehub.skincare.am',label:'Morning skincare',sourceKind:'skincare'},
@@ -121,8 +122,13 @@ function setManualHabitCompletion(habit,dateKey,present){
   if(entry.manual||Object.keys(entry.sources).length)habit.logProvenance[dateKey]=entry;else delete habit.logProvenance[dateKey];
   projectHabitLogs(habit);
 }
+function _validChallengeHabitSourceRecord(value){
+  var match=/^winter-arc-75-me-v1__(steps|workout)__(\d{4}-\d{2}-\d{2})$/.exec(String(value||''));if(!match)return false;
+  var parts=match[2].split('-').map(Number),date=new Date(parts[0],parts[1]-1,parts[2]);return date.getFullYear()===parts[0]&&date.getMonth()===parts[1]-1&&date.getDate()===parts[2];
+}
 function _habitSourceKey(sourceKind,sourceRecordKey){
-  var key=String(sourceKind||'')+':'+String(sourceRecordKey||'');
+  var kind=String(sourceKind||''),record=String(sourceRecordKey||''),key=kind+':'+record;
+  if(kind==='challenge')return _validChallengeHabitSourceRecord(record)?key:null;
   return /^(workout|run|skincare):[A-Za-z0-9_-]{1,100}$/.test(key)?key:null;
 }
 function applyHabitSource(integrationKey,dateKey,sourceKind,sourceRecordKey){
@@ -144,7 +150,7 @@ function removeHabitSource(sourceKind,sourceRecordKey){
   return changed;
 }
 function selectedHabitIntegrations(){
-  return Array.prototype.slice.call(document.querySelectorAll('input[name="m-hintegration"]:checked')).map(function(input){return input.value});
+  return Array.prototype.slice.call(document.querySelectorAll('input[name="m-hintegration"]')).filter(function(input){return input.type==='hidden'||input.checked}).map(function(input){return input.value});
 }
 function ensureHabitLifecycle(habit){
   if(!habit.lifecycle||habit.lifecycle.version!==1||!Array.isArray(habit.lifecycle.inactivePeriods))habit.lifecycle={version:1,inactivePeriods:[]};

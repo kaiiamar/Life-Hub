@@ -34,6 +34,35 @@ describe('75 Me eating interactions',function(){
     expect(document.querySelector('.challenge-calendar-day.future')).not.toBeNull();
   });
 
+  it('restores focus to the replacement Today tile after confirm and undo',async function(){
+    const {window,document}=createHarness({today:'2026-10-10'});
+    document.body.insertAdjacentHTML('beforeend',window.renderChallenge75Card('2026-10-10'));
+    window.refreshPlannerCards=function(){var current=document.getElementById('planner-challenge-card');if(current)current.outerHTML=window.renderChallenge75Card('2026-10-10')};
+    var tile=document.querySelector('[data-challenge-rule="eating"]');tile.focus();
+    expect(window.challenge75EatingAction('2026-10-10')).toBe(true);
+    await new Promise(function(resolve){window.setTimeout(resolve,0)});
+    expect(document.activeElement).toBe(document.querySelector('[data-challenge-rule="eating"]'));
+    expect(document.activeElement.getAttribute('aria-pressed')).toBe('true');
+    expect(window.challenge75EatingAction('2026-10-10')).toBe(true);
+    await new Promise(function(resolve){window.setTimeout(resolve,0)});
+    expect(document.activeElement).toBe(document.querySelector('[data-challenge-rule="eating"]'));
+    expect(document.activeElement.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('restores focus to the replacement historical action',async function(){
+    const {window,document}=createHarness({today:'2026-10-10'}),past='2026-10-07';
+    window.openChallenge75Amend(past);
+    var action=document.querySelector('[data-challenge-amend-rule="eating"] button');action.focus();
+    expect(window.challenge75AmendRule('eating',past)).toBe(true);
+    await new Promise(function(resolve){window.setTimeout(resolve,0)});
+    expect(document.activeElement).toBe(document.querySelector('[data-challenge-amend-rule="eating"] button'));
+    expect(document.activeElement.textContent).toBe('Undo');
+    expect(window.challenge75AmendRule('eating',past)).toBe(true);
+    await new Promise(function(resolve){window.setTimeout(resolve,0)});
+    expect(document.activeElement).toBe(document.querySelector('[data-challenge-amend-rule="eating"] button'));
+    expect(document.activeElement.textContent).toBe('Mark complete');
+  });
+
   it('shows optional Fuel guidance with no macro completion action',function(){
     const {window,document}=createHarness({today:'2026-10-10'});
     window.renderTrainingFuel();

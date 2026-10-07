@@ -51,13 +51,18 @@ function _validDateKey(value){
   return date.getFullYear()===+parts[0]&&date.getMonth()===+parts[1]-1&&date.getDate()===+parts[2];
 }
 var LIFEHUB_HABIT_INTEGRATIONS={
+  'lifehub.steps.10000':true,
   'lifehub.workout.any':true,
   'lifehub.workout.hyrox':true,
   'lifehub.run.any':true,
   'lifehub.skincare.am':true,
   'lifehub.skincare.pm':true
 };
-function _validHabitSourceKey(value){return typeof value==='string'&&/^(workout|run|skincare):[A-Za-z0-9_-]{1,100}$/.test(value)}
+function _validHabitSourceKey(value){
+  if(typeof value!=='string')return false;
+  var challenge=/^challenge:winter-arc-75-me-v1__(steps|workout)__(\d{4}-\d{2}-\d{2})$/.exec(value);if(challenge)return _validDateKey(challenge[2]);
+  return /^(workout|run|skincare):[A-Za-z0-9_-]{1,100}$/.test(value);
+}
 function _habitProvenancePresent(entry){
   if(!_isPlainRecord(entry))return false;
   if(entry.manual===true)return true;
@@ -197,7 +202,7 @@ function validateHabitDomainData(data){
   return {ok:errors.length===0,errors:errors,data:holder.habits};
 }
 
-function _validateChallengeRecords(challenges,habits,add){
+function _validateChallengeRecords(challenges,habits,add,winterHabitIntegrationV2){
   if(!_isPlainRecord(challenges))return;
   var legacyHabitKeys=['steps','movement','duolingo','manna','food','alcohol','career'];
   var winterRuleIds=['steps','workout','water','duolingo','reading','manna','alcohol','eating'];
@@ -222,7 +227,7 @@ function _validateChallengeRecords(challenges,habits,add){
       if(challenge.planVersion!==1)add(path+'.planVersion','must be 1');
       if(!Array.isArray(challenge.ruleIds)||challenge.ruleIds.length!==8||new Set(challenge.ruleIds).size!==8||winterRuleIds.some(function(rule){return challenge.ruleIds.indexOf(rule)===-1}))add(path+'.ruleIds','must contain the eight Winter Arc rules exactly once');
       if(!_isPlainRecord(challenge.habitIds))add(path+'.habitIds','must be an object');
-      else ['duolingo','manna'].forEach(function(key){var value=challenge.habitIds[key];if(typeof value!=='string'||!habitIds[value])add(path+'.habitIds.'+key,'must reference an existing habit')});
+      else ['duolingo','manna'].concat(winterHabitIntegrationV2?['steps']:[]).forEach(function(key){var value=challenge.habitIds[key];if(typeof value!=='string'||!habitIds[value])add(path+'.habitIds.'+key,'must reference an existing habit')});
       return;
     }
     if(!_isPlainRecord(challenge.habitIds))add(path+'.habitIds','must be an object');
@@ -297,7 +302,7 @@ function validateLifeHubState(state,options){
     Object.keys(state).forEach(function(key){if(!_validDomainName(key))add('state.'+key,'invalid domain name')});
     Object.keys(typeRules).forEach(function(key){if(state[key]===undefined){if(options.requireCore)add('state.'+key,'required data area is missing');return}var expected=typeRules[key];var actual=Array.isArray(state[key])?'array':(state[key]===null?'null':typeof state[key]);if(actual!==expected)add('state.'+key,'expected '+expected)});
     _validateHabitRecords(state.habits,add);
-    _validateChallengeRecords(state.challenges,state.habits,add);
+    _validateChallengeRecords(state.challenges,state.habits,add,state.__winterArcHabitIntegrationV2===true);
     _validateWinterArcDomains(state,add);
     if(options.requireCore&&state.trainingPlan===undefined)add('state.trainingPlan','required data area is missing');
     if(options.requireCore&&state.weeklyIntention===undefined)add('state.weeklyIntention','required data area is missing');

@@ -483,6 +483,12 @@ loadFromCloud(function(){
     }
   }
 
+  // ---- WINTER ARC HABIT INTEGRATION V2 (one-shot) ------------------------
+  // Reconnect only the canonical Steps rhythm and provenance-backed workout
+  // evidence. Rich Water, Reading, Alcohol and Whole-food stores remain the
+  // single source of truth; Duolingo, Manna and Career keep their existing IDs.
+  if(!STATE.__winterArcHabitIntegrationV2&&typeof migrateWinterArcHabitIntegrationV2==='function')migrateWinterArcHabitIntegrationV2();
+
   // ---- RETIRE RUNNING FROM HABITS (one-shot) ------------------------------
   // Running now lives in the training plan (logged per session with pace/detail),
   // so any running habit is retired from the active list. Archived, not deleted:

@@ -4,6 +4,9 @@
   'use strict';
   var PLAN_ID='winter-arc-75-me-2026';
   var CHALLENGE_ID='winter-arc-75-me-v1';
+  var CHALLENGE_ARCHIVE_DATE='2026-12-19';
+
+  function challengeSourceRecord(ruleId,key){return CHALLENGE_ID+'__'+ruleId+'__'+key}
 
   function plan(){return global.WINTER_ARC_TRAINING_V1||null}
   function clone(value){return JSON.parse(JSON.stringify(value))}
@@ -47,6 +50,19 @@
   }
 
   function checkInForDate(value){return (STATE.dailyCheckIns||{})[dateKey(value)]||{}}
+  function reconcileCheckInHabitSources(key,next,patch){
+    var p=plan(),changed=[];if(!p||key<p.startDate||key>p.endDate)return changed;
+    function collect(ids){(ids||[]).forEach(function(id){if(changed.indexOf(id)===-1)changed.push(id)})}
+    if(Object.prototype.hasOwnProperty.call(patch||{},'steps')){
+      var stepRule=p.challenge.rules.find(function(rule){return rule.id==='steps'}),stepSource=challengeSourceRecord('steps',key);
+      collect(stepRule&&Number(next.steps)>=Number(stepRule.target)?applyHabitSource('lifehub.steps.10000',key,'challenge',stepSource):removeHabitSource('challenge',stepSource));
+    }
+    if(Object.prototype.hasOwnProperty.call(patch||{},'manualConfirmations')){
+      var workoutSource=challengeSourceRecord('workout',key),confirmed=!!(next.manualConfirmations&&next.manualConfirmations.workout===true);
+      collect(confirmed?applyHabitSource('lifehub.workout.any',key,'challenge',workoutSource):removeHabitSource('challenge',workoutSource));
+    }
+    return changed;
+  }
   function saveDailyCheckIn(value,patch){
     var key=dateKey(value),snapshot=clone(STATE);if(!STATE.dailyCheckIns)STATE.dailyCheckIns={};var current=STATE.dailyCheckIns[key]||{};
     var next=Object.assign({},current,patch,{date:key,updatedAt:new Date().toISOString()});
@@ -54,22 +70,21 @@
     if(next.hipPain!==undefined){next.hipPain=clampNumber(next.hipPain,0,10);if(next.hipPain===null)delete next.hipPain}
     ['sleepHours','steps','proteinG','calories'].forEach(function(field){if(next[field]!==undefined&&next[field]!==''){var n=Number(next[field]);if(Number.isFinite(n)&&n>=0)next[field]=n;else delete next[field]}});
     if(next.alcoholState&&['none','special-occasion','outside-plan'].indexOf(next.alcoholState)===-1)delete next.alcoholState;
-    STATE.dailyCheckIns[key]=next;if(!saveStateOrRollback(snapshot))return false;
-    emitLifeHubChange({action:'winter-arc-checkin',dateKeys:[key],domains:['dailyCheckIns'],source:'winter-arc'});return true;
+    STATE.dailyCheckIns[key]=next;var habitIds=reconcileCheckInHabitSources(key,next,patch);if(!saveStateOrRollback(snapshot))return false;
+    emitLifeHubChange({action:'winter-arc-checkin',dateKeys:[key],habitIds:habitIds,domains:habitIds.length?['dailyCheckIns','habits']:['dailyCheckIns'],source:'winter-arc'});return true;
   }
 
   function manualConfirmationForDate(value,ruleId){var confirmations=checkInForDate(value).manualConfirmations||{};return confirmations[ruleId]===true}
   function setWinterArcManualConfirmation(value,ruleId,present){var key=dateKey(value),p=plan(),today=dateKey(new Date());if(['reading','workout','eating'].indexOf(ruleId)===-1||key<p.startDate||key>p.endDate||key>today)return false;var current=checkInForDate(key).manualConfirmations||{},next=clone(current);if(present)next[ruleId]=true;else delete next[ruleId];return saveDailyCheckIn(key,{manualConfirmations:Object.keys(next).length?next:null})}
-  function applyManualConfirmationToState(value,ruleId,present){var key=dateKey(value),row=clone(checkInForDate(key)),confirmations=clone(row.manualConfirmations||{});if(present)confirmations[ruleId]=true;else delete confirmations[ruleId];if(Object.keys(confirmations).length)row.manualConfirmations=confirmations;else delete row.manualConfirmations;row.date=key;row.updatedAt=new Date().toISOString();if(!STATE.dailyCheckIns)STATE.dailyCheckIns={};STATE.dailyCheckIns[key]=row}
 
   function habitByChallengeKey(key){var c=(STATE.challenges||{})[CHALLENGE_ID]||{};var id=c.habitIds&&c.habitIds[key];return id?(STATE.habits||[]).find(function(h){return h&&h.id===id}):null}
   function waterEvidence(key,target){var c=(STATE.challenges||{})[CHALLENGE_ID]||{},glassMl=Number(c.waterGlassMl||STATE.waterSettings&&STATE.waterSettings.glassMl||250),glasses=Number((STATE.water||{})[key]||0),ml=glasses*glassMl;return {done:ml>=target,ml:ml,targetMl:target,glasses:glasses,meta:ml+' / '+target+' ml'}}
   function readingSeconds(key){return Object.keys((STATE.reading&&STATE.reading.sessions)||{}).reduce(function(sum,id){var s=STATE.reading.sessions[id];return sum+(s&&s.date===key&&s.completedAt?Number(s.elapsedSec||0):0)},0)}
-  function canonicalSessionEvidence(session,key){if(!session||session.status!=='completed'||session.date!==key||Number(session.durationSec)<2700)return false;var occurrence=winterArcOccurrence(key);if(!occurrence||session.id!==occurrence.id||session.occurrenceId!==occurrence.id||session.planId!==occurrence.planId||session.planVersion!==occurrence.planVersion)return false;if(session.code==='REST-SAFETY'||session.kind==='rest'||session.qualifies!==true)return false;if(session.code==='REC-SAFETY')return session.kind==='recovery'&&Array.isArray(session.exercises)&&session.exercises.length===0;if(session.code!==occurrence.code||session.kind!==occurrence.kind)return false;if(session.planContentRevision==='1.2'&&occurrence.exercises&&occurrence.exercises.length){var expected=(occurrence.exercises||[]).filter(function(def){var count=def.fixedSets!==undefined?def.fixedSets:(def.phaseSets&&def.phaseSets[occurrence.phase.key]!==undefined?def.phaseSets[occurrence.phase.key]:occurrence.phase.mainSets);return count>0});if(!Array.isArray(session.exercises)||session.exercises.length!==expected.length||!expected.every(function(def){return session.exercises.some(function(ex){return ex.exerciseId===def.id&&Array.isArray(ex.sets)})}))return false}return true}
-  function qualifyingWorkoutSeconds(key){return Object.keys(STATE.trainingSessions||{}).reduce(function(sum,id){var s=STATE.trainingSessions[id];return sum+(canonicalSessionEvidence(s,key)?Number(s.durationSec||0):0)},0)}
+  function canonicalSessionEvidence(session,key){if(!session||session.status!=='completed'||session.date!==key||session.manualCompletion!==true&&Number(session.durationSec)<2700)return false;var occurrence=winterArcOccurrence(key);if(!occurrence||session.id!==occurrence.id||session.occurrenceId!==occurrence.id||session.planId!==occurrence.planId||session.planVersion!==occurrence.planVersion)return false;if(session.code==='REST-SAFETY'||session.kind==='rest'||session.qualifies!==true)return false;if(session.code==='REC-SAFETY')return session.kind==='recovery'&&Array.isArray(session.exercises)&&session.exercises.length===0;if(session.code!==occurrence.code||session.kind!==occurrence.kind)return false;if(session.planContentRevision==='1.2'&&occurrence.exercises&&occurrence.exercises.length){var expected=(occurrence.exercises||[]).filter(function(def){var count=def.fixedSets!==undefined?def.fixedSets:(def.phaseSets&&def.phaseSets[occurrence.phase.key]!==undefined?def.phaseSets[occurrence.phase.key]:occurrence.phase.mainSets);return count>0});if(!Array.isArray(session.exercises)||session.exercises.length!==expected.length||!expected.every(function(def){return session.exercises.some(function(ex){return ex.exerciseId===def.id&&Array.isArray(ex.sets)})}))return false}return true}
+  function qualifyingWorkoutSeconds(key){return Object.keys(STATE.trainingSessions||{}).reduce(function(sum,id){var s=STATE.trainingSessions[id];return sum+(canonicalSessionEvidence(s,key)?Math.max(Number(s.durationSec)||0,2700):0)},0)}
   function winterArcRuleStatus(rule,value){
     var key=dateKey(value),check=checkInForDate(key);
-    if(rule.evidence==='daily-steps')return {done:Number(check.steps||0)>=rule.target,value:Number(check.steps||0),target:rule.target,meta:Number(check.steps||0).toLocaleString()+' / '+rule.target.toLocaleString()};
+    if(rule.evidence==='daily-steps'){var stepsHabit=habitByChallengeKey('steps'),steps=Number(check.steps||0);return {done:steps>=rule.target||!!(stepsHabit&&stepsHabit.logs&&stepsHabit.logs[key]),value:steps,target:rule.target,habitId:stepsHabit&&stepsHabit.id||null,meta:steps.toLocaleString()+' / '+rule.target.toLocaleString()}};
     if(rule.evidence==='qualifying-session'){var confirmed=manualConfirmationForDate(key,'workout'),sec=qualifyingWorkoutSeconds(key);return {done:confirmed||sec>=rule.targetSeconds,value:confirmed?rule.targetSeconds:sec,target:rule.targetSeconds,manual:confirmed,meta:confirmed?'Confirmed 45+ min':sec>=rule.targetSeconds?'Recorded 45+ min':'Finish session or amend day'}}
     if(rule.evidence==='water')return waterEvidence(key,rule.targetMl);
     if(rule.evidence==='reading'){var read=readingSeconds(key),readingManual=manualConfirmationForDate(key,'reading');return {done:readingManual||read>=rule.targetSeconds,value:readingManual?rule.targetSeconds:read,target:rule.targetSeconds,manual:readingManual,meta:readingManual?'Confirmed 15 min':read>=rule.targetSeconds?'Recorded 15+ min':'Tap to confirm 15 min'}}
@@ -79,6 +94,27 @@
     return {done:false};
   }
   function winterArcDailyStatus(value){var p=plan(),key=dateKey(value),rows=(p?p.challenge.rules:[]).map(function(rule){return Object.assign({},clone(rule),winterArcRuleStatus(rule,key))});return {date:key,rows:rows,done:rows.filter(function(r){return r.done}).length,total:rows.length,complete:rows.length===8&&rows.every(function(r){return r.done})}}
+
+  function reconcileWinterArcHabitIntegrationV2(){
+    var p=plan(),challenge=STATE.challenges&&STATE.challenges[CHALLENGE_ID];if(!p||!challenge||!Array.isArray(STATE.habits))return false;
+    var legacy=STATE.challenges&&STATE.challenges['intentional-75-2026'],legacyStepsId=legacy&&legacy.habitIds&&legacy.habitIds.steps;
+    var stepsHabit=STATE.habits.find(function(habit){return habit&&habit.id==='steps-towards-10k-v1'})||STATE.habits.find(function(habit){return habit&&habit.id===legacyStepsId});if(!stepsHabit)return false;
+    ensureHabitProvenance(stepsHabit);ensureHabitLifecycle(stepsHabit);if(stepsHabit.integrationKeys.indexOf('lifehub.steps.10000')===-1)stepsHabit.integrationKeys.push('lifehub.steps.10000');
+    if(!stepsHabit.startDate||stepsHabit.startDate>p.startDate)stepsHabit.startDate=p.startDate;
+    // Winter Arc v1 archived legacy challenge habits from its start. Repair only
+    // that exact generated interval; specialized Water, Reading, Alcohol and
+    // Whole-food stores intentionally remain evidence-only rather than duplicate Habits.
+    (stepsHabit.lifecycle.inactivePeriods||[]).forEach(function(range){if(range&&range.kind==='archived'&&range.from===p.startDate&&range.to===null)range.from=CHALLENGE_ARCHIVE_DATE});
+    challenge.habitIds=Object.assign({},challenge.habitIds,{steps:stepsHabit.id});
+    Object.keys(STATE.dailyCheckIns||{}).forEach(function(key){var row=STATE.dailyCheckIns[key];if(key>=p.startDate&&key<=p.endDate&&row&&Number(row.steps)>=10000)applyHabitSource('lifehub.steps.10000',key,'challenge',challengeSourceRecord('steps',key))});
+    Object.keys(STATE.trainingSessions||{}).forEach(function(id){var session=STATE.trainingSessions[id];if(session&&canonicalSessionEvidence(session,session.date))applyHabitSource('lifehub.workout.any',session.date,'workout',session.id)});
+    Object.keys(STATE.dailyCheckIns||{}).forEach(function(key){var row=STATE.dailyCheckIns[key];if(key>=p.startDate&&key<=p.endDate&&row&&row.manualConfirmations&&row.manualConfirmations.workout===true)applyHabitSource('lifehub.workout.any',key,'challenge',challengeSourceRecord('workout',key))});
+    return true;
+  }
+  function migrateWinterArcHabitIntegrationV2(){
+    if(STATE.__winterArcHabitIntegrationV2)return true;var snapshot=clone(STATE);if(!reconcileWinterArcHabitIntegrationV2())return false;STATE.__winterArcHabitIntegrationV2=true;
+    if(!saveStateOrRollback(snapshot,{suppressUndo:true})){STATE=clone(snapshot);return false}return true;
+  }
 
   function previousExerciseContext(exerciseId,beforeDate){var rows=Object.keys(STATE.trainingSessions||{}).map(function(id){return STATE.trainingSessions[id]}).filter(function(s){return s&&s.status==='completed'&&s.date<beforeDate}).sort(function(a,b){return b.date.localeCompare(a.date)});for(var i=0;i<rows.length;i++){var found=(rows[i].exercises||[]).find(function(x){return x.exerciseId===exerciseId});if(found)return {exercise:found,session:rows[i],phase:rows[i].phase||(winterArcOccurrence(rows[i].date)||{}).phase||null}}return null}
   function previousExerciseResult(exerciseId,beforeDate){var context=previousExerciseContext(exerciseId,beforeDate);return context&&context.exercise||null}
@@ -166,13 +202,15 @@
   }
   function findExercise(id){var p=plan(),found=null;Object.keys(p.exercises).some(function(code){found=p.exercises[code].find(function(ex){return ex.id===id});return !!found});if(found)return found;Object.keys(p.dailyCore&&p.dailyCore.supplemental||{}).some(function(code){found=p.dailyCore.supplemental[code].find(function(ex){return ex.id===id});return !!found});return found}
   function stripSessionTimers(session){if(!session)return;delete session.sessionTimer;delete session.restTimer;(session.exercises||[]).forEach(function(exercise){(exercise.sets||[]).forEach(function(set){delete set.timerAnchorMs;delete set.heartbeatMs;delete set.elapsedBeforeSec})})}
-  function finishWinterArcSession(sessionId){var session=sessionRecord(sessionId);if(!session)return false;var snapshot=clone(STATE),safetyChanged=applyCurrentSafety(session);if(session.lockedBySafety==='rest'){if(safetyChanged)saveStateOrRollback(snapshot);return false}if((session.exercises||[]).some(function(ex){return ex.stopLatched&&!ex.swapAccepted&&!ex.skippedAfterStop}))return false;var occurrence=winterArcOccurrence(session.date),pain=null;stripSessionTimers(session);session.durationSec=Math.max(0,Number(session.durationSec)||0);session.manualCompletion=true;session.completedAt=new Date().toISOString();session.updatedAt=session.completedAt;session.status='completed';(session.exercises||[]).forEach(function(ex){var suggestion=nextExerciseSuggestion(ex,occurrence.phase,pain);ex.next=suggestion;ex.minimumMisses=Number(suggestion.minimumMisses||0);if(suggestion.loadKg!=null)ex.nextLoadKg=suggestion.loadKg;if(suggestion.rung!=null)ex.nextRung=suggestion.rung});applyManualConfirmationToState(session.date,'workout',true);if(!saveStateOrRollback(snapshot))return false;emitLifeHubChange({action:'training-finish',entityId:sessionId,dateKeys:[session.date],domains:['trainingSessions','dailyCheckIns'],source:'winter-arc'});return true}
+  function finishWinterArcSession(sessionId){var session=sessionRecord(sessionId);if(!session)return false;var snapshot=clone(STATE),safetyChanged=applyCurrentSafety(session);if(session.lockedBySafety==='rest'){if(safetyChanged)saveStateOrRollback(snapshot);return false}if((session.exercises||[]).some(function(ex){return ex.stopLatched&&!ex.swapAccepted&&!ex.skippedAfterStop}))return false;var occurrence=winterArcOccurrence(session.date),pain=null;stripSessionTimers(session);session.durationSec=Math.max(0,Number(session.durationSec)||0);session.manualCompletion=true;session.completedAt=new Date().toISOString();session.updatedAt=session.completedAt;session.status='completed';(session.exercises||[]).forEach(function(ex){var suggestion=nextExerciseSuggestion(ex,occurrence.phase,pain);ex.next=suggestion;ex.minimumMisses=Number(suggestion.minimumMisses||0);if(suggestion.loadKg!=null)ex.nextLoadKg=suggestion.loadKg;if(suggestion.rung!=null)ex.nextRung=suggestion.rung});var habitIds=applyHabitSource('lifehub.workout.any',session.date,'workout',session.id);if(!saveStateOrRollback(snapshot))return false;emitLifeHubChange({action:'training-finish',entityId:sessionId,dateKeys:[session.date],habitIds:habitIds,domains:habitIds.length?['trainingSessions','habits']:['trainingSessions'],source:'winter-arc'});return true}
+  function removeWinterArcSession(sessionId){var session=sessionRecord(sessionId);if(!session)return false;var snapshot=clone(STATE);delete STATE.trainingSessions[sessionId];var habitIds=removeHabitSource('workout',sessionId);if(!saveStateOrRollback(snapshot))return false;emitLifeHubChange({action:'training-delete',entityId:sessionId,dateKeys:[session.date],habitIds:habitIds,domains:habitIds.length?['trainingSessions','habits']:['trainingSessions'],source:'winter-arc'});return true}
 
   global.WINTER_ARC_PLAN_ID=PLAN_ID;global.WINTER_ARC_CHALLENGE_ID=CHALLENGE_ID;
   global.winterArcPlan=plan;global.winterArcOccurrence=winterArcOccurrence;global.effectiveWinterArcOccurrence=effectiveWinterArcOccurrence;global.winterArcWeek=winterArcWeek;global.winterArcSafety=winterArcSafety;
   global.winterArcDailyStatus=winterArcDailyStatus;global.winterArcRuleStatus=winterArcRuleStatus;global.checkInForDate=checkInForDate;global.saveDailyCheckIn=saveDailyCheckIn;global.manualConfirmationForDate=manualConfirmationForDate;global.setWinterArcManualConfirmation=setWinterArcManualConfirmation;global.reconcileWinterArcSessionSafety=reconcileWinterArcSessionSafety;
+  global.reconcileWinterArcHabitIntegrationV2=reconcileWinterArcHabitIntegrationV2;global.migrateWinterArcHabitIntegrationV2=migrateWinterArcHabitIntegrationV2;
   global.readingSeconds=readingSeconds;
-  global.buildTrainingSession=buildTrainingSession;global.startWinterArcSession=startWinterArcSession;global.updateTrainingSet=updateTrainingSet;global.sameAsLastTime=sameAsLastTime;global.finishWinterArcSession=finishWinterArcSession;
+  global.buildTrainingSession=buildTrainingSession;global.startWinterArcSession=startWinterArcSession;global.updateTrainingSet=updateTrainingSet;global.sameAsLastTime=sameAsLastTime;global.finishWinterArcSession=finishWinterArcSession;global.removeWinterArcSession=removeWinterArcSession;
   global.nextExerciseSuggestion=nextExerciseSuggestion;global.epleyLoad=epleyLoad;global.winterArcOccurrenceId=occurrenceId;
 })(typeof window!=='undefined'?window:globalThis);
 
@@ -308,5 +346,5 @@
     id=startWinterArcSession(key);if(!id){if(typeof showCelebrationToast==='function')showCelebrationToast('Full rest is selected for today','♡');return}openWinterArcPageRoute(Object.assign(base,{mode:'logger',sessionId:id}));
   };
   global.finishWinterArcWorkout=function(sessionId){var s=(STATE.trainingSessions||{})[sessionId];if(!s)return;if(finishWinterArcSession(sessionId)){if(typeof showCelebrationToast==='function')showCelebrationToast('Workout completed','✨');renderWinterArcLogger(sessionId)}else{if(typeof showCelebrationToast==='function')showCelebrationToast('Resolve the safety stop or full-rest choice first','♡');renderWinterArcLogger(sessionId)}};
-  global.deleteWinterArcSession=function(sessionId){var session=(STATE.trainingSessions||{})[sessionId];if(!session)return;var showing=!!(winterArcRoute&&winterArcRoute.sessionId===sessionId);confirmDelete('Delete this Winter Arc session? The dated plan remains available.',function(){var snapshot=JSON.parse(JSON.stringify(STATE));delete STATE.trainingSessions[sessionId];if(!saveStateOrRollback(snapshot))return false;emitLifeHubChange({action:'training-delete',entityId:sessionId,dateKeys:[session.date],domains:['trainingSessions'],source:'winter-arc'});if(showing)setTimeout(closeWinterArcPage,0);return true})};
+  global.deleteWinterArcSession=function(sessionId){var session=(STATE.trainingSessions||{})[sessionId];if(!session)return;var showing=!!(winterArcRoute&&winterArcRoute.sessionId===sessionId);confirmDelete('Delete this Winter Arc session? The dated plan remains available.',function(){if(!removeWinterArcSession(sessionId))return false;if(showing)setTimeout(closeWinterArcPage,0);return true})};
 })(typeof window!=='undefined'?window:globalThis);
