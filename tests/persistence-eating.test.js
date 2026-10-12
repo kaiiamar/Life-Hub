@@ -12,7 +12,7 @@ function inWindow(window,value){return window.JSON.parse(JSON.stringify(value))}
 function validation(window,row){return window.validateLifeHubState(inWindow(window,{dailyCheckIns:{'2026-10-09':row}}),{importMode:true})}
 
 function compatibleSession(window,revision){
-  const occurrence=window.winterArcOccurrence('2026-10-09');
+  const occurrence=window.winterArcLegacyOccurrence('2026-10-09');
   return {
     id:occurrence.id,occurrenceId:occurrence.id,planId:occurrence.planId,planVersion:occurrence.planVersion,planContentRevision:revision,date:occurrence.date,
     code:'REST-SAFETY',kind:'rest',status:'planned',qualifies:false,durationSec:0,exercises:[]

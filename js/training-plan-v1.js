@@ -141,5 +141,105 @@
     progression:{efforts:['Easy','Right','Hard'],pain:['None','Niggle','Stop'],phaseFormula:'Epley',deloadLoadFactor:0.9,reductionFactor:0.9,timeIncrementSec:5,ladderMaxReps:10,ladderResetReps:6,bodyweightAddKg:8}
   };
 
+  var LEGACY_PLAN=PLAN;
+  function reps(min,max){return {consistency:[min,max],build:[min,max],strength:[min,max],consolidate:[min,max]}}
+  function strength(id,name,sets,min,max,loadType,extra){return Object.assign({id:id,name:name,mode:'reps',unit:'reps',fixedSets:sets,reps:reps(min,max),loadType:loadType,startLoadKg:0,restSec:60},extra||{})}
+
+  PLAN={
+    id:'winter-arc-75-me-2026',version:1,contentRevision:'1.3',title:'75-Day Workout Plan — GTPS-Aware Strength, Conditioning & Recovery',
+    startDate:'2026-10-05',endDate:'2026-12-18',dayCount:75,weekCount:11,weekStartsOn:1,canonicalFromDay:4,
+    safety:{
+      condition:'Right-sided greater trochanteric pain syndrome (GTPS).',
+      precedence:'Physio guidance always wins. Exercises are options, not guarantees.',
+      running:'Running is excluded following GP advice.',
+      training:'Use light-to-moderate resistance and good technique. Modify or stop movements that provoke symptoms.',
+      duringActivity:'Monitor symptoms during activity and the next morning. Reduce load, range, or volume if symptoms worsen; consult your physiotherapist if symptoms persist.',
+      steps:'10,000 steps is a target, never something to force through pain.',
+      trainingLoad:'Seven movement days do not mean seven hard days; Wednesday and Sunday recovery sessions count.',
+      urgent:'Seek urgent assessment for sudden inability to bear weight, severe post-injury hip pain, or a hot or swollen hip with fever.',
+      choices:[
+        {key:'planned',label:'Train as planned'},
+        {key:'recovery',label:'Use active recovery instead'},
+        {key:'rest',label:'Full rest today'}
+      ]
+    },
+    nutrition:{waterTargetMl:2000,guidance:['Include protein and balanced meals.','Use a modest, sustainable deficit if wanted.','Stay hydrated.','Aim for 7–9 hours of sleep.']},
+    cycle:LEGACY_PLAN.cycle,
+    progressPhotos:[1,25,50,75],
+    tracking:['Strength','Comfort','Consistency','Clothing fit'],
+    physiotherapistNotes:{
+      approvedLowerBody:'Confirm which lower-body exercises are currently approved.',
+      avoidModify:'Record movements and ranges to avoid or modify, especially those that provoke the outer right hip.',
+      rehabilitation:'Confirm the prescribed hip rehabilitation exercises and weekly frequency.',
+      loadGuidance:'Agree load, range, and volume guidance for symptom changes.',
+      returnToRunning:'Discuss return-to-running only with GP and physiotherapist approval.'
+    },
+    challenge:{
+      id:'winter-arc-75-me-v1',continuation:'continue',advisory:'Never miss twice. A missed day stays missed; the challenge does not reset.',
+      rules:[
+        {id:'steps',label:'10k Steps',icon:'👟',evidence:'daily-steps',target:10000},
+        {id:'workout',label:'Planned workout',icon:'✨',evidence:'qualifying-session',targetSeconds:2700},
+        {id:'water',label:'2L water',icon:'💧',evidence:'water',targetMl:2000},
+        {id:'duolingo',label:'Duolingo',icon:'🦉',evidence:'habit',habitKey:'duolingo'},
+        {id:'reading',label:'Reading 15 min',icon:'📚',evidence:'reading',targetSeconds:900},
+        {id:'manna',label:'Manna',icon:'📖',evidence:'habit',habitKey:'manna'},
+        {id:'alcohol',label:'Alcohol special occasions only',icon:'🥂',evidence:'alcohol'},
+        {id:'eating',label:'Whole foods, no takeaway',icon:'🍓',evidence:'manual-confirmation',confirmationKey:'eating'}
+      ]
+    },
+    phases:[
+      {fromDay:1,toDay:14,key:'consistency',rangeKey:'consistency',label:'Consistency & technique',rir:3,guidance:'Use controlled range of motion and manageable weights, with approximately 3 reps in reserve.'},
+      {fromDay:15,toDay:35,key:'build',rangeKey:'build',label:'Steady progression',rir:3,guidance:'Add repetitions or a small amount of weight only with stable technique and symptoms; change one variable at a time.'},
+      {fromDay:36,toDay:55,key:'strength',rangeKey:'strength',label:'Gradual strength progression',rir:2,guidance:'Progress gradually, with no lower-body failure and no running.'},
+      {fromDay:56,toDay:75,key:'consolidate',rangeKey:'consolidate',label:'Consolidate',rir:3,guidance:'Do not rush recovery; demanding lower-body work is only as tolerated and physiotherapist-approved.'}
+    ],
+    weekPattern:[
+      {dow:1,code:'LOWER-A',label:'Lower A',focus:'Glutes and quads',kind:'strength',durationMin:[45,55],warmUp:'5–7 min comfortable, pain-free movement',qualifies:true},
+      {dow:2,code:'UPPER-A',label:'Upper A',focus:'Back, shoulders and arms',kind:'strength',durationMin:45,warmUp:'5–7 min comfortable, pain-free movement',qualifies:true},
+      {dow:3,code:'MOBILITY-PILATES',label:'Mobility + Pilates',kind:'recovery',durationMin:45,blocks:[['Mobility',20],['Beginner Pilates',25]],chosenSessionPlaceholder:'Choose a beginner Pilates session',guidance:'Modify or skip positions that provoke the outer right hip, including repeated side-lying leg lifts.',qualifies:true},
+      {dow:4,code:'LOWER-B',label:'Lower B',focus:'Glutes and hamstrings',kind:'strength',durationMin:[45,55],warmUp:'5–7 min comfortable, pain-free movement',qualifies:true},
+      {dow:5,code:'UPPER-B',label:'Upper B',focus:'Shoulders, back and arms',kind:'strength',durationMin:45,warmUp:'5–7 min comfortable, pain-free movement',qualifies:true},
+      {dow:6,code:'LOW-IMPACT',label:'Low-impact conditioning',kind:'conditioning',durationMin:45,blocks:[['Easy warm-up',5],['Stationary bike at a comfortable steady pace, if tolerated',25],['Seated light upper-body circuit',10],['Cool-down',5]],guidance:'If cycling provokes symptoms, replace it with pain-free seated upper-body cardio. No running, jumping, or hard intervals.',qualifies:true},
+      {dow:0,code:'ACTIVE-RECOVERY',label:'Active recovery + rehab',kind:'recovery',durationMin:45,blocks:[['Comfortable walking, split if needed',20],['Prescribed hip rehabilitation',15],['Gentle upper-back, shoulder, and ankle mobility',10]],includePhysio:true,qualifies:true}
+    ],
+    physio:PHYSIO,
+    dailyCore:null,
+    exercises:{
+      'LOWER-A':[
+        strength('LA1','Hip thrust machine',3,10,12,'machine',{lowerBody:true}),
+        strength('LA2','Leg press',3,10,12,'machine',{lowerBody:true}),
+        strength('LA3','Leg extension',3,12,15,'machine',{lowerBody:true}),
+        strength('LA4','Seated hamstring curl',3,12,15,'machine',{lowerBody:true}),
+        strength('LA5','Hip abduction machine',2,15,20,'machine',{lowerBody:true})
+      ],
+      'UPPER-A':[
+        strength('UA1','Lat pulldown',3,8,12,'cable'),
+        strength('UA2','Chest-supported row',3,8,12,'machine'),
+        strength('UA3','Seated shoulder press',3,8,12,'machine'),
+        strength('UA4','Dumbbell lateral raises',3,12,15,'db-pair'),
+        strength('UA5','Bicep curls',2,10,15,'db-pair'),
+        strength('UA6','Tricep pressdowns',2,10,15,'cable')
+      ],
+      'LOWER-B':[
+        strength('LB1','Dumbbell Romanian deadlift',3,10,10,'db-pair',{lowerBody:true}),
+        strength('LB2','Glute bridge',3,12,12,'bodyweight',{lowerBody:true}),
+        strength('LB3','Seated hamstring curl',3,12,12,'machine',{lowerBody:true}),
+        strength('LB4','Leg press',2,12,12,'machine',{lowerBody:true}),
+        strength('LB5','Hip abduction machine',2,15,20,'machine',{lowerBody:true})
+      ],
+      'UPPER-B':[
+        strength('UB1','Assisted pull-ups',3,6,10,'assistance'),
+        strength('UB2','Seated cable row',3,8,12,'cable'),
+        strength('UB3','Machine chest press',3,8,12,'machine'),
+        strength('UB4','Rear-delt fly',3,12,15,'machine'),
+        strength('UB5','Lateral raises',2,12,15,'db-pair'),
+        strength('UB6','Bicep curls',2,10,15,'db-pair'),
+        strength('UB7','Tricep extensions',2,10,15,'cable')
+      ]
+    },
+    progression:{efforts:['Easy','Right','Hard'],timeIncrementSec:5}
+  };
+  PLAN.legacy=LEGACY_PLAN;
+
   global.WINTER_ARC_TRAINING_V1=deepFreeze(PLAN);
 })(typeof window!=='undefined'?window:globalThis);
