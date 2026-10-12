@@ -1621,11 +1621,11 @@ function plannerTrainingCard(todayKey){
   var session=(STATE.trainingSessions||{})[t.id],status=session&&session.status;
   var badge=inBlock?'W'+t.week+' · '+String(t.phase.key).toUpperCase():'PREVIEW';
   var duration=Array.isArray(t.durationMin)?t.durationMin.join('–'):t.durationMin;
-  var strengthSets=t.kind==='strength'&&t.phase.mainSets!=null?t.phase.mainSets+' main sets · ':'';
+  var pace=t.kind==='strength'?duration+' minutes · RIR '+t.phase.rir:t.code==='MOBILITY-PILATES'?'20 min Mobility · 25 min Beginner Pilates':t.code==='CARDIO'?'25 min stationary cycle · 20 min StairMaster':t.code==='EXTRA-LONG-WALK'?'At least 90 minutes':duration+' minutes';
   var html='<div class="card planner-card planner-training-card" id="planner-training-card">';
   html+='<div class="planner-card-head"><span class="planner-card-title"><span class="pw-train-bar"></span>'+(inBlock?'Today’s plan':'Your Winter Arc plan')+'</span><span class="pw-train-badge">'+escapeHtml(badge)+'</span></div>';
   html+='<div class="planner-train-line"><span class="planner-train-icon">'+escapeHtml(t.kind==='strength'?'🏋🏽‍♀️':t.kind==='cardio'?'💓':t.kind==='rest'?'🛌':'🌸')+'</span><span class="planner-train-text">'+escapeHtml(t.code+' · '+t.label)+'</span></div>';
-  html+='<div class="planner-train-pace">'+escapeHtml(duration+' minutes · '+strengthSets+'RIR '+t.phase.rir)+'</div>';
+  html+='<div class="planner-train-pace">'+escapeHtml(pace)+'</div>';
   if(t.core)html+='<div class="wa-core-note"><strong>Daily core included</strong><span>'+escapeHtml(t.core.label)+(t.core.type==='supplemental'?' · about 6 minutes':'')+'</span></div>';
   if(inBlock&&t.safety.action!=='planned')html+='<div class="wa-safety-mini '+escapeHtml(t.safety.level)+'"><strong>'+escapeHtml(t.safety.title)+'</strong><span>'+escapeHtml(t.safety.message)+'</span></div>';
   else html+='<div class="planner-train-context">Day 1 is Monday 5 October. The plan is dated through Friday 18 December, so every phase and session stays anchored.</div>';

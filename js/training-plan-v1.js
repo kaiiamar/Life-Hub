@@ -239,7 +239,46 @@
     },
     progression:{efforts:['Easy','Right','Hard'],timeIncrementSec:5}
   };
-  PLAN.legacy=LEGACY_PLAN;
+  var V13_PLAN=PLAN;
+  PLAN={
+    id:V13_PLAN.id,version:V13_PLAN.version,contentRevision:'1.4',title:'75-Day Workout Plan — Weekly Strength, Cardio & Recovery',
+    startDate:V13_PLAN.startDate,endDate:V13_PLAN.endDate,dayCount:V13_PLAN.dayCount,weekCount:V13_PLAN.weekCount,weekStartsOn:V13_PLAN.weekStartsOn,canonicalFromDay:4,
+    safety:V13_PLAN.safety,
+    nutrition:V13_PLAN.nutrition,
+    cycle:V13_PLAN.cycle,
+    progressPhotos:V13_PLAN.progressPhotos,
+    tracking:V13_PLAN.tracking,
+    physiotherapistNotes:V13_PLAN.physiotherapistNotes,
+    challenge:V13_PLAN.challenge,
+    phases:V13_PLAN.phases,
+    weekPattern:[
+      {dow:1,code:'UPPER-A',label:'Upper A',focus:'Back, shoulders and arms',kind:'strength',durationMin:45,warmUp:'5–7 min comfortable, pain-free movement',qualifies:true},
+      {dow:2,code:'MOBILITY-PILATES',label:'Mobility + Pilates',kind:'recovery',durationMin:45,blocks:[['Mobility',20],['Beginner Pilates',25]],chosenSessionPlaceholder:'Choose a beginner Pilates session',guidance:'Modify or skip positions that provoke the outer right hip, including repeated side-lying leg lifts.',qualifies:true},
+      {dow:3,code:'LOWER-A',label:'Lower A',focus:'Glutes and quads',kind:'strength',durationMin:[45,55],warmUp:'5–7 min comfortable, pain-free movement',qualifies:true},
+      {dow:4,code:'UPPER-B',label:'Upper B',focus:'Shoulders, back and arms',kind:'strength',durationMin:45,warmUp:'5–7 min comfortable, pain-free movement',qualifies:true},
+      {dow:5,code:'CARDIO',label:'Cardio',focus:'Stationary cycle and StairMaster',kind:'cardio',durationMin:45,guidance:'Perform only as tolerated. Modify or stop if symptoms are provoked; GP or physiotherapist guidance always wins. No running, jumping, or hard intervals.',qualifies:true},
+      {dow:6,code:'LOWER-B',label:'Lower B',focus:'Glutes and hamstrings',kind:'strength',durationMin:[45,55],warmUp:'5–7 min comfortable, pain-free movement',qualifies:true},
+      {dow:0,code:'EXTRA-LONG-WALK',label:'Extra-long walk',focus:'At least 90 minutes',kind:'recovery',durationMin:90,minimumDurationMin:90,guidance:'Walk for at least 90 minutes, but never force the 10k-step or 90-minute target through pain. Modify or stop according to symptoms; GP or physiotherapist guidance always wins.',qualifies:true}
+    ],
+    physio:V13_PLAN.physio,
+    dailyCore:null,
+    exercises:{
+      'LOWER-A':V13_PLAN.exercises['LOWER-A'],
+      'UPPER-A':V13_PLAN.exercises['UPPER-A'],
+      'LOWER-B':V13_PLAN.exercises['LOWER-B'],
+      'UPPER-B':V13_PLAN.exercises['UPPER-B'],
+      'CARDIO':[
+        {id:'CARDIO-CYCLE',name:'Stationary cycle',mode:'time',unit:'minutes',loadType:'time',fixedSets:1,prescribedDurationSec:1500,targetLabel:'25 minutes',noProgression:true},
+        {id:'CARDIO-STAIRMASTER',name:'StairMaster',mode:'time',unit:'minutes',loadType:'time',fixedSets:1,prescribedDurationSec:1200,targetLabel:'20 minutes',noProgression:true}
+      ],
+      'EXTRA-LONG-WALK':[
+        {id:'WALK-90',name:'Extra-long walk',mode:'time',unit:'minutes',loadType:'time',fixedSets:1,prescribedDurationSec:5400,targetLabel:'At least 90 minutes',minimumDurationSec:5400,noProgression:true}
+      ]
+    },
+    progression:V13_PLAN.progression,
+    v13:V13_PLAN,
+    legacy:LEGACY_PLAN
+  };
 
   global.WINTER_ARC_TRAINING_V1=deepFreeze(PLAN);
 })(typeof window!=='undefined'?window:globalThis);
