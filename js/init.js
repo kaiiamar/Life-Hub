@@ -632,7 +632,7 @@ loadFromCloud(function(){
   if(!STATE.roadmapChecklist)STATE.roadmapChecklist={};
   if(!STATE.roadmapDueDates)STATE.roadmapDueDates={};
   finishDataBootstrap();
-  try{renderPlanner()}catch(e){console.error('Render error:',e)}
+  try{renderDashboard()}catch(e){console.error('Render error:',e)}
   try{updateAppBadge()}catch(e){}
   try{maybePromptCloseDay()}catch(e){}
   setupReminders();

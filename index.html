@@ -12,7 +12,7 @@
 <title>Kai's Life Hub 🤎</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style-new.css?v=68">
+<link rel="stylesheet" href="style-new.css?v=69">
 <!-- Chart.js is lazy-loaded on first visit to a chart page — see ensureChartJs() in js/navigation.js (Part 5.3) -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -30,8 +30,8 @@
       </div>
       <div class="topnav-links">
         <div class="topnav-pill-indicator" id="topnav-pill"></div>
-        <button class="topnav-link active" data-page="planner" onclick="nav('planner')">Today</button>
-        <button class="topnav-link" data-page="dashboard" onclick="nav('dashboard')">Dashboard</button>
+        <button class="topnav-link active" data-page="dashboard" onclick="nav('dashboard')">Dashboard</button>
+        <button class="topnav-link" data-page="planner" onclick="nav('planner')">Today</button>
         <button class="topnav-link" data-page="habits" onclick="nav('habits')">Habits</button>
         <button class="topnav-link" data-page="workout" onclick="nav('workout')">Movement</button>
         <button class="topnav-link" data-page="skincare" onclick="nav('skincare')">Skincare</button>
@@ -82,8 +82,8 @@
       <span>Life Hub command centre</span>
     </div>
     <div class="nav-section">
-      <button class="nav-item active" onclick="nav('planner')">Today</button>
-      <button class="nav-item" onclick="nav('dashboard')">Dashboard</button>
+      <button class="nav-item active" onclick="nav('dashboard')">Dashboard</button>
+      <button class="nav-item" onclick="nav('planner')">Today</button>
       <button class="nav-item" onclick="nav('goals')">Goals</button>
       <button class="nav-item" onclick="nav('habits')">Habits</button>
       <button class="nav-item" onclick="nav('workout')">Movement</button>
@@ -102,8 +102,8 @@
   </nav>
 
   <nav class="mobile-command-nav" aria-label="Primary navigation">
-    <button type="button" class="mobile-command-item active" data-page="planner" aria-current="page" onclick="nav('planner')"><span class="mobile-command-mark">TD</span><span>Today</span></button>
-    <button type="button" class="mobile-command-item" data-page="dashboard" onclick="nav('dashboard')"><span class="mobile-command-mark">DB</span><span>Dashboard</span></button>
+    <button type="button" class="mobile-command-item active" data-page="dashboard" aria-current="page" onclick="nav('dashboard')"><span class="mobile-command-mark">DB</span><span>Dashboard</span></button>
+    <button type="button" class="mobile-command-item" data-page="planner" onclick="nav('planner')"><span class="mobile-command-mark">TD</span><span>Today</span></button>
     <button type="button" class="mobile-command-item" data-page="habits" onclick="nav('habits')"><span class="mobile-command-mark">HB</span><span>Habits</span></button>
     <button type="button" class="mobile-command-item" data-page="workout" onclick="nav('workout')"><span class="mobile-command-mark">MV</span><span>Movement</span></button>
     <button type="button" class="mobile-command-item" id="mobile-command-more" aria-controls="sidebar" aria-expanded="false" onclick="toggleSidebar()"><span class="mobile-command-mark">•••</span><span>More</span></button>
@@ -112,7 +112,7 @@
   <div class="main">
 
     <!-- ══ TODAY ══ -->
-    <div class="page active" id="page-planner">
+    <div class="page" id="page-planner">
       <div class="page-header">
         <div class="header-row">
           <div>
@@ -132,7 +132,7 @@
     </div>
 
     <!-- ══ DASHBOARD ══ -->
-    <div class="page" id="page-dashboard">
+    <div class="page active" id="page-dashboard">
       <section class="hero hero--overview dashboard-hero" id="hero" aria-labelledby="dashboard-heading">
         <div class="hero-inner" id="hero-inner">
           <div class="hero-eyebrow">Dashboard</div>
@@ -838,23 +838,23 @@
 
 
 
-<script src="js/state.js?v=68"></script>
-<script src="js/persistence.js?v=68"></script>
-<script src="js/navigation.js?v=68"></script>
-<script src="js/training-plan-v1.js?v=68"></script>
-<script src="js/dashboard.js?v=68"></script>
-<script src="js/habits.js?v=68"></script>
-<script src="js/workouts.js?v=68"></script>
-<script src="js/winter-arc.js?v=68"></script>
-<script src="js/challenge.js?v=68"></script>
-<script src="js/finance.js?v=68"></script>
-<script src="js/reviews.js?v=68"></script>
-<script src="js/relationships.js?v=68"></script>
-<script src="js/gratitude.js?v=68"></script>
-<script src="js/insights.js?v=68"></script>
-<script src="js/skincare.js?v=68"></script>
-<script src="js/modals.js?v=68"></script>
-<script src="js/planner.js?v=68"></script>
-<script src="js/init.js?v=68"></script>
+<script src="js/state.js?v=69"></script>
+<script src="js/persistence.js?v=69"></script>
+<script src="js/navigation.js?v=69"></script>
+<script src="js/training-plan-v1.js?v=69"></script>
+<script src="js/dashboard.js?v=69"></script>
+<script src="js/habits.js?v=69"></script>
+<script src="js/workouts.js?v=69"></script>
+<script src="js/winter-arc.js?v=69"></script>
+<script src="js/challenge.js?v=69"></script>
+<script src="js/finance.js?v=69"></script>
+<script src="js/reviews.js?v=69"></script>
+<script src="js/relationships.js?v=69"></script>
+<script src="js/gratitude.js?v=69"></script>
+<script src="js/insights.js?v=69"></script>
+<script src="js/skincare.js?v=69"></script>
+<script src="js/modals.js?v=69"></script>
+<script src="js/planner.js?v=69"></script>
+<script src="js/init.js?v=69"></script>
 </body>
 </html>
