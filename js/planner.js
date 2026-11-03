@@ -178,7 +178,7 @@ var plannerReentryRecapOpen=false;
 var plannerActiveTab='today';
 
 function plannerSetTabState(tab){
-  var next=['today','journey','career'].indexOf(tab)!==-1?tab:'today';
+  var next=['today','career'].indexOf(tab)!==-1?tab:'today';
   plannerActiveTab=next;
   document.querySelectorAll('#page-planner [data-planner-tab]').forEach(function(button){
     var active=button.getAttribute('data-planner-tab')===next;
@@ -205,14 +205,11 @@ function plannerTabKeydown(event){
   var next=tabs[index];switchPlannerTab(next.getAttribute('data-planner-tab'),next);
 }
 
-function open75MeTab(tab){
-  plannerActiveTab=['today','journey','career'].indexOf(tab)!==-1?tab:'today';
-  nav('planner');
-}
+function openToday(tab){plannerActiveTab=['today','career'].indexOf(tab)!==-1?tab:'today';nav('planner')}
+function open75MeTab(tab){openToday(tab)}
 
 function renderPlannerTab(tab){
   if(tab==='today')renderPlannerToday();
-  else if(tab==='journey'&&typeof renderChallenge75Journey==='function')renderChallenge75Journey();
   else if(tab==='career'&&typeof renderPlannerCareer==='function')renderPlannerCareer();
 }
 
@@ -260,7 +257,7 @@ function deleteInboxTask(id){
 var PLANNER_CARDS={
   reentry:    {host:'pc-reentry',            build:function(todayKey){return plannerReentryCard(todayKey)}},
   welcome:    {host:'planner-welcome-card',  build:function(todayKey){return plannerWelcomeCard(todayKey)}},
-  challenge:  {host:'planner-challenge-card', build:function(todayKey){return typeof renderChallenge75Card==='function'?renderChallenge75Card(todayKey):''}},
+  basics:     {host:'planner-daily-basics-card',build:function(todayKey){return typeof renderDailyBasicsCard==='function'?renderDailyBasicsCard(todayKey):''}},
   training:   {host:'planner-training-card', build:function(todayKey){return plannerTrainingCard(todayKey)}},
   habits:     {host:'planner-habits-card',   build:function(){return plannerHabitCard()}},
   focus:      {host:'planner-focus-card',    build:function(todayKey){return plannerFocusCard(todayKey)}},
@@ -294,7 +291,7 @@ var PLANNER_FOCUS_SLATE_CARDS=['focus','schedule'];
 // two first-action cards, with the evening sweep near the end so it never
 // interrupts them and the Inbox last as the quiet sorting surface.
 function plannerTodayOrder(){
-  return ['challenge','training','habits','focus','schedule','capture'];
+  return ['basics','training','habits','focus','schedule','capture'];
 }
 
 // ── Quiet-day re-entry ─────────────────────────────────────
@@ -1422,7 +1419,7 @@ function plannerWaterCard(){
 // nothing and the patch skips it, so naming it here costs a full-day refresh
 // nothing.
 function renderPlannerWater(){
-  refreshPlannerCards(['waterweight','challenge','welcome','sweep','short']);
+  refreshPlannerCards(['waterweight','basics','welcome','sweep','short']);
 }
 
 // Habits card — top coral border, hand-drawn underline, tappable rows.
@@ -1486,7 +1483,7 @@ function plannerToggleHabit(hid){
   // The tick changes the habits card, the welcome card's streak and chip line,
   // the evening sweep's habit count, and — while the Short_Version is open —
   // its first row, which is this same habit (R6.9).
-  refreshPlannerCards(['habits','challenge','welcome','sweep','short']);
+  refreshPlannerCards(['habits','basics','welcome','sweep','short']);
   var current=(STATE.habits||[]).find(function(x){return x.id===hid});
   if(!wasDone&&current&&current.logs&&current.logs[today]&&typeof bloomTick==='function')bloomTick('pwhab:'+hid);
   if(fromControl){var restored=document.querySelector(control);if(restored)restored.focus();}
@@ -1616,30 +1613,12 @@ function plannerTrainingLoggedToday(dateKey,planned){
 // the block it resolves the exact occurrence and applies any manual plan choice.
 function plannerTrainingCard(todayKey){
   if(typeof effectiveWinterArcOccurrence!=='function')return '';
-  var p=typeof winterArcPlan==='function'?winterArcPlan():null;if(!p)return '';
-  var key=todayKey||localDateKey(new Date()),inBlock=key>=p.startDate&&key<=p.endDate,lookup=inBlock?key:(key<p.startDate?p.startDate:p.endDate),t=effectiveWinterArcOccurrence(lookup);if(!t)return '';
-  var session=(STATE.trainingSessions||{})[t.id],status=session&&session.status;
-  var badge=inBlock?'W'+t.week+' · '+String(t.phase.key).toUpperCase():'PREVIEW';
-  var duration=Array.isArray(t.durationMin)?t.durationMin.join('–'):t.durationMin;
-  var pace=t.kind==='strength'?duration+' minutes · RIR '+t.phase.rir:t.code==='MOBILITY-PILATES'?'20 min Mobility · 25 min Beginner Pilates':t.code==='CARDIO'?'25 min stationary cycle · 20 min StairMaster':t.code==='EXTRA-LONG-WALK'?'At least 90 minutes':duration+' minutes';
-  var html='<div class="card planner-card planner-training-card" id="planner-training-card">';
-  html+='<div class="planner-card-head"><span class="planner-card-title"><span class="pw-train-bar"></span>'+(inBlock?'Today’s plan':'Your Winter Arc plan')+'</span><span class="pw-train-badge">'+escapeHtml(badge)+'</span></div>';
-  html+='<div class="planner-train-line"><span class="planner-train-icon">'+escapeHtml(t.kind==='strength'?'🏋🏽‍♀️':t.kind==='cardio'?'💓':t.kind==='rest'?'🛌':'🌸')+'</span><span class="planner-train-text">'+escapeHtml(t.code+' · '+t.label)+'</span></div>';
-  html+='<div class="planner-train-pace">'+escapeHtml(pace)+'</div>';
-  if(t.core)html+='<div class="wa-core-note"><strong>Daily core included</strong><span>'+escapeHtml(t.core.label)+(t.core.type==='supplemental'?' · about 6 minutes':'')+'</span></div>';
-  if(inBlock&&t.safety.action!=='planned')html+='<div class="wa-safety-mini '+escapeHtml(t.safety.level)+'"><strong>'+escapeHtml(t.safety.title)+'</strong><span>'+escapeHtml(t.safety.message)+'</span></div>';
-  else html+='<div class="planner-train-context">Day 1 is Monday 5 October. The plan is dated through Friday 18 December, so every phase and session stays anchored.</div>';
-  html+='<div class="planner-train-actions">';
-  if(inBlock){
-    if(t.kind==='rest')html+='<span class="planner-train-done">Full rest selected</span><button type="button" class="btn btn-sm btn-ghost" onclick="restoreWinterArcPlan(\''+key+'\')">Restore planned session</button>';
-    else{
-      html+='<button type="button" class="btn btn-sm pw-train-log-btn" data-training-date="'+key+'" onclick="openWinterArcWorkout(\''+key+'\')">'+(status==='completed'?'View summary':status==='in-progress'?'Resume session':'Start session')+'</button>';
-      if(t.originalCode)html+='<button type="button" class="btn btn-sm btn-ghost" onclick="restoreWinterArcPlan(\''+key+'\')">Restore planned session</button>';
-      else if(t.kind!=='recovery')html+='<button type="button" class="btn btn-sm btn-ghost" onclick="chooseWinterArcRecovery(\''+key+'\')">Use Recovery instead</button>';
-      html+='<button type="button" class="btn btn-sm btn-ghost" onclick="chooseWinterArcFullRest(\''+key+'\')">Full rest today</button>';
-    }
-  }else html+='<button type="button" class="btn btn-sm pw-train-log-btn" onclick="nav(\'workout\')">See the plan</button>';
-  html+='</div></div>';return html;
+  var key=todayKey||localDateKey(new Date()),t=effectiveWinterArcOccurrence(key);if(!t)return '';
+  var session=(STATE.trainingSessions||{})[t.id],status=session&&session.status,duration=Array.isArray(t.durationMin)?t.durationMin.join('–'):t.durationMin;
+  var pace=t.kind==='strength'?duration+' minutes · controlled technique':t.code==='MOBILITY-PILATES'||t.code==='REC-SAFETY'?'20 min Mobility · 25 min Beginner Pilates':t.code==='CARDIO'?'25 min Stationary cycle · 20 min StairMaster':t.code==='EXTRA-LONG-WALK'?'Minimum 90 minutes':duration+' minutes';
+  var html='<div class="card planner-card planner-training-card" id="planner-training-card"><div class="planner-card-head"><span class="planner-card-title"><span class="pw-train-bar"></span>Today’s planned workout</span><span class="pw-train-badge">ONGOING</span></div><div class="planner-train-line"><span class="planner-train-icon">'+escapeHtml(t.kind==='strength'?'🏋🏽‍♀️':t.kind==='cardio'?'💓':t.kind==='rest'?'🛌':'🌸')+'</span><span class="planner-train-text">'+escapeHtml(t.code+' · '+t.label)+'</span></div><div class="planner-train-pace">'+escapeHtml(pace)+'</div>';
+  if(t.safety.action!=='planned')html+='<div class="wa-safety-mini '+escapeHtml(t.safety.level)+'"><strong>'+escapeHtml(t.safety.title)+'</strong><span>'+escapeHtml(t.safety.message)+'</span></div>';else html+='<div class="planner-train-context">Consistency and technique first. Change one variable at a time only while symptoms stay stable.</div>';
+  html+='<div class="planner-train-actions">';if(t.kind==='rest')html+='<span class="planner-train-done">Full rest selected</span><button type="button" class="btn btn-sm btn-ghost" onclick="restoreWinterArcPlan(\''+key+'\')">Restore planned workout</button>';else{html+='<button type="button" class="btn btn-sm pw-train-log-btn" data-training-date="'+key+'" onclick="openWinterArcWorkout(\''+key+'\')">'+(status==='completed'?'View summary':status==='in-progress'?'Resume workout':'Start workout')+'</button>';if(t.originalCode)html+='<button type="button" class="btn btn-sm btn-ghost" onclick="restoreWinterArcPlan(\''+key+'\')">Restore planned workout</button>';else if(t.kind!=='recovery')html+='<button type="button" class="btn btn-sm btn-ghost" onclick="chooseWinterArcRecovery(\''+key+'\')">Use Recovery instead</button>';html+='<button type="button" class="btn btn-sm btn-ghost" onclick="chooseWinterArcFullRest(\''+key+'\')">Full rest today</button>'}return html+'</div></div>';
 }
 
 // "Daily Focus (1–3)" — lined-notebook style with rounded-square checkboxes.
@@ -2005,8 +1984,7 @@ var plannerWeekNote='';
 // ── This week tab ──────────────────────────────────────────
 // Compatibility renderer for legacy weekly mutation paths.
 function renderPlannerWeek(){
-  if(plannerActiveTab==='journey'&&typeof renderChallenge75Journey==='function')renderChallenge75Journey();
-  else if(plannerActiveTab==='career'&&typeof renderPlannerCareer==='function')renderPlannerCareer();
+  if(plannerActiveTab==='career'&&typeof renderPlannerCareer==='function')renderPlannerCareer();
 }
 
 function plannerCareerDraftSnapshot(){

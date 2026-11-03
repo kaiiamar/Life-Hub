@@ -1,7 +1,7 @@
 // ============================================================
 // REVISIONED DOMAIN PERSISTENCE
 // ============================================================
-var LIFEHUB_SCHEMA_VERSION=7;
+var LIFEHUB_SCHEMA_VERSION=8;
 var LIFEHUB_QUEUE_KEY='lifehub_sync_queue_v2';
 var LIFEHUB_CONFLICT_KEY='lifehub_sync_conflicts_v2';
 var LIFEHUB_META_KEY='lifehub_local_meta_v2';
@@ -18,6 +18,7 @@ var _syncConflicts={};
 var _syncReady=false;
 var _syncWriting=false;
 var _domainSnapshotLoaded=false;
+var _bootstrapCloudReadFailed=false;
 var _bootstrapDirtyDomains={};
 var _capturedUndo=null;
 var _undoRecord=null;
@@ -51,6 +52,7 @@ function _validDateKey(value){
   return date.getFullYear()===+parts[0]&&date.getMonth()===+parts[1]-1&&date.getDate()===+parts[2];
 }
 var LIFEHUB_HABIT_INTEGRATIONS={
+  'lifehub.steps.8000':true,
   'lifehub.steps.10000':true,
   'lifehub.workout.any':true,
   'lifehub.workout.hyrox':true,
@@ -61,6 +63,7 @@ var LIFEHUB_HABIT_INTEGRATIONS={
 function _validHabitSourceKey(value){
   if(typeof value!=='string')return false;
   var challenge=/^challenge:winter-arc-75-me-v1__(steps|workout)__(\d{4}-\d{2}-\d{2})$/.exec(value);if(challenge)return _validDateKey(challenge[2]);
+  var basics=/^basics:steps__(\d{4}-\d{2}-\d{2})$/.exec(value);if(basics)return _validDateKey(basics[1]);
   return /^(workout|run|skincare):[A-Za-z0-9_-]{1,100}$/.test(value);
 }
 function _habitProvenancePresent(entry){
@@ -121,7 +124,7 @@ function normalizeLifeHubHabits(state){
   });
   return changed;
 }
-function _validateHabitRecords(habits,add){
+function _validateHabitRecords(habits,add,state){
   if(!Array.isArray(habits))return;
   if(habits.length>500)add('state.habits','cannot contain more than 500 habits');
   var ids=Object.create(null),allowedBadges={fit:true,fin:true,car:true,per:true},allowedAnchors={morning:true,midday:true,evening:true,anytime:true};
@@ -189,7 +192,13 @@ function _validateHabitRecords(habits,add){
       if(entry.manual!==undefined&&entry.manual!==true)add(entryPath+'.manual','must be true or omitted');
       if(!_isPlainRecord(entry.sources)){add(entryPath+'.sources','must be an object');return}
       var sourceKeys=Object.keys(entry.sources);if(sourceKeys.length>50)add(entryPath+'.sources','has too many sources');
-      sourceKeys.forEach(function(sourceKey){if(!_validHabitSourceKey(sourceKey))add(entryPath+'.sources.'+sourceKey,'has an invalid source key');else if(entry.sources[sourceKey]!==true)add(entryPath+'.sources.'+sourceKey,'must be true or omitted')});
+      sourceKeys.forEach(function(sourceKey){
+        if(!_validHabitSourceKey(sourceKey)){add(entryPath+'.sources.'+sourceKey,'has an invalid source key');return}
+        if(entry.sources[sourceKey]!==true)add(entryPath+'.sources.'+sourceKey,'must be true or omitted');
+        var basics=/^basics:steps__(\d{4}-\d{2}-\d{2})$/.exec(sourceKey);if(!basics)return;
+        if(basics[1]!==dateKey||dateKey<'2026-11-02')add(entryPath+'.sources.'+sourceKey,'must match its post-transition provenance date');
+        if(state&&state.__dailyBasicsV1===true){var owner=h.id==='steps-towards-10k-v1'||h.managedBy==='lifehub'&&h.managedHabitKey==='daily-basics.steps';if(!owner)add(entryPath+'.sources.'+sourceKey,'is allowed only on the managed Steps habit');var steps=state.dailyCheckIns&&state.dailyCheckIns[dateKey]&&state.dailyCheckIns[dateKey].steps;if(!Number.isInteger(steps)||steps<8000)add(entryPath+'.sources.'+sourceKey,'requires at least 8,000 numeric steps for the same date')}
+      });
       if(!_habitProvenancePresent(entry))add(entryPath,'must contain a manual or source completion');
       if(h.logs[dateKey]!==true)add(entryPath,'must project to logs');
     });
@@ -198,7 +207,7 @@ function _validateHabitRecords(habits,add){
 function validateHabitDomainData(data){
   var holder={habits:_clone(data)};normalizeLifeHubHabits(holder);var errors=[];
   function add(path,message){if(errors.length<12)errors.push(path+': '+message)}
-  if(!Array.isArray(holder.habits))add('state.habits','expected array');else _validateHabitRecords(holder.habits,add);
+  if(!Array.isArray(holder.habits))add('state.habits','expected array');else _validateHabitRecords(holder.habits,add,holder);
   return {ok:errors.length===0,errors:errors,data:holder.habits};
 }
 
@@ -243,18 +252,37 @@ function _validateChallengeRecords(challenges,habits,add,winterHabitIntegrationV
   });
 }
 
+function _containsRetiredTimerField(value){if(!value||typeof value!=='object')return false;if(Array.isArray(value))return value.some(_containsRetiredTimerField);return Object.keys(value).some(function(key){return ['sessionTimer','restTimer','timerAnchorMs','heartbeatMs','elapsedBeforeSec'].indexOf(key)!==-1||_containsRetiredTimerField(value[key])})}
+function _validateRecurringSession(session,id,path,add){
+  var occurrence=typeof recurringWorkoutOccurrence==='function'&&_validDateKey(session.date)?recurringWorkoutOccurrence(session.date):null;if(!occurrence){add(path+'.date','must resolve to a recurring workout');return}
+  if(session.id!==id||session.id!==occurrence.id||session.occurrenceId!==occurrence.id)add(path+'.id','must match the recurring occurrence identity');if(session.planVersion!==1||session.planContentRevision!=='R1')add(path+'.planContentRevision','must be R1');if(_containsRetiredTimerField(session))add(path,'must not contain timer fields');if(!Number.isFinite(Number(session.durationSec))||Number(session.durationSec)<0)add(path+'.durationSec','must be non-negative');
+  if(['planned','in-progress','completed'].indexOf(session.status)===-1)add(path+'.status','is invalid');var rest=session.code==='REST-SAFETY'&&session.kind==='rest'&&session.qualifies===false,recovery=session.code==='REC-SAFETY'&&session.kind==='recovery'&&session.qualifies===true,raw=session.code===occurrence.code&&session.kind===occurrence.kind&&session.qualifies===true;if(!rest&&!recovery&&!raw)add(path+'.code','must match the recurring workout or an allowed safety choice');
+  if(session.status==='planned'){
+    if(session.startedAt!==undefined||session.completedAt!==undefined||session.manualCompletion!==undefined)add(path+'.startedAt','planned workouts cannot carry start or completion timestamps');
+  }else if(session.status==='in-progress'){
+    if(typeof session.startedAt!=='string'||isNaN(Date.parse(session.startedAt)))add(path+'.startedAt','in-progress workouts require a valid start time');
+    if(session.completedAt!==undefined||session.manualCompletion!==undefined)add(path+'.completedAt','in-progress workouts cannot carry completion data');
+  }else if(session.status==='completed'){
+    if(session.manualCompletion!==true)add(path+'.manualCompletion','explicit completion is required');
+    if(typeof session.startedAt!=='string'||typeof session.completedAt!=='string'||isNaN(Date.parse(session.startedAt))||isNaN(Date.parse(session.completedAt))||Date.parse(session.completedAt)<Date.parse(session.startedAt))add(path+'.completedAt','must follow a valid start time');
+  }
+  if(rest){if(session.label!=='Full rest'||session.originalCode!==occurrence.code||session.lockedBySafety!=='rest')add(path+'.code','must preserve the exact Full Rest safety identity');if(session.status==='completed')add(path+'.status','Full Rest cannot be completed');if((session.exercises||[]).length||session.blockLogs!==undefined)add(path+'.exercises','Full Rest cannot contain workout logs');return}
+  if(typeof workoutSessionMatchesOccurrence==='function'&&!workoutSessionMatchesOccurrence(session))add(path,'does not match the exact recurring prescription');
+}
+
 function _validateWinterArcDomains(state,add){
   if(_isPlainRecord(state.dailyCheckIns))Object.keys(state.dailyCheckIns).forEach(function(key){
     var row=state.dailyCheckIns[key],path='state.dailyCheckIns.'+key;if(!_validDateKey(key)){add(path,'key must be a valid date');return}if(!_isPlainRecord(row)){add(path,'must be an object');return}
     if(row.date!==undefined&&row.date!==key)add(path+'.date','must match its date key');
     [['hipPain',0,10],['sleepHours',0,24],['steps',0,200000],['proteinG',0,1000],['calories',0,20000]].forEach(function(rule){var v=row[rule[0]];if(v!==undefined&&(!Number.isFinite(v)||v<rule[1]||v>rule[2]))add(path+'.'+rule[0],'is outside its allowed range')});
+    if(key>='2026-11-02'&&row.steps!==undefined&&!Number.isInteger(row.steps))add(path+'.steps','must be a whole number');
     if(row.alcoholState!==undefined&&['none','special-occasion','outside-plan'].indexOf(row.alcoholState)===-1)add(path+'.alcoholState','is invalid');
     if(row.balancedPortionsConfirmed!==undefined&&typeof row.balancedPortionsConfirmed!=='boolean')add(path+'.balancedPortionsConfirmed','must be boolean');
     if(row.manualConfirmations!==undefined){if(!_isPlainRecord(row.manualConfirmations))add(path+'.manualConfirmations','must be an object');else{Object.keys(row.manualConfirmations).forEach(function(ruleId){if(['reading','workout','eating'].indexOf(ruleId)===-1)add(path+'.manualConfirmations.'+ruleId,'is not supported');else if(row.manualConfirmations[ruleId]!==true)add(path+'.manualConfirmations.'+ruleId,'must be true or omitted')})}}
     if(row.sessionChoice!==undefined&&['recovery','rest'].indexOf(row.sessionChoice)===-1)add(path+'.sessionChoice','must be recovery or rest');
   });
   if(_isPlainRecord(state.trainingSessions))Object.keys(state.trainingSessions).forEach(function(id){
-    var session=state.trainingSessions[id],path='state.trainingSessions.'+id;if(!_isPlainRecord(session)){add(path,'must be an object');return}if(session.id!==id)add(path+'.id','must match its occurrence key');if(!_validDateKey(session.date))add(path+'.date','must be a valid date');if(session.planId!=='winter-arc-75-me-2026'||session.planVersion!==1)add(path+'.planId','must reference Winter Arc v1');if(['planned','in-progress','completed'].indexOf(session.status)===-1)add(path+'.status','is invalid');if(!Array.isArray(session.exercises))add(path+'.exercises','must be an array');if(!Number.isFinite(Number(session.durationSec))||Number(session.durationSec)<0)add(path+'.durationSec','must be non-negative');
+    var session=state.trainingSessions[id],path='state.trainingSessions.'+id;if(!_isPlainRecord(session)){add(path,'must be an object');return}if(session.id!==id)add(path+'.id','must match its occurrence key');if(!_validDateKey(session.date))add(path+'.date','must be a valid date');if(session.planId==='daily-basics-recurring-2026'){_validateRecurringSession(session,id,path,add);return}if(session.planId!=='winter-arc-75-me-2026'||session.planVersion!==1)add(path+'.planId','must reference Winter Arc v1');if(['planned','in-progress','completed'].indexOf(session.status)===-1)add(path+'.status','is invalid');if(!Array.isArray(session.exercises))add(path+'.exercises','must be an array');if(!Number.isFinite(Number(session.durationSec))||Number(session.durationSec)<0)add(path+'.durationSec','must be non-negative');
     if(session.planContentRevision!==undefined&&['1.1','1.2','1.3','1.4'].indexOf(session.planContentRevision)===-1)add(path+'.planContentRevision','is not supported');
     var canonical=typeof winterArcOccurrenceForSession==='function'&&_validDateKey(session.date)?winterArcOccurrenceForSession(session):null;if(!canonical)add(path+'.date','must fall inside the Winter Arc block and match its content revision');else if(id!==canonical.id)add(path+'.id','must be the deterministic occurrence id for its content revision');
     if(session.occurrenceId!==id)add(path+'.occurrenceId','must match the deterministic occurrence id');
@@ -272,7 +300,17 @@ function _validateWinterArcDomains(state,add){
     if(state.reading.activeSessionId!==null&&state.reading.activeSessionId!==undefined&&(!state.reading.sessions||!state.reading.sessions[state.reading.activeSessionId]))add('state.reading.activeSessionId','must reference a reading session');
   }
   if(_isPlainRecord(state.weeklyCheckIns))Object.keys(state.weeklyCheckIns).forEach(function(key){if(!_validDateKey(key)||new Date(key+'T12:00:00').getDay()!==1)add('state.weeklyCheckIns.'+key,'must use a Monday date key')});
+  if(_isPlainRecord(state.water))Object.keys(state.water).forEach(function(key){if(!_validDateKey(key))add('state.water.'+key,'must use a valid date');else if(!Number.isInteger(state.water[key])||state.water[key]<0||state.water[key]>100)add('state.water.'+key,'must be a whole number from 0 to 100')});
+  if(_isPlainRecord(state.waterSettings)){if(state.waterSettings.target!==undefined&&(!Number.isInteger(state.waterSettings.target)||state.waterSettings.target<1||state.waterSettings.target>20))add('state.waterSettings.target','must be a whole number from 1 to 20');if(state.waterSettings.glassMl!==undefined&&(!Number.isInteger(state.waterSettings.glassMl)||state.waterSettings.glassMl<50||state.waterSettings.glassMl>2000))add('state.waterSettings.glassMl','must be a whole number from 50 to 2,000')}
   if(_isPlainRecord(state.cycle)){if(!Array.isArray(state.cycle.observedStarts))add('state.cycle.observedStarts','must be an array');else state.cycle.observedStarts.forEach(function(key){if(!_validDateKey(key))add('state.cycle.observedStarts','contains an invalid date')});if(!Array.isArray(state.cycle.estimates))add('state.cycle.estimates','must be an array')}
+}
+
+function _validateDailyBasicsState(state,add){
+  if(!state||state.__dailyBasicsV1!==true)return;
+  var managed=(state.habits||[]).filter(function(h){return h&&h.managedBy==='lifehub'&&h.managedHabitKey==='daily-basics.steps'}),linked=(state.habits||[]).filter(function(h){return h&&Array.isArray(h.integrationKeys)&&h.integrationKeys.indexOf('lifehub.steps.8000')!==-1});
+  if(managed.length!==1)add('state.habits','must contain exactly one managed Daily Basics Steps habit');if(linked.length!==1||managed[0]&&linked[0]!==managed[0])add('state.habits','must link 8,000-step evidence only to the canonical managed Steps habit');
+  var restIds={};Object.keys(state.trainingSessions||{}).forEach(function(id){var session=state.trainingSessions[id];if(session&&session.planContentRevision==='R1'&&session.code==='REST-SAFETY')restIds[id]=true});(state.habits||[]).forEach(function(item,itemIndex){Object.keys(item&&item.logProvenance||{}).forEach(function(dateKey){Object.keys(item.logProvenance[dateKey].sources||{}).forEach(function(source){var match=/^workout:(.+)$/.exec(source);if(match&&restIds[match[1]])add('state.habits['+itemIndex+'].logProvenance.'+dateKey,'Full Rest cannot publish workout evidence')})})});
+  var habit=managed[0];if(!habit)return;Object.keys(state.dailyCheckIns||{}).forEach(function(dateKey){if(dateKey<'2026-11-02')return;var steps=(state.dailyCheckIns[dateKey]||{}).steps,source=habit.logProvenance&&habit.logProvenance[dateKey]&&habit.logProvenance[dateKey].sources&&habit.logProvenance[dateKey].sources['basics:steps__'+dateKey]===true;if((Number.isInteger(steps)&&steps>=8000)!==source)add('state.habits','must keep numeric Steps and same-date Basics provenance in sync')});
 }
 
 function validateLifeHubState(state,options){
@@ -301,7 +339,8 @@ function validateLifeHubState(state,options){
   else{
     Object.keys(state).forEach(function(key){if(!_validDomainName(key))add('state.'+key,'invalid domain name')});
     Object.keys(typeRules).forEach(function(key){if(state[key]===undefined){if(options.requireCore)add('state.'+key,'required data area is missing');return}var expected=typeRules[key];var actual=Array.isArray(state[key])?'array':(state[key]===null?'null':typeof state[key]);if(actual!==expected)add('state.'+key,'expected '+expected)});
-    _validateHabitRecords(state.habits,add);
+    _validateHabitRecords(state.habits,add,state);
+    _validateDailyBasicsState(state,add);
     _validateChallengeRecords(state.challenges,state.habits,add,state.__winterArcHabitIntegrationV2===true);
     _validateWinterArcDomains(state,add);
     if(options.requireCore&&state.trainingPlan===undefined)add('state.trainingPlan','required data area is missing');
@@ -675,8 +714,7 @@ function _writeOneDomain(domain){
       _persistQueue();return;
     }
     if(result.merged){
-      _applyDomain(STATE,domain,{data:result.data,deleted:result.deleted});_localSnapshots=_clone(STATE);_persistLocalState();
-      emitLifeHubChange({action:'merge',domains:[domain],source:'sync'});
+      var mergedCandidate=_clone(STATE);_applyDomain(mergedCandidate,domain,{data:result.data,deleted:result.deleted});var prepared=_prepareOrError(mergedCandidate,{importMode:false});STATE=prepared.state;delete _pendingDomains[domain];Object.keys(prepared.repairs||{}).forEach(function(repairDomain){if(_syncConflicts[repairDomain])return;var has=Object.prototype.hasOwnProperty.call(STATE,repairDomain);_queueDomain(repairDomain,STATE[repairDomain],!has,false)});_localSnapshots=_clone(STATE);_persistLocalState();_persistQueue();emitLifeHubChange({action:'merge',domains:[domain].concat(Object.keys(prepared.repairs||{})),source:'sync'});return;
     }
     delete _pendingDomains[domain];_persistQueue();
   });
@@ -700,30 +738,48 @@ function _flushPendingWrites(){
     return ok;
   });
 }
+function _captureSyncTransactionState(){
+  var storage={};[KEY,LIFEHUB_META_KEY,LIFEHUB_QUEUE_KEY,LIFEHUB_CONFLICT_KEY].forEach(function(key){try{var value=localStorage.getItem(key);storage[key]={present:value!==null,value:value}}catch(e){storage[key]={unavailable:true}}});
+  return {state:_clone(STATE),cloudData:_clone(_cloudData),domainRevisions:_clone(_domainRevisions),domainExists:_clone(_domainExists),pendingDomains:_clone(_pendingDomains),syncConflicts:_clone(_syncConflicts),localSnapshots:_clone(_localSnapshots),domainSnapshotLoaded:_domainSnapshotLoaded,bootstrapCloudReadFailed:_bootstrapCloudReadFailed,bootstrapDirtyDomains:_clone(_bootstrapDirtyDomains),lastCloudUpdatedAt:typeof _lastCloudUpdatedAt==='undefined'?null:_lastCloudUpdatedAt,storage:storage};
+}
+function _restoreSyncTransactionState(snapshot){
+  if(!snapshot)return;STATE=snapshot.state;_cloudData=snapshot.cloudData;_domainRevisions=snapshot.domainRevisions;_domainExists=snapshot.domainExists;_pendingDomains=snapshot.pendingDomains;_syncConflicts=snapshot.syncConflicts;_localSnapshots=snapshot.localSnapshots;_domainSnapshotLoaded=snapshot.domainSnapshotLoaded;_bootstrapCloudReadFailed=snapshot.bootstrapCloudReadFailed;_bootstrapDirtyDomains=snapshot.bootstrapDirtyDomains;if(typeof _lastCloudUpdatedAt!=='undefined')_lastCloudUpdatedAt=snapshot.lastCloudUpdatedAt;
+  Object.keys(snapshot.storage||{}).forEach(function(key){var slot=snapshot.storage[key];if(slot.unavailable)return;try{if(slot.present)localStorage.setItem(key,slot.value);else localStorage.removeItem(key)}catch(e){console.warn('Previous local sync state could not be restored:',e)}});
+}
+function prepareDailyBasicsCandidate(raw,options){
+  options=options||{};if(!raw||typeof raw!=='object'||Array.isArray(raw))return {ok:false,code:'invalid-state',errors:['state: must be an object']};var candidate=_clone(raw);
+  Object.keys(DEFAULT_STATE||{}).forEach(function(domain){if(candidate[domain]===undefined)candidate[domain]=_clone(DEFAULT_STATE[domain])});
+  candidate.challenges={};candidate.reading=_clone(DEFAULT_STATE.reading||{sessions:{},activeSessionId:null});
+  if(!_isPlainRecord(candidate.dailyCheckIns))candidate.dailyCheckIns={};else Object.keys(candidate.dailyCheckIns).forEach(function(key){var row=candidate.dailyCheckIns[key];if(!_validDateKey(key)||!_isPlainRecord(row)){delete candidate.dailyCheckIns[key];return}var clean={date:key};if(row.updatedAt!==undefined)clean.updatedAt=row.updatedAt;if(row.steps!==undefined)clean.steps=row.steps;if(row.sessionChoice==='recovery'||row.sessionChoice==='rest')clean.sessionChoice=row.sessionChoice;candidate.dailyCheckIns[key]=clean});
+  if(!_isPlainRecord(candidate.trainingSessions))candidate.trainingSessions={};else Object.keys(candidate.trainingSessions).forEach(function(id){var session=candidate.trainingSessions[id];if(!session||session.planId!=='daily-basics-recurring-2026'&&typeof workoutOccurrenceForSession==='function'&&!workoutOccurrenceForSession(session))delete candidate.trainingSessions[id]});
+  normalizeLifeHubHabits(candidate);var migrationInput=_clone(candidate);migrationInput.__dailyBasicsV1=false;var legacy=validateLifeHubState(migrationInput,{importMode:!!options.importMode,migrationInput:true,requireCore:true});if(!legacy.ok)return {ok:false,code:'legacy-validation',errors:legacy.errors};
+  var beforeReconcile=_clone(candidate),reconciled=typeof reconcileDailyBasicsState==='function'?reconcileDailyBasicsState(candidate):{ok:false,code:'migration-unavailable'};if(!reconciled.ok)return reconciled;candidate.__dailyBasicsV1=true;
+  var current=validateLifeHubState(candidate,{importMode:!!options.importMode,migrationInput:false,requireCore:true});if(!current.ok)return {ok:false,code:'current-validation',errors:current.errors};var repairs={};_changedDomains(beforeReconcile,candidate,false).forEach(function(domain){repairs[domain]={before:_clone(beforeReconcile[domain]),after:_clone(candidate[domain])}});return {ok:true,state:candidate,repairs:repairs};
+}
+function _prepareOrError(raw,options){var prepared=typeof prepareDailyBasicsCandidate==='function'?prepareDailyBasicsCandidate(raw,options):{ok:true,state:_clone(raw),repairs:{}};if(!prepared.ok){var error=new Error((prepared.errors&&prepared.errors[0])||prepared.message||'Daily Basics candidate preparation failed');error.code='data-validation';throw error}return prepared}
+
 function _parseLegacyState(root){
   if(!root||!root.state)return null;
-  try{var parsed=typeof root.state==='string'?JSON.parse(root.state):root.state;var result=validateLifeHubState(parsed,{importMode:false});return result.ok?parsed:null}catch(e){console.warn('Legacy cloud state could not be parsed:',e);return null}
+  try{var parsed=typeof root.state==='string'?JSON.parse(root.state):root.state;return parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:null}catch(e){console.warn('Legacy cloud state could not be parsed:',e);return null}
 }
 function _applyDomain(target,domain,record){if(record.deleted)delete target[domain];else target[domain]=_clone(record.data)}
 function loadFromCloud(onDone){
   var called=false;function done(){if(called)return;called=true;if(onDone)onDone()}
-  var localCandidate=_clone(STATE);var localCheck=validateLifeHubState(localCandidate,{importMode:false});if(!localCheck.ok){console.warn('Local state failed validation:',localCheck.errors);localCandidate=_clone(DEFAULT_STATE);_showTrustNotice('Local data failed a safety check. A safe copy was loaded instead while cloud recovery is attempted.')}
-  if(!_firebaseReady||!syncDoc){_setCloudIssue({code:'firebase-unavailable'},'bootstrap');STATE=localCandidate;_localSnapshots=_clone(STATE);done();return}
+  var originalLocal=_clone(STATE),localPrepared;try{localPrepared=_prepareOrError(originalLocal,{importMode:false})}catch(error){console.warn('Local state failed preparation:',error);_showTrustNotice('Local data could not be prepared. Existing data was left unchanged.');_setCloudIssue(error,'bootstrap');_localSnapshots=_clone(STATE);done();return}var localCandidate=localPrepared.state;
+  if(!_firebaseReady||!syncDoc){_setCloudIssue({code:'firebase-unavailable'},'bootstrap');STATE=localCandidate;_localSnapshots=_clone(originalLocal);done();return}
   _ensureSignedIn(function(user){
-    if(!user){_setCloudIssue({code:'unauthenticated'},'auth');STATE=localCandidate;_localSnapshots=_clone(STATE);done();return}
-    var rootPromise=syncDoc.get().catch(function(e){console.warn('Non-critical legacy state load failed:',e);return null});
-    var domainsPromise=syncDoc.collection('domains').get();
+    if(!user){_setCloudIssue({code:'unauthenticated'},'auth');STATE=localCandidate;_localSnapshots=_clone(originalLocal);done();return}
+    var transaction=_captureSyncTransactionState();
+    var rootPromise=syncDoc.get().catch(function(e){console.warn('Non-critical legacy state load failed:',e);return null}),domainsPromise=syncDoc.collection('domains').get();
     Promise.all([rootPromise,domainsPromise]).then(function(results){
-      var rootSnap=results[0];var query=results[1];_domainSnapshotLoaded=true;var root=rootSnap&&rootSnap.exists?rootSnap.data():null;var legacy=_parseLegacyState(root);
-      _lastCloudUpdatedAt=root?_timestampText(root.updatedAt):null;
-      var cloudBase=_clone(legacy||localCandidate||DEFAULT_STATE);_domainRevisions={};_domainExists={};
-      query.forEach(function(doc){var record=doc.data()||{};if(!_validDomainName(doc.id))return;_domainExists[doc.id]=true;_domainRevisions[doc.id]=Number(record.revision||0);_applyDomain(cloudBase,doc.id,record)});
-      var effective=_clone(cloudBase);
-      Object.keys(_pendingDomains).forEach(function(domain){var item=_pendingDomains[domain];_applyDomain(effective,domain,item)});
-      Object.keys(_syncConflicts).forEach(function(domain){var conflict=_syncConflicts[domain];_applyDomain(effective,domain,{data:conflict.localData,deleted:conflict.localDeleted})});
-      var check=validateLifeHubState(effective,{importMode:false});if(!check.ok){var validationError=new Error('Combined cloud data failed validation: '+check.errors[0]);validationError.code='data-validation';throw validationError}
-      STATE=effective;_cloudData=_clone(cloudBase);_localSnapshots=_clone(effective);_persistLocalState();_clearCloudIssue('bootstrap');_updateSyncPresentation();done();
-    }).catch(function(e){console.warn('Cloud bootstrap failed:',e);_setCloudIssue(e,'bootstrap');STATE=localCandidate;_localSnapshots=_clone(STATE);done()});
+      var rootSnap=results[0],query=results[1],root=rootSnap&&rootSnap.exists?rootSnap.data():null,legacy=_parseLegacyState(root),lastUpdated=root?_timestampText(root.updatedAt):null;
+      var cloudBase=_clone(legacy||localCandidate),revisions={},exists={};query.forEach(function(doc){var record=doc.data()||{};if(!_validDomainName(doc.id))return;exists[doc.id]=true;revisions[doc.id]=Number(record.revision||0);_applyDomain(cloudBase,doc.id,record)});
+      var effective=_clone(cloudBase);Object.keys(_pendingDomains).forEach(function(domain){_applyDomain(effective,domain,_pendingDomains[domain])});Object.keys(_syncConflicts).forEach(function(domain){var conflict=_syncConflicts[domain];_applyDomain(effective,domain,{data:conflict.localData,deleted:conflict.localDeleted})});
+      var prepared=_prepareOrError(effective,{importMode:false});Object.keys(prepared.repairs).forEach(function(domain){if(_syncConflicts[domain]){var conflictError=new Error('A Daily Basics repair crossed an unresolved conflict');conflictError.code='data-validation';throw conflictError}});
+      STATE=prepared.state;_cloudData=_clone(cloudBase);_domainRevisions=revisions;_domainExists=exists;_domainSnapshotLoaded=true;_bootstrapCloudReadFailed=false;_lastCloudUpdatedAt=lastUpdated;
+      Object.keys(prepared.repairs).forEach(function(domain){var has=Object.prototype.hasOwnProperty.call(STATE,domain);_queueDomain(domain,STATE[domain],!has,false)});
+      if(!_persistLocalState()||!_persistQueue())throw new Error('Prepared startup data could not be stored');_localSnapshots=_clone(STATE);_clearCloudIssue('bootstrap');_updateSyncPresentation();done();
+    }).catch(function(e){console.warn('Cloud bootstrap failed:',e);_restoreSyncTransactionState(transaction);_bootstrapCloudReadFailed=true;_setCloudIssue(e,'bootstrap');STATE=localCandidate;_localSnapshots=_clone(originalLocal);done()});
   });
 }
 function finishDataBootstrap(){
@@ -734,7 +790,7 @@ function finishDataBootstrap(){
   if(_firebaseReady&&syncDoc&&_authUser&&_domainSnapshotLoaded){
     var seen={};_domainKeys(_cloudData).concat(_domainKeys(STATE)).forEach(function(domain){if(seen[domain]||_syncConflicts[domain])return;seen[domain]=true;var has=Object.prototype.hasOwnProperty.call(STATE,domain);if(!_domainExists[domain]||!has||!_same(_cloudData[domain],STATE[domain]))_queueDomain(domain,STATE[domain],!has,false)});
     _persistQueue();
-  }else if(_firebaseReady&&syncDoc&&_authUser){
+  }else if(_firebaseReady&&syncDoc&&_authUser&&!_bootstrapCloudReadFailed){
     Object.keys(_bootstrapDirtyDomains).forEach(function(domain){var has=Object.prototype.hasOwnProperty.call(STATE,domain);_queueDomain(domain,STATE[domain],!has,false)});_persistQueue();
   }
   _bootstrapDirtyDomains={};
@@ -763,11 +819,8 @@ function _refreshFromCloud(recoveryOperation){
       }
       incoming.push({domain:domain,record:record,revision:revision});
     });
-    refreshRollback={
-      state:_clone(STATE),cloudData:_clone(_cloudData),domainRevisions:_clone(_domainRevisions),domainExists:_clone(_domainExists),
-      pendingDomains:_clone(_pendingDomains),syncConflicts:_clone(_syncConflicts),domainSnapshotLoaded:_domainSnapshotLoaded
-    };
-    var changed=false,changedDomains=[];
+    refreshRollback=_captureSyncTransactionState();
+    var candidate=_clone(STATE),changed=false,changedDomains=[];
     incoming.forEach(function(item){
       var domain=item.domain,record=item.record,revision=item.revision;
       var remoteInfo={data:record.data,deleted:!!record.deleted,revision:revision,updatedAt:_timestampText(record.updatedAt)};
@@ -781,29 +834,25 @@ function _refreshFromCloud(recoveryOperation){
           if(merge.clean){
             pending.data=merge.deleted?null:_clone(merge.merged);pending.deleted=merge.deleted===true;
             pending.baseRevision=revision;pending.baseKnown=true;pending.baseData=record.deleted?null:_clone(record.data);pending.baseDeleted=!!record.deleted;pending.queuedAt=new Date().toISOString();
-            _applyDomain(STATE,domain,{data:pending.data,deleted:pending.deleted});changed=true;changedDomains.push(domain);
+            _applyDomain(candidate,domain,{data:pending.data,deleted:pending.deleted});changed=true;changedDomains.push(domain);
           }else{
             _recordConflict(domain,pending,remoteInfo,merge);
-            var conflict=_syncConflicts[domain];if(conflict){_applyDomain(STATE,domain,{data:conflict.localData,deleted:conflict.localDeleted});changed=true;changedDomains.push(domain)}
+            var conflict=_syncConflicts[domain];if(conflict){_applyDomain(candidate,domain,{data:conflict.localData,deleted:conflict.localDeleted});changed=true;changedDomains.push(domain)}
           }
         }else _recordConflict(domain,pending,remoteInfo);
         _domainRevisions[domain]=revision;_domainExists[domain]=true;_applyDomain(_cloudData,domain,record);return;
       }
       if(_syncConflicts[domain])return;
-      _domainRevisions[domain]=revision;_domainExists[domain]=true;_applyDomain(STATE,domain,record);_applyDomain(_cloudData,domain,record);changed=true;changedDomains.push(domain);
+      _domainRevisions[domain]=revision;_domainExists[domain]=true;_applyDomain(candidate,domain,record);_applyDomain(_cloudData,domain,record);changed=true;changedDomains.push(domain);
     });
-    _domainSnapshotLoaded=true;_domainKeys(STATE).forEach(function(domain){if(!_domainExists[domain]&&!_pendingDomains[domain]&&!_syncConflicts[domain])_queueDomain(domain,STATE[domain],false,false)});_persistQueue();
+    _domainSnapshotLoaded=true;
     if(changed){
-      var stateCheck=validateLifeHubState(STATE,{importMode:false});if(!stateCheck.ok){var stateError=new Error('Synced data failed validation: '+stateCheck.errors[0]);stateError.code='data-validation';throw stateError}
-      _localSnapshots=_clone(STATE);_persistLocalState();_rerenderCurrentPage();emitLifeHubChange({action:'remote-apply',domains:changedDomains,source:'sync'});
+      var prepared=_prepareOrError(candidate,{importMode:false});STATE=prepared.state;Object.keys(prepared.repairs).forEach(function(domain){if(_syncConflicts[domain]){var conflictError=new Error('A Daily Basics repair crossed an unresolved conflict');conflictError.code='data-validation';throw conflictError}var has=Object.prototype.hasOwnProperty.call(STATE,domain);_queueDomain(domain,STATE[domain],!has,false);if(changedDomains.indexOf(domain)===-1)changedDomains.push(domain)});
+      _domainKeys(STATE).forEach(function(domain){if(!_domainExists[domain]&&!_pendingDomains[domain]&&!_syncConflicts[domain])_queueDomain(domain,STATE[domain],false,false)});if(!_persistQueue())throw new Error('Synced queue could not be stored');if(!_persistLocalState())throw new Error('Synced data could not be stored');_localSnapshots=_clone(STATE);_rerenderCurrentPage();emitLifeHubChange({action:'remote-apply',domains:changedDomains,source:'sync'});
     }
     _persistRevisionMetadata();_clearCloudIssue(operation);_updateSyncPresentation();_scheduleCloudFlush();return true;
   }).catch(function(e){
-    if(refreshRollback){
-      STATE=refreshRollback.state;_cloudData=refreshRollback.cloudData;_domainRevisions=refreshRollback.domainRevisions;_domainExists=refreshRollback.domainExists;
-      _pendingDomains=refreshRollback.pendingDomains;_syncConflicts=refreshRollback.syncConflicts;_domainSnapshotLoaded=refreshRollback.domainSnapshotLoaded;
-      _persistQueue();_persistConflicts();_persistRevisionMetadata();
-    }
+    if(refreshRollback)_restoreSyncTransactionState(refreshRollback);
     console.warn('Cloud refresh failed:',e);_setCloudIssue(e,operation);return false;
   });
 }
@@ -832,7 +881,7 @@ function openSyncDetails(){
   var actions=document.createElement('div');actions.className='modal-btns';
   if(issue.category==='auth'){var signIn=document.createElement('button');signIn.type='button';signIn.className='btn btn-accent';signIn.textContent='Sign in';signIn.onclick=function(){closeModal();_showSignIn()};actions.appendChild(signIn)}
   else if(issue.retryable){var retry=document.createElement('button');retry.type='button';retry.className='btn btn-accent';retry.textContent='Retry now';retry.onclick=function(){closeModal();retryCloudSync()};actions.appendChild(retry)}
-  var close=document.createElement('button');close.type='button';close.className='btn';close.textContent='Close';close.onclick=closeModal;actions.appendChild(close);content.appendChild(actions);modal.style.display='flex';
+  var close=document.createElement('button');close.type='button';close.className='btn';close.textContent='Close';close.onclick=closeModal;actions.appendChild(close);content.appendChild(actions);if(typeof presentModal==='function')presentModal();else modal.style.display='flex';
 }
 
 function openSyncReview(){
@@ -852,7 +901,7 @@ function openSyncReview(){
     var cloud=document.createElement('button');cloud.type='button';cloud.className='btn btn-sm';cloud.textContent='Use synced version';cloud.onclick=function(){resolveSyncConflict(domain,'cloud')};actions.appendChild(cloud);row.appendChild(actions);list.appendChild(row);
   });
   if(!domains.length){var empty=document.createElement('p');empty.textContent='No sync choices are waiting.';list.appendChild(empty)}
-  var footer=document.createElement('div');footer.className='modal-btns';var close=document.createElement('button');close.type='button';close.className='btn';close.textContent='Close';close.onclick=function(){if(typeof closeModal==='function')closeModal();else modal.style.display='none'};footer.appendChild(close);content.appendChild(footer);modal.style.display='flex';
+  var footer=document.createElement('div');footer.className='modal-btns';var close=document.createElement('button');close.type='button';close.className='btn';close.textContent='Close';close.onclick=function(){if(typeof closeModal==='function')closeModal();else modal.style.display='none'};footer.appendChild(close);content.appendChild(footer);if(typeof presentModal==='function')presentModal();else modal.style.display='flex';
 }
 function resolveSyncConflict(domain,choice){
   var item=_syncConflicts[domain];if(!item)return;
@@ -863,27 +912,21 @@ function resolveSyncConflict(domain,choice){
     if(!habitCheck.ok){_setCloudIssue({code:'data-validation'},'conflict',{domain:domain});return}
     chosenData=habitCheck.data;
   }
-  var snapshot=_clone(STATE),pendingSnapshot=_clone(_pendingDomains),revisionSnapshot=_domainRevisions[domain],existsSnapshot=_domainExists[domain];
-  var cloudHad=Object.prototype.hasOwnProperty.call(_cloudData,domain),cloudSnapshot=cloudHad?_clone(_cloudData[domain]):null;
+  var transaction=_captureSyncTransactionState(),candidate=_clone(STATE);
   var remoteData=Object.prototype.hasOwnProperty.call(item,'remoteData')?item.remoteData:item.cloudData;
   var remoteDeleted=Object.prototype.hasOwnProperty.call(item,'remoteDeleted')?item.remoteDeleted:item.cloudDeleted;
   var matchesRemote=chosenDeleted===remoteDeleted&&(chosenDeleted||_same(chosenData,remoteData));
-  _applyDomain(STATE,domain,{data:chosenData,deleted:chosenDeleted});_domainRevisions[domain]=item.cloudRevision;_domainExists[domain]=true;_applyDomain(_cloudData,domain,{data:remoteData,deleted:remoteDeleted});
+  _applyDomain(candidate,domain,{data:chosenData,deleted:chosenDeleted});var prepared;try{prepared=_prepareOrError(candidate,{importMode:false});Object.keys(prepared.repairs||{}).forEach(function(repairDomain){if(repairDomain!==domain&&_syncConflicts[repairDomain]){var conflictError=new Error('A Daily Basics repair crossed an unresolved conflict');conflictError.code='data-validation';throw conflictError}})}catch(error){_setCloudIssue(error,'conflict',{domain:domain});return}
+  STATE=prepared.state;_domainRevisions[domain]=item.cloudRevision;_domainExists[domain]=true;_applyDomain(_cloudData,domain,{data:remoteData,deleted:remoteDeleted});
   if(matchesRemote)delete _pendingDomains[domain];
   else _pendingDomains[domain]={domain:domain,data:chosenDeleted?null:_clone(chosenData),deleted:!!chosenDeleted,baseRevision:item.cloudRevision,baseKnown:true,baseData:remoteDeleted?null:_clone(remoteData),baseDeleted:!!remoteDeleted,queuedAt:new Date().toISOString(),clientId:_clientId};
-  if(!_persistLocalState()||!_persistQueue()){
-    STATE=snapshot;_pendingDomains=pendingSnapshot;
-    if(revisionSnapshot===undefined)delete _domainRevisions[domain];else _domainRevisions[domain]=revisionSnapshot;
-    if(existsSnapshot===undefined)delete _domainExists[domain];else _domainExists[domain]=existsSnapshot;
-    if(cloudHad)_cloudData[domain]=cloudSnapshot;else delete _cloudData[domain];
-    _persistLocalState();_persistQueue();_updateSyncPresentation();return;
-  }
+  Object.keys(prepared.repairs||{}).forEach(function(repairDomain){var has=Object.prototype.hasOwnProperty.call(STATE,repairDomain);_queueDomain(repairDomain,STATE[repairDomain],!has,false)});
   delete _syncConflicts[domain];
-  if(!_persistConflicts()){
-    _syncConflicts[domain]=item;_updateSyncPresentation();return;
+  if(!_persistLocalState()||!_persistQueue()||!_persistConflicts()||!_persistRevisionMetadata()){
+    _restoreSyncTransactionState(transaction);_updateSyncPresentation();return;
   }
-  _localSnapshots=_clone(STATE);_persistRevisionMetadata();_updateSyncPresentation();_rerenderCurrentPage();
-  emitLifeHubChange({action:'conflict-resolved',domains:[domain],source:'local',choice:choice,rendered:true});openSyncReview();if(!matchesRemote)_flushPendingWrites();
+  _localSnapshots=_clone(STATE);_updateSyncPresentation();_rerenderCurrentPage();
+  emitLifeHubChange({action:'conflict-resolved',domains:[domain].concat(Object.keys(prepared.repairs||{})),source:'local',choice:choice,rendered:true});openSyncReview();if(Object.keys(_pendingDomains).length)_flushPendingWrites();
 }
 
 function _downloadJson(payload,name){var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},0)}
@@ -896,8 +939,7 @@ function importLifeHubBackup(){
   var input=document.getElementById('import-file');if(!input||!input.files||!input.files[0])return;var file=input.files[0];if(file.size>LIFEHUB_MAX_IMPORT_BYTES){alert('Import failed: backup is larger than 5 MB.');return}
   var reader=new FileReader();reader.onload=function(event){try{
     var parsed=JSON.parse(event.target.result);var version=Number(parsed.version||1);if(!Number.isInteger(version)||version<1)throw new Error('Invalid backup version.');if(version>2)throw new Error('This backup was created by a newer Life Hub version.');if(!parsed.state)throw new Error('Invalid Life Hub backup.');
-    var imported=_clone(parsed.state);Object.keys(DEFAULT_STATE||{}).forEach(function(domain){if(imported[domain]===undefined)imported[domain]=_clone(DEFAULT_STATE[domain])});
-    var check=validateLifeHubState(imported,{importMode:true,requireCore:true});if(!check.ok)throw new Error(check.errors[0]);
+    var imported=_clone(parsed.state),prepared=_prepareOrError(imported,{importMode:true});imported=prepared.state;
     var changed=_changedDomains(STATE,imported,false);var summary='This backup will replace '+changed.length+' data area'+(changed.length===1?'':'s')+'. A copy of your current data will download first. Continue?';if(!confirm(summary))return;
     downloadLifeHubBackup('life-hub-pre-import');captureUndoSnapshot('Imported backup');STATE=imported;if(!saveState({forceAll:true,undoLabel:'Imported backup'}))throw new Error('The imported data could not be saved.');
     if(typeof closeModal==='function')closeModal();_rerenderCurrentPage();if(typeof showCelebrationToast==='function')showCelebrationToast('Backup imported and queued for sync','📤');

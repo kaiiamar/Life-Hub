@@ -12,7 +12,7 @@
 <title>Kai's Life Hub 🤎</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style-new.css?v=67">
+<link rel="stylesheet" href="style-new.css?v=68">
 <!-- Chart.js is lazy-loaded on first visit to a chart page — see ensureChartJs() in js/navigation.js (Part 5.3) -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -30,7 +30,7 @@
       </div>
       <div class="topnav-links">
         <div class="topnav-pill-indicator" id="topnav-pill"></div>
-        <button class="topnav-link active" data-page="planner" onclick="nav('planner')">75 Me</button>
+        <button class="topnav-link active" data-page="planner" onclick="nav('planner')">Today</button>
         <button class="topnav-link" data-page="dashboard" onclick="nav('dashboard')">Dashboard</button>
         <button class="topnav-link" data-page="habits" onclick="nav('habits')">Habits</button>
         <button class="topnav-link" data-page="workout" onclick="nav('workout')">Movement</button>
@@ -78,11 +78,11 @@
   <!-- MOBILE DRAWER -->
   <nav class="sidebar" id="sidebar" aria-label="All Life Hub sections" aria-hidden="true" inert>
     <div class="sidebar-logo">
-      <h2>75 Me</h2>
+      <h2>Life Hub</h2>
       <span>Life Hub command centre</span>
     </div>
     <div class="nav-section">
-      <button class="nav-item active" onclick="nav('planner')">75 Me</button>
+      <button class="nav-item active" onclick="nav('planner')">Today</button>
       <button class="nav-item" onclick="nav('dashboard')">Dashboard</button>
       <button class="nav-item" onclick="nav('goals')">Goals</button>
       <button class="nav-item" onclick="nav('habits')">Habits</button>
@@ -102,7 +102,7 @@
   </nav>
 
   <nav class="mobile-command-nav" aria-label="Primary navigation">
-    <button type="button" class="mobile-command-item active" data-page="planner" aria-current="page" onclick="nav('planner')"><span class="mobile-command-mark">75</span><span>75 Me</span></button>
+    <button type="button" class="mobile-command-item active" data-page="planner" aria-current="page" onclick="nav('planner')"><span class="mobile-command-mark">TD</span><span>Today</span></button>
     <button type="button" class="mobile-command-item" data-page="dashboard" onclick="nav('dashboard')"><span class="mobile-command-mark">DB</span><span>Dashboard</span></button>
     <button type="button" class="mobile-command-item" data-page="habits" onclick="nav('habits')"><span class="mobile-command-mark">HB</span><span>Habits</span></button>
     <button type="button" class="mobile-command-item" data-page="workout" onclick="nav('workout')"><span class="mobile-command-mark">MV</span><span>Movement</span></button>
@@ -111,31 +111,23 @@
 
   <div class="main">
 
-    <!-- ══ 75 ME CHALLENGE ══ -->
+    <!-- ══ TODAY ══ -->
     <div class="page active" id="page-planner">
       <div class="page-header">
         <div class="header-row">
           <div>
-            <h1>75 Me Challenge</h1>
-            <p>Seventy-five intentional days for health, faith, learning and your next chapter.</p>
+            <h1>Today</h1>
+            <p>Build the basics gently and keep the rest of your day flexible.</p>
           </div>
         </div>
       </div>
 
-      <!-- 75 Me tabs -->
-      <div class="page-tabs challenge-page-tabs" role="tablist" aria-label="75 Me Challenge views" style="margin-bottom:16px">
+      <div class="page-tabs challenge-page-tabs" role="tablist" aria-label="Today views" style="margin-bottom:16px">
         <button class="page-tab active" id="planner-tab-today" data-planner-tab="today" role="tab" aria-selected="true" aria-controls="planner-today" onclick="switchPlannerTab('today',this)" onkeydown="plannerTabKeydown(event)">Today</button>
-        <button class="page-tab" id="planner-tab-journey" data-planner-tab="journey" role="tab" aria-selected="false" aria-controls="planner-journey" onclick="switchPlannerTab('journey',this)" onkeydown="plannerTabKeydown(event)">Journey</button>
         <button class="page-tab" id="planner-tab-career" data-planner-tab="career" role="tab" aria-selected="false" aria-controls="planner-career" onclick="switchPlannerTab('career',this)" onkeydown="plannerTabKeydown(event)">Career &amp; tasks</button>
       </div>
 
-      <!-- TODAY TAB -->
       <div class="planner-tab active" id="planner-today" role="tabpanel" aria-labelledby="planner-tab-today"></div>
-
-      <!-- JOURNEY TAB -->
-      <div class="planner-tab" id="planner-journey" role="tabpanel" aria-labelledby="planner-tab-journey"></div>
-
-      <!-- CAREER & TASKS TAB -->
       <div class="planner-tab" id="planner-career" role="tabpanel" aria-labelledby="planner-tab-career"></div>
     </div>
 
@@ -355,8 +347,8 @@
       <div class="page-header">
         <div class="header-row">
           <div>
-            <h1>Winter Arc training</h1>
-            <p>Your dated 75-day plan, safe progression, physio and body trends in one place.</p>
+            <h1>Workout plan</h1>
+            <p>Your repeating weekly plan, symptom-aware progression, physiotherapy guidance, and workout history.</p>
           </div>
         </div>
       </div>
@@ -390,9 +382,9 @@
         <div class="grid-3" style="margin-bottom:16px">
           <div class="stat-card">
             <div class="stat-orb accent">🔥</div>
-            <div class="card-label">Weekly streak</div>
+            <div class="card-label">Weekly rhythm</div>
             <div class="stat-big" id="training-streak">—</div>
-            <div class="stat-sub" id="training-streak-sub">weeks hitting target</div>
+            <div class="stat-sub" id="training-streak-sub">consistency and technique</div>
           </div>
           <div class="stat-card">
             <div class="stat-orb purple">📊</div>
@@ -421,7 +413,7 @@
       <!-- Fuel tab: nutrition plan for the training block -->
       <div class="sub-page" id="workout-fuel" role="tabpanel">
         <div class="page-intro" style="margin-bottom:16px">
-          <div style="font-size:13px;color:var(--text2)">Optional nutrition reference for the training block. These targets are guidance only and do not determine 75 Me completion.</div>
+          <div style="font-size:13px;color:var(--text2)">Optional nutrition and recovery guidance. These notes do not determine Daily Basics completion.</div>
         </div>
         <div id="training-fuel"></div>
       </div>
@@ -459,13 +451,13 @@
 
     </div><!-- end page-workout -->
 
-    <!-- ══ WINTER ARC SESSION ══ -->
+    <!-- ══ WORKOUT ══ -->
     <div class="page" id="page-winter-arc">
       <section class="winter-arc-session-page" aria-labelledby="winter-arc-page-title">
         <header class="winter-arc-page-header">
           <button type="button" class="winter-arc-back" id="winter-arc-back" onclick="closeWinterArcPage()" aria-label="Back to training">← <span>Training</span></button>
           <div class="winter-arc-page-heading">
-            <span id="winter-arc-page-kicker">WINTER ARC</span>
+            <span id="winter-arc-page-kicker">WORKOUT</span>
             <h1 id="winter-arc-page-title">Session</h1>
           </div>
         </header>
@@ -840,29 +832,29 @@
 </div><!-- end .app -->
 
 <!-- MODAL -->
-<div class="modal-bg" id="modal" style="display:none" onclick="modalBgClick(event)">
+<div class="modal-bg" id="modal" style="display:none" onclick="modalBgClick(event)" role="dialog" aria-modal="true">
   <div class="modal" id="modal-content"></div>
 </div>
 
 
 
-<script src="js/state.js?v=67"></script>
-<script src="js/persistence.js?v=67"></script>
-<script src="js/navigation.js?v=67"></script>
-<script src="js/training-plan-v1.js?v=67"></script>
-<script src="js/dashboard.js?v=67"></script>
-<script src="js/habits.js?v=67"></script>
-<script src="js/workouts.js?v=67"></script>
-<script src="js/winter-arc.js?v=67"></script>
-<script src="js/challenge.js?v=67"></script>
-<script src="js/finance.js?v=67"></script>
-<script src="js/reviews.js?v=67"></script>
-<script src="js/relationships.js?v=67"></script>
-<script src="js/gratitude.js?v=67"></script>
-<script src="js/insights.js?v=67"></script>
-<script src="js/skincare.js?v=67"></script>
-<script src="js/modals.js?v=67"></script>
-<script src="js/planner.js?v=67"></script>
-<script src="js/init.js?v=67"></script>
+<script src="js/state.js?v=68"></script>
+<script src="js/persistence.js?v=68"></script>
+<script src="js/navigation.js?v=68"></script>
+<script src="js/training-plan-v1.js?v=68"></script>
+<script src="js/dashboard.js?v=68"></script>
+<script src="js/habits.js?v=68"></script>
+<script src="js/workouts.js?v=68"></script>
+<script src="js/winter-arc.js?v=68"></script>
+<script src="js/challenge.js?v=68"></script>
+<script src="js/finance.js?v=68"></script>
+<script src="js/reviews.js?v=68"></script>
+<script src="js/relationships.js?v=68"></script>
+<script src="js/gratitude.js?v=68"></script>
+<script src="js/insights.js?v=68"></script>
+<script src="js/skincare.js?v=68"></script>
+<script src="js/modals.js?v=68"></script>
+<script src="js/planner.js?v=68"></script>
+<script src="js/init.js?v=68"></script>
 </body>
 </html>

@@ -91,7 +91,8 @@ var HABIT_ANCHORS={
 // persistence allowlist so any archived run habit that still carries it
 // continues to validate; it is simply not selectable on new or edited habits.
 var HABIT_INTEGRATION_META=[
-  {key:'lifehub.steps.10000',label:'10,000 steps',sourceKind:'challenge',internal:true},
+  {key:'lifehub.steps.8000',label:'8,000 steps',sourceKind:'basics',internal:true},
+  {key:'lifehub.steps.10000',label:'10,000 steps (previous plan)',sourceKind:'challenge',internal:true},
   {key:'lifehub.workout.any',label:'Any workout',sourceKind:'workout'},
   {key:'lifehub.workout.hyrox',label:'Hyrox workout',sourceKind:'workout'},
   {key:'lifehub.skincare.am',label:'Morning skincare',sourceKind:'skincare'},
@@ -129,7 +130,18 @@ function _validChallengeHabitSourceRecord(value){
 function _habitSourceKey(sourceKind,sourceRecordKey){
   var kind=String(sourceKind||''),record=String(sourceRecordKey||''),key=kind+':'+record;
   if(kind==='challenge')return _validChallengeHabitSourceRecord(record)?key:null;
+  if(kind==='basics')return /^steps__\d{4}-\d{2}-\d{2}$/.test(record)?key:null;
   return /^(workout|run|skincare):[A-Za-z0-9_-]{1,100}$/.test(key)?key:null;
+}
+function setHabitSourceForId(habitId,dateKey,sourceKey,present){
+  var habit=(STATE.habits||[]).find(function(item){return item&&item.id===habitId});
+  var key=String(dateKey||''),source=String(sourceKey||''),expected='basics:steps__'+key;
+  if(!habit||typeof _validDateKey==='function'&&!_validDateKey(key)||key<'2026-11-02'||source!==expected)return false;
+  ensureHabitProvenance(habit);var entry=habit.logProvenance[key]||{sources:{}};
+  if(!entry.sources||typeof entry.sources!=='object'||Array.isArray(entry.sources))entry.sources={};
+  if(present)entry.sources[source]=true;else delete entry.sources[source];
+  if(entry.manual===true||Object.keys(entry.sources).length)habit.logProvenance[key]=entry;else delete habit.logProvenance[key];
+  projectHabitLogs(habit);return true;
 }
 function applyHabitSource(integrationKey,dateKey,sourceKind,sourceRecordKey){
   var sourceKey=_habitSourceKey(sourceKind,sourceRecordKey);if(!sourceKey)return [];

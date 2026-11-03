@@ -267,13 +267,13 @@ function buildDashboardViewModel(){
   }
 
   var recentSessions=(STATE.workouts||[]).filter(function(w){return w&&String(w.type||w.name||'').toLowerCase()!=='rest'&&String(w.name||'').toLowerCase()!=='rest day'}).map(function(w){return {date:w.date,title:w.name||w.type||'Training session',detail:(w.muscleGroups||[]).join(', ')||'Training',icon:/hyrox/i.test((w.name||'')+' '+(w.type||''))?'⚡':'🏋️'}});
-  Object.keys(STATE.trainingSessions||{}).forEach(function(id){var session=STATE.trainingSessions[id];if(session&&session.status==='completed')recentSessions.push({date:session.date,title:session.label||session.code||'Winter Arc session',detail:(Number(session.durationSec||0)>0?Math.floor(Number(session.durationSec)/60)+' min':'Completed')+' · Winter Arc',icon:session.kind==='strength'?'🏋🏽‍♀️':'💓'})});
+  Object.keys(STATE.trainingSessions||{}).forEach(function(id){var session=STATE.trainingSessions[id];if(session&&session.status==='completed')recentSessions.push({date:session.date,title:session.planContentRevision==='R1'?(session.label||'Planned workout'):'Previous plan',detail:(Number(session.durationSec||0)>0?Math.floor(Number(session.durationSec)/60)+' min':'Completed')+' · Workout plan',icon:session.kind==='strength'?'🏋🏽‍♀️':'💓'})});
   (((STATE.metrics||{}).run)||((STATE.metrics||{}).runs)||[]).forEach(function(run){recentSessions.push({date:run.date,title:Number(run.distance||0)+'km run',detail:run.time||run.note||'Run',icon:'🏃'})});
   recentSessions.sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''))});
 
   var latestGratitude=(STATE.gratitude||[]).slice().sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''))})[0]||null;
   var upcoming=[];
-  (STATE.trainingEvents||[]).filter(function(event){return event&&event.date>=todayKey}).sort(function(a,b){return a.date.localeCompare(b.date)}).slice(0,2).forEach(function(event){upcoming.push({icon:'🏁',title:event.name||'Training event',detail:fmtDate(event.date),date:event.date,action:"nav('workout')"})});
+  (STATE.trainingEvents||[]).filter(function(event){return event&&event.date>=todayKey&&!(typeof isRetired75TrainingEvent==='function'&&isRetired75TrainingEvent(event))}).sort(function(a,b){return a.date.localeCompare(b.date)}).slice(0,2).forEach(function(event){upcoming.push({icon:'🏁',title:event.name||'Training event',detail:fmtDate(event.date),date:event.date,action:"nav('workout')"})});
   (STATE.goals||[]).filter(function(goal){return goal&&!goal.done&&goal.deadline&&goal.deadline>=todayKey}).sort(function(a,b){return a.deadline.localeCompare(b.deadline)}).slice(0,2).forEach(function(goal){upcoming.push({icon:'🎯',title:goal.name,detail:'Target '+fmtDate(goal.deadline),date:goal.deadline,action:"nav('goals')"})});
   upcoming.sort(function(a,b){return String(a.date||'').localeCompare(String(b.date||''))});
 
@@ -290,11 +290,8 @@ function buildDashboardViewModel(){
 
 function renderDashboardTodayBridge(view){
   var el=document.getElementById('dash-today-bridge');if(!el)return;
-  var focusText=view.focus.total?view.focus.done+' of '+view.focus.total+' focus tasks complete':'No focus selected yet';
-  var next=view.nextCommitment?'<div class="dashboard-next-line"><span class="dashboard-next-time">'+escapeHtml(view.nextCommitment.start||'Any time')+'</span><span>'+escapeHtml(view.nextCommitment.text||'Commitment')+'</span></div>':'<div class="dashboard-next-line dashboard-next-empty">No remaining commitments today</div>';
-  var challengeSummary=typeof challenge75CompactSummary==='function'?challenge75CompactSummary(view.todayKey):null;
-  var challengeLine=challengeSummary?'<div class="dashboard-next-line dashboard-challenge-line"><span>🌱</span><span>'+escapeHtml(challengeSummary.text)+'</span></div>':'';
-  el.innerHTML='<div class="dashboard-today-head"><div><h2 id="dash-today-title">Today at a glance</h2><p>'+focusText+'</p></div><button class="btn btn-accent btn-sm" onclick="open75MeTab(\'today\')">Open 75 Me</button></div>'+challengeLine+next;
+  var model=typeof dailyBasicsStatus==='function'?dailyBasicsStatus(view.todayKey):null,rows=model&&model.applicable?model.rows:[];
+  el.innerHTML='<div class="dashboard-today-head"><div><h2 id="dash-today-title">Daily Basics</h2><p>Small actions from today’s canonical logs.</p></div><button class="btn btn-accent btn-sm" onclick="openToday(\'today\')">Open Today</button></div><div class="dashboard-basics-list">'+rows.map(function(row){return '<div class="dashboard-next-line"><span>'+(row.done?'✓':'○')+'</span><span><strong>'+escapeHtml(row.label)+'</strong> · '+escapeHtml(row.status)+'</span></div>'}).join('')+'</div>';
 }
 
 function renderDashChrome(view){

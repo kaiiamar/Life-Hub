@@ -280,5 +280,43 @@
     legacy:LEGACY_PLAN
   };
 
+  var RECURRING_PLAN={
+    id:'daily-basics-recurring-2026',version:1,contentRevision:'R1',title:'Workout plan',
+    effectiveDate:'2026-11-02',weekStartsOn:1,
+    safety:{
+      condition:'Right-sided greater trochanteric pain syndrome (GTPS).',
+      precedence:'GP or physiotherapist guidance always wins. Exercises are options, not guarantees.',
+      running:'Running is excluded following GP advice.',
+      training:'Use light-to-moderate resistance and good technique. Modify or stop movements that provoke symptoms.',
+      duringActivity:'Monitor symptoms during activity and the next morning. Reduce load, range, or volume if symptoms worsen; consult your physiotherapist if symptoms persist.',
+      steps:'8,000 steps is a guide, never something to force through pain.',
+      urgent:'Seek urgent assessment for sudden inability to bear weight, severe post-injury hip pain, or a hot or swollen hip with fever.',
+      choices:[
+        {key:'planned',label:'Train as planned'},
+        {key:'recovery',label:'Use recovery instead'},
+        {key:'rest',label:'Full rest today'}
+      ]
+    },
+    progression:{key:'evergreen',rangeKey:'consistency',label:'Ongoing practice',rir:3,progressionMode:'choose-one-variable',guidance:'Consistency and technique first. Add one variable at a time only while symptoms are stable. Avoid lower-body failure. Prioritize recovery and physiotherapist approval.'},
+    weekPattern:[
+      {dow:1,code:'UPPER-A',label:'Upper A',focus:'Back, shoulders and arms',kind:'strength',durationMin:45,qualifies:true},
+      {dow:2,code:'MOBILITY-PILATES',label:'Mobility + Pilates',kind:'recovery',durationMin:45,blocks:[['Mobility',20],['Beginner Pilates',25]],chosenSessionPlaceholder:'Choose a beginner Pilates session',guidance:'Modify or skip positions that provoke the outer right hip, including repeated side-lying leg lifts.',qualifies:true},
+      {dow:3,code:'LOWER-A',label:'Lower A',focus:'Glutes and quads',kind:'strength',durationMin:[45,55],qualifies:true},
+      {dow:4,code:'UPPER-B',label:'Upper B',focus:'Shoulders, back and arms',kind:'strength',durationMin:45,qualifies:true},
+      {dow:5,code:'CARDIO',label:'Cardio',focus:'Stationary cycle and StairMaster',kind:'cardio',durationMin:45,guidance:'Perform only as tolerated. Modify or stop if symptoms are provoked; GP or physiotherapist guidance always wins. No running, jumping, or hard intervals.',qualifies:true},
+      {dow:6,code:'LOWER-B',label:'Lower B',focus:'Glutes and hamstrings',kind:'strength',durationMin:[45,55],qualifies:true},
+      {dow:0,code:'EXTRA-LONG-WALK',label:'Extra-long walk',focus:'Minimum 90 minutes',kind:'walk',durationMin:90,minimumDurationMin:90,guidance:'Walk for a minimum of 90 minutes, but never force the 8,000-step or 90-minute target through pain. Modify or stop according to symptoms; GP or physiotherapist guidance always wins.',qualifies:true}
+    ],
+    exercises:{
+      'LOWER-A':PLAN.exercises['LOWER-A'],
+      'UPPER-A':PLAN.exercises['UPPER-A'],
+      'LOWER-B':PLAN.exercises['LOWER-B'],
+      'UPPER-B':PLAN.exercises['UPPER-B'],
+      'CARDIO':PLAN.exercises.CARDIO,
+      'EXTRA-LONG-WALK':PLAN.exercises['EXTRA-LONG-WALK']
+    }
+  };
+
   global.WINTER_ARC_TRAINING_V1=deepFreeze(PLAN);
+  global.DAILY_BASICS_RECURRING_PLAN=deepFreeze(RECURRING_PLAN);
 })(typeof window!=='undefined'?window:globalThis);

@@ -103,7 +103,7 @@ function setWaterGlasses(dateKey,count,options){
   options=options||{};var key=String(dateKey||''),value=Number(count);if((typeof _validDateKey==='function'&&!_validDateKey(key))||key>localDateKey(new Date())||!Number.isInteger(value)||value<0||value>100)return false;var snapshot=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));if(!STATE.water)STATE.water={};if(value===0)delete STATE.water[key];else STATE.water[key]=value;if(typeof saveStateOrRollback==='function'?!saveStateOrRollback(snapshot):!saveState()){return false}if(typeof emitLifeHubChange==='function')emitLifeHubChange({action:'water-update',dateKeys:[key],domains:['water'],source:'water',rendered:!!options.rendered});return true;
 }
 function logWaterGlass(count){
-  var today=localDateKey(new Date()),prev=Number((STATE.water||{})[today]||0);if(!setWaterGlasses(today,Math.max(0,Math.round(Number(count)||0)),{rendered:true}))return false;
+  var today=localDateKey(new Date()),prev=Number((STATE.water||{})[today]||0);if(!setWaterGlasses(today,Math.max(0,Math.round(Number(count)||0)),{rendered:false}))return false;
   renderMetricsWater();
   if(typeof renderPlannerWater==='function')renderPlannerWater();
   if(typeof refreshDashboardIfActive==='function')refreshDashboardIfActive();
@@ -115,25 +115,12 @@ function logWaterGlass(count){
 }
 
 function saveWaterSettings(){
-  var t=Number((document.getElementById('m-water-target')||{}).value)||8;
-  var ml=Number((document.getElementById('m-water-ml')||{}).value)||250;
-  var challenge=typeof getChallenge75==='function'?getChallenge75():null;
-  var challengePhase=typeof challenge75Phase==='function'?challenge75Phase(localDateKey(new Date())):'none';
-  if(challenge&&(challengePhase==='before'||challengePhase==='active')&&Number(challenge.waterGlassMl)>0&&ml!==Number(challenge.waterGlassMl)){
-    ml=Number(challenge.waterGlassMl);
-    if(typeof showCelebrationToast==='function')showCelebrationToast('Glass size stays '+ml+'ml during the challenge','💧');
-  }
-  if(!STATE.waterSettings)STATE.waterSettings={};
-  STATE.waterSettings.target=Math.max(1,Math.min(20,t));
-  STATE.waterSettings.glassMl=Math.max(50,Math.min(2000,ml));
-  saveState();
-  if(typeof emitLifeHubChange==='function')emitLifeHubChange({action:'water-settings-update',domains:['waterSettings'],source:'water',rendered:true});
-  closeModal();
-  renderMetricsWater();
-  if(typeof renderPlannerWater==='function')renderPlannerWater();
-  if(typeof refreshDashboardIfActive==='function')refreshDashboardIfActive();
+  var targetInput=document.getElementById('m-water-target'),mlInput=document.getElementById('m-water-ml'),t=Number(targetInput&&targetInput.value),ml=Number(mlInput&&mlInput.value),error=document.getElementById('m-water-error');
+  function fail(message,input){if(error){error.textContent=message;error.style.display='block'}if(input&&input.focus)input.focus();return false}
+  if(!Number.isInteger(t)||t<1||t>20)return fail('Daily target must be a whole number from 1 to 20.',targetInput);if(!Number.isInteger(ml)||ml<50||ml>2000)return fail('Glass size must be a whole number from 50 to 2,000 ml.',mlInput);
+  var snapshot=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));if(!STATE.waterSettings)STATE.waterSettings={};STATE.waterSettings.target=t;STATE.waterSettings.glassMl=ml;if(typeof saveStateOrRollback==='function'?!saveStateOrRollback(snapshot):!saveState()){return fail('Hydration settings could not be saved.',error)}
+  if(typeof emitLifeHubChange==='function')emitLifeHubChange({action:'water-settings-update',domains:['waterSettings'],source:'water',rendered:false});closeModal();renderMetricsWater();if(typeof renderPlannerWater==='function')renderPlannerWater();if(typeof refreshDashboardIfActive==='function')refreshDashboardIfActive();return true;
 }
-
 
 
 // ── GRATITUDE FLASHBACK & HEATMAP ──

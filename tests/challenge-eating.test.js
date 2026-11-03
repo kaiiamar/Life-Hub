@@ -1,77 +1,17 @@
 import {describe,expect,it} from 'vitest';
 import {createHarness,source} from './harness.js';
 
-describe('75 Me eating interactions',function(){
-  it('renders and reverses today’s one-tap tile',function(){
-    const {window,state}=createHarness({today:'2026-10-10'});
-    let html=window.renderChallenge75Card('2026-10-10');
-    expect(html).toContain('Whole foods, no takeaway');
-    expect(html).toContain('Tap to confirm');
-    expect(html).toContain("challenge75EatingAction('2026-10-10')");
-    expect(window.challenge75EatingAction('2026-10-10')).toBe(true);
-    expect(state.dailyCheckIns['2026-10-10'].manualConfirmations.eating).toBe(true);
-    html=window.renderChallenge75Card('2026-10-10');
-    expect(html).toContain('Confirmed');
-    expect(window.challenge75EatingAction('2026-10-10')).toBe(true);
-    expect(state.dailyCheckIns['2026-10-10']).not.toHaveProperty('manualConfirmations');
+describe('Daily Basics presentation',function(){
+  it('renders exactly three canonical action rows without shadow checkboxes',function(){
+    const {window,state}=createHarness({today:'2026-11-02'});window.reconcileDailyBasicsState(state);window.document.body.innerHTML='<div id="host"></div>';const host=window.document.getElementById('host');host.innerHTML=window.renderDailyBasicsCard('2026-11-02');
+    expect(Array.from(host.querySelectorAll('[data-daily-basic]')).map(function(row){return row.getAttribute('data-daily-basic')})).toEqual(['steps','workout','water']);expect(host.querySelector('input[type="checkbox"]')).toBeNull();expect(host.textContent).not.toMatch(/75 Me|Day \d+|8\/8|amend|repair/i);
   });
 
-  it('amends and undoes an elapsed day while future days stay locked',function(){
-    const {window,document,state}=createHarness({today:'2026-10-10'});
-    const past='2026-10-07';
-    expect(window.openChallenge75Amend(past)).toBe(true);
-    const foodRow=Array.from(document.querySelectorAll('.challenge-amend-row')).find(function(row){return row.querySelector('strong').textContent==='Whole foods, no takeaway'});
-    expect(foodRow.querySelector('button').textContent).toBe('Mark complete');
-    expect(window.challenge75AmendRule('eating',past)).toBe(true);
-    expect(state.dailyCheckIns[past].manualConfirmations.eating).toBe(true);
-    expect(Array.from(document.querySelectorAll('.challenge-amend-row')).find(function(row){return row.querySelector('strong').textContent==='Whole foods, no takeaway'}).querySelector('button').textContent).toBe('Undo');
-    expect(window.challenge75AmendRule('eating',past)).toBe(true);
-    expect(state.dailyCheckIns[past]).not.toHaveProperty('manualConfirmations');
-    expect(window.openChallenge75Amend('2026-10-11')).toBe(false);
-    expect(window.challenge75EatingAction('2026-10-11')).toBe(false);
-    window.renderChallenge75Journey();
-    expect(document.querySelector('[data-challenge-date="2026-10-11"]')).toBeNull();
-    expect(document.querySelector('.challenge-calendar-day.future')).not.toBeNull();
+  it('reads Steps and Water from their canonical stores',function(){
+    const {window,state}=createHarness({today:'2026-11-02'});window.reconcileDailyBasicsState(state);state.waterSettings.glassMl=250;state.water['2026-11-02']=7;window.setDailySteps('2026-11-02',7999);let rows=window.dailyBasicsStatus('2026-11-02').rows;expect(rows.map(function(row){return row.done})).toEqual([false,false,false]);window.setDailySteps('2026-11-02',8000);state.water['2026-11-02']=8;rows=window.dailyBasicsStatus('2026-11-02').rows;expect(rows[0].done).toBe(true);expect(rows[2]).toMatchObject({done:true,value:2000});
   });
 
-  it('restores focus to the replacement Today tile after confirm and undo',async function(){
-    const {window,document}=createHarness({today:'2026-10-10'});
-    document.body.insertAdjacentHTML('beforeend',window.renderChallenge75Card('2026-10-10'));
-    window.refreshPlannerCards=function(){var current=document.getElementById('planner-challenge-card');if(current)current.outerHTML=window.renderChallenge75Card('2026-10-10')};
-    var tile=document.querySelector('[data-challenge-rule="eating"]');tile.focus();
-    expect(window.challenge75EatingAction('2026-10-10')).toBe(true);
-    await new Promise(function(resolve){window.setTimeout(resolve,0)});
-    expect(document.activeElement).toBe(document.querySelector('[data-challenge-rule="eating"]'));
-    expect(document.activeElement.getAttribute('aria-pressed')).toBe('true');
-    expect(window.challenge75EatingAction('2026-10-10')).toBe(true);
-    await new Promise(function(resolve){window.setTimeout(resolve,0)});
-    expect(document.activeElement).toBe(document.querySelector('[data-challenge-rule="eating"]'));
-    expect(document.activeElement.getAttribute('aria-pressed')).toBe('false');
-  });
-
-  it('restores focus to the replacement historical action',async function(){
-    const {window,document}=createHarness({today:'2026-10-10'}),past='2026-10-07';
-    window.openChallenge75Amend(past);
-    var action=document.querySelector('[data-challenge-amend-rule="eating"] button');action.focus();
-    expect(window.challenge75AmendRule('eating',past)).toBe(true);
-    await new Promise(function(resolve){window.setTimeout(resolve,0)});
-    expect(document.activeElement).toBe(document.querySelector('[data-challenge-amend-rule="eating"] button'));
-    expect(document.activeElement.textContent).toBe('Undo');
-    expect(window.challenge75AmendRule('eating',past)).toBe(true);
-    await new Promise(function(resolve){window.setTimeout(resolve,0)});
-    expect(document.activeElement).toBe(document.querySelector('[data-challenge-amend-rule="eating"] button'));
-    expect(document.activeElement.textContent).toBe('Mark complete');
-  });
-
-  it('shows optional Fuel guidance with no macro completion action',function(){
-    const {window,document}=createHarness({today:'2026-10-10'});
-    window.renderTrainingFuel();
-    const html=document.getElementById('training-fuel').innerHTML;
-    expect(html).toContain('OPTIONAL GUIDANCE');
-    expect(html).toContain('Whole foods, no takeaway');
-    expect(html).toContain('Confirm for today');
-    expect(html).toContain('not 75 Me completion criteria');
-    expect(html).not.toMatch(/wa-quick-protein|wa-quick-calories|Save macros|1,700–2,100|120g\+ protein/i);
-    expect(source('js/winter-arc.js')).not.toMatch(/openWinterArcEating|saveWinterArcMacros|wa-quick-protein|wa-quick-calories/);
+  it('keeps modal focus contained and restores its invoking Basics row',async function(){
+    const {window,state}=createHarness({today:'2026-11-02'});window.reconcileDailyBasicsState(state);window.document.body.innerHTML='<div class="app"><button data-daily-basic="steps">Steps</button></div><div id="modal" style="display:none"><div id="modal-content"></div></div>';window.eval(source('js/modals.js'));const opener=window.document.querySelector('[data-daily-basic="steps"]');opener.focus();window.presentModal('<h2>Log steps</h2><input autofocus><button>Save</button>');await new Promise(function(resolve){window.setTimeout(resolve,0)});expect(window.document.activeElement.tagName).toBe('INPUT');expect(window.document.querySelector('.app').inert).toBe(true);window.closeModal();await new Promise(function(resolve){window.setTimeout(resolve,0)});expect(window.document.activeElement).toBe(opener);expect(window.document.querySelector('.app').inert).toBe(false);
   });
 });

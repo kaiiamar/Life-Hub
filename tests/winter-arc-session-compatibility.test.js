@@ -49,8 +49,9 @@ describe('Winter Arc revision compatibility',function(){
     records.forEach(function(session){state.trainingSessions[session.id]=session});state.workouts=[];state.metrics={run:[]};
     installWorkoutUi(window);window.trainingCalendarCursor='2026-10';window.renderTrainingCalendar();window.renderAllWorkouts();
     records.forEach(function(session){
-      expect(window.document.getElementById('training-calendar').textContent).toContain(session.label);
-      expect(window.document.getElementById('all-workouts').textContent).toContain(session.label);
+      expect(window.document.getElementById('training-calendar').textContent).not.toContain(session.label);
+      expect(window.document.getElementById('all-workouts').textContent).not.toContain(session.label);
+      expect(window.document.getElementById('all-workouts').textContent).toContain('Previous plan');
       const open=Array.from(window.document.querySelectorAll('.wa-history-open')).find(function(button){return button.getAttribute('onclick').includes(session.id)});
       expect(open).toBeTruthy();window.openWinterArcWorkout(session.date,session.id);
       expect(window.document.getElementById('winter-arc-content').textContent).toContain(session.label);window.closeWinterArcPage();
@@ -63,9 +64,9 @@ describe('Winter Arc revision compatibility',function(){
     state.trainingSessions[legacy.id]=legacy;state.trainingSessions[v13.id]=v13;state.trainingSessions[canonical.id]=canonical;state.workouts=[];state.metrics={run:[]};
     installWorkoutUi(window);window.trainingCalendarCursor='2026-10';window.renderTrainingCalendar();
     const cell=window.document.querySelector('[data-training-date="'+date+'"]');
-    expect(cell.textContent).toContain('CARDIO · Cardio');
-    expect(cell.textContent).toContain(legacy.label);
-    expect(cell.textContent).toContain(v13.label);
+    expect(cell.textContent).toContain('Previous plan · 1.4 · CARDIO');
+    expect(cell.textContent).not.toContain(legacy.label);
+    expect(cell.textContent).not.toContain(v13.label);
     expect(cell.querySelector('.training-calendar-primary').getAttribute('onclick')).toContain(canonical.id);
     const historicalRoutes=Array.from(cell.querySelectorAll('.training-calendar-record')).map(function(button){return button.getAttribute('onclick')});
     expect(historicalRoutes.some(function(route){return route.includes(legacy.id)})).toBe(true);
@@ -80,8 +81,8 @@ describe('Winter Arc revision compatibility',function(){
     installWorkoutUi(window);window.trainingCalendarCursor='2026-10';window.renderTrainingCalendar();
     expect(window.winterArcCurrentSessionForDate(date)).toBeNull();
     const cell=window.document.querySelector('[data-training-date="'+date+'"]');
-    expect(cell.textContent).toContain('CARDIO · Cardio');
-    expect(cell.textContent).toContain(historical.label);
+    expect(cell.textContent).toContain('Previous plan · 1.4 · CARDIO');
+    expect(cell.textContent).not.toContain(historical.label);
     expect(cell.querySelector('.training-calendar-primary').getAttribute('onclick')).not.toContain(historical.id);
   });
 

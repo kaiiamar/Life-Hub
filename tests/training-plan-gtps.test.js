@@ -117,3 +117,9 @@ const weekDates=['2026-10-12','2026-10-13','2026-10-14','2026-10-15','2026-10-16
     ]);
   });
 });
+
+describe('Daily Basics recurring plan',function(){
+  it('starts on Monday 2 November and repeats indefinitely by local weekday',function(){const {window}=createHarness({today:'2026-11-02'});expect(window.currentWorkoutOccurrence('2026-11-01').planContentRevision).toBe('1.4');expect(window.currentWorkoutOccurrence('2026-11-02')).toMatchObject({code:'UPPER-A',planId:'daily-basics-recurring-2026',planContentRevision:'R1'});expect(['2026-11-02','2026-11-03','2026-11-04','2026-11-05','2026-11-06','2026-11-07','2026-11-08'].map(function(date){return window.currentWorkoutOccurrence(date).code})).toEqual(['UPPER-A','MOBILITY-PILATES','LOWER-A','UPPER-B','CARDIO','LOWER-B','EXTRA-LONG-WALK']);expect(window.currentWorkoutOccurrence('2028-02-29').code).toBe('MOBILITY-PILATES');expect(window.currentWorkoutOccurrence('2030-01-06').code).toBe('EXTRA-LONG-WALK')});
+
+  it('keeps exact strength prescriptions and evergreen clinical guidance',function(){const {window}=createHarness();const recurring=window.recurringWorkoutPlan(),legacy=window.winterArcPlan();['UPPER-A','LOWER-A','UPPER-B','LOWER-B'].forEach(function(code){expect(window.JSON.stringify(recurring.exercises[code])).toBe(window.JSON.stringify(legacy.exercises[code]))});expect(recurring.progression.guidance).toContain('Add one variable at a time');expect(recurring.progression.guidance).toContain('Avoid lower-body failure');expect(recurring.safety.running).toContain('Running is excluded');expect(recurring.safety.steps).toContain('8,000')});
+});

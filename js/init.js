@@ -18,11 +18,15 @@ function _lifeHubPageActive(page){var el=document.getElementById('page-'+page);r
 document.addEventListener('lifehub:change',function(event){
   var detail=event.detail||{};if(detail.rendered||detail.source==='sync')return;
   var domains=detail.domains||[],habitsChanged=domains.indexOf('habits')!==-1;
-  var movementChanged=domains.indexOf('workouts')!==-1||domains.indexOf('metrics')!==-1||domains.indexOf('trainingSessions')!==-1||domains.indexOf('weeklyCheckIns')!==-1;
-  var challengeChanged=domains.indexOf('challenges')!==-1||domains.indexOf('water')!==-1||domains.indexOf('waterSettings')!==-1||domains.indexOf('dailyCheckIns')!==-1||domains.indexOf('reading')!==-1||domains.indexOf('cycle')!==-1;
+  var trainingSessionsChanged=domains.indexOf('trainingSessions')!==-1;
+  var movementChanged=domains.indexOf('workouts')!==-1||domains.indexOf('metrics')!==-1||trainingSessionsChanged||domains.indexOf('weeklyCheckIns')!==-1;
+  var basicsChanged=habitsChanged||domains.indexOf('water')!==-1||domains.indexOf('waterSettings')!==-1||domains.indexOf('dailyCheckIns')!==-1||trainingSessionsChanged;
   if(habitsChanged&&_lifeHubPageActive('habits')&&typeof renderHabits==='function')renderHabits();
-  if((habitsChanged||movementChanged||challengeChanged)&&_lifeHubPageActive('planner')&&typeof renderPlanner==='function')renderPlanner();
-  if((habitsChanged||movementChanged||challengeChanged)&&typeof refreshDashboardIfActive==='function')refreshDashboardIfActive();
+  if(_lifeHubPageActive('planner')&&typeof refreshPlannerCards==='function'){
+    var cards=[];if(basicsChanged)cards.push('basics');if(habitsChanged)cards=cards.concat(['habits','welcome','sweep','short']);if(trainingSessionsChanged)cards.push('training');if(domains.indexOf('water')!==-1)cards=cards.concat(['waterweight','welcome','sweep','short']);if(domains.indexOf('workouts')!==-1||domains.indexOf('metrics')!==-1||domains.indexOf('weeklyCheckIns')!==-1)cards.push('training');
+    if(cards.length)refreshPlannerCards(cards.filter(function(key,index){return cards.indexOf(key)===index}));
+  }
+  if((habitsChanged||movementChanged||basicsChanged)&&typeof refreshDashboardIfActive==='function')refreshDashboardIfActive();
   if(habitsChanged&&_lifeHubPageActive('skincare')&&typeof renderSkincareToday==='function')renderSkincareToday();
   if(movementChanged&&_lifeHubPageActive('workout')&&typeof renderWorkout==='function')renderWorkout();
 });
@@ -103,6 +107,11 @@ loadFromCloud(function(){
   if(!STATE.tasks)STATE.tasks=[];
   if(!STATE.metrics.projectsDone)STATE.metrics.projectsDone=[];
   if(!STATE.reviews.monthly)STATE.reviews.monthly={};
+  if(typeof migrateDailyBasicsV1==='function'&&!migrateDailyBasicsV1()){
+    setSyncStatus('storage');
+    if(typeof _showTrustNotice==='function')_showTrustNotice('Daily Basics could not be stored. Existing data was left unchanged.');
+    return;
+  }
 
   // ---- MONDAY WEEK KEYS (one-shot) ----------------------------------------
   // Move Sunday-keyed weekly data onto Monday keys. Snapshot first and restore it
@@ -287,6 +296,7 @@ loadFromCloud(function(){
     if(typeof ensureHabitLifecycle==='function')ensureHabitLifecycle(_hipHabit);
     if(typeof habitLifecycleStatus==='function'&&habitLifecycleStatus(_hipHabit,new Date())!=='active'&&typeof _setHabitLifecycleKind==='function')_setHabitLifecycleKind(_hipHabit,null,_reentryToday);
 
+    if(typeof reconcileDailyBasicsState!=='function'){
     var _stepsHabit=STATE.habits.find(function(h){return h&&h.id==='steps-towards-10k-v1'})
       ||STATE.habits.find(function(h){return h&&/^daily steps$/i.test((h.name||'').trim())})
       ||STATE.habits.find(function(h){return h&&/^build towards 10,?000 steps$/i.test((h.name||'').trim())});
@@ -311,6 +321,7 @@ loadFromCloud(function(){
     if(!STATE.trainingEvents.some(function(e){return e&&e.id==='75-day-challenge-2026-10-03'})){
       STATE.trainingEvents.push({id:'75-day-challenge-2026-10-03',name:'75-day challenge begins',date:'2026-10-03',note:'Rules to be added when confirmed'});
     }
+    }
     STATE.__rehabHabitV1=true;
     STATE.__injuryReentryV1=true;
     if(!saveState({suppressUndo:true}))STATE=_reentrySnap;
@@ -321,7 +332,7 @@ loadFromCloud(function(){
   // water and workout records remain the only completion sources; the challenge
   // domain stores configuration only, so a missed day never mutates the dates or
   // restarts the calendar. Snapshot/rollback protects every existing history.
-  if(!STATE.__challenge75V1){
+  if(typeof reconcileDailyBasicsState!=='function'&&!STATE.__challenge75V1){
     var _challengeSnap=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
     var _challengeStart='2026-10-05',_challengeEnd='2026-12-18',_challengeArchive='2026-12-19';
     if(!STATE.challenges||typeof STATE.challenges!=='object'||Array.isArray(STATE.challenges))STATE.challenges={};
@@ -414,7 +425,7 @@ loadFromCloud(function(){
   // Existing users already ran the original challenge seed. Rename only the
   // challenge definition and its deterministic event; completion data and dates
   // remain untouched.
-  if(!STATE.__challenge75NameV1){
+  if(typeof reconcileDailyBasicsState!=='function'&&!STATE.__challenge75NameV1){
     var _challengeNameSnap=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
     if(STATE.challenges&&STATE.challenges[LEGACY_CHALLENGE_75_ID])STATE.challenges[LEGACY_CHALLENGE_75_ID].title='75 Me Challenge';
     (STATE.trainingEvents||[]).forEach(function(event){
@@ -432,7 +443,7 @@ loadFromCloud(function(){
   // prescription, old challenge, generic workouts, runs, weight, water or habit
   // history. New evidence stores start empty; only an existing sleep value is
   // copied into a missing daily check-in field.
-  if(!STATE.__winterArcV1||!STATE.challenges||!STATE.challenges['winter-arc-75-me-v1']||STATE.challenges['winter-arc-75-me-v1'].startDate!=='2026-10-05'||STATE.challenges['winter-arc-75-me-v1'].endDate!=='2026-12-18'){
+  if(typeof reconcileDailyBasicsState!=='function'&&(!STATE.__winterArcV1||!STATE.challenges||!STATE.challenges['winter-arc-75-me-v1']||STATE.challenges['winter-arc-75-me-v1'].startDate!=='2026-10-05'||STATE.challenges['winter-arc-75-me-v1'].endDate!=='2026-12-18')){
     var _winterSnap=typeof _clone==='function'?_clone(STATE):JSON.parse(JSON.stringify(STATE));
     var _winterPlan=typeof WINTER_ARC_TRAINING_V1!=='undefined'?WINTER_ARC_TRAINING_V1:null;
     if(_winterPlan){
@@ -487,7 +498,7 @@ loadFromCloud(function(){
   // Reconnect only the canonical Steps rhythm and provenance-backed workout
   // evidence. Rich Water, Reading, Alcohol and Whole-food stores remain the
   // single source of truth; Duolingo, Manna and Career keep their existing IDs.
-  if(!STATE.__winterArcHabitIntegrationV2&&typeof migrateWinterArcHabitIntegrationV2==='function')migrateWinterArcHabitIntegrationV2();
+  if(typeof reconcileDailyBasicsState!=='function'&&!STATE.__winterArcHabitIntegrationV2&&typeof migrateWinterArcHabitIntegrationV2==='function')migrateWinterArcHabitIntegrationV2();
 
   // ---- RETIRE RUNNING FROM HABITS (one-shot) ------------------------------
   // Running now lives in the training plan (logged per session with pace/detail),
@@ -699,7 +710,7 @@ var _lifeHubVisibleDay=localDateKey(new Date()),_lifeHubDayTimer=null;
 function refreshLifeHubDayBoundary(){var next=localDateKey(new Date());if(next!==_lifeHubVisibleDay){_lifeHubVisibleDay=next;if(typeof _rerenderCurrentPage==='function')_rerenderCurrentPage();if(typeof updateAppBadge==='function')updateAppBadge()}clearTimeout(_lifeHubDayTimer);var now=new Date(),tomorrow=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1,0,0,1);_lifeHubDayTimer=setTimeout(refreshLifeHubDayBoundary,Math.max(1000,tomorrow-now))}
 refreshLifeHubDayBoundary();
 window.addEventListener('pageshow',function(){refreshLifeHubDayBoundary();if(typeof _refreshFromCloud==='function')_refreshFromCloud()});
-window.addEventListener('storage',function(event){if(event.key!==KEY||!event.newValue)return;try{var incoming=JSON.parse(event.newValue),check=validateLifeHubState(incoming,{importMode:false,requireCore:true});if(!check.ok)return;STATE=incoming;if(typeof _localSnapshots!=='undefined')_localSnapshots=_clone(STATE);if(typeof _rerenderCurrentPage==='function')_rerenderCurrentPage()}catch(error){console.warn('Cross-tab state refresh failed:',error)}});
+window.addEventListener('storage',function(event){if(event.key!==KEY||!event.newValue)return;try{var incoming=JSON.parse(event.newValue),prepared=typeof prepareDailyBasicsCandidate==='function'?prepareDailyBasicsCandidate(incoming,{importMode:false}):{ok:true,state:incoming};if(!prepared.ok)return;STATE=prepared.state;if(typeof _localSnapshots!=='undefined')_localSnapshots=_clone(STATE);if(typeof _rerenderCurrentPage==='function')_rerenderCurrentPage()}catch(error){console.warn('Cross-tab state refresh failed:',error)}});
 
 if('serviceWorker' in navigator){
   var _lifeHubReloading=false;
