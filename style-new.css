@@ -5366,6 +5366,7 @@ body.night-mode .btn-ghost{color:var(--text2)!important}
 #planner-focus-card{grid-column:1/7}
 #planner-schedule-card{grid-column:7/-1}
 #planner-capture-card{grid-column:1/-1}
+#planner-sunday-card,#planner-study-card{grid-column:1/-1}
 .planner-card{padding:20px}
 .planner-card-title{font-size:14px;font-weight:800;letter-spacing:-.01em;color:var(--text)}
 .planner-card-count{border-radius:8px;background:var(--moss-dim);color:var(--moss-dark);font:700 11px var(--mono)}
@@ -5476,7 +5477,7 @@ body.night-mode #planner-today .challenge75-card{background:#17271B!important}
 }
 @media(max-width:900px){
   #planner-today.planner-tab.active{grid-template-columns:1fr}
-  #planner-challenge-card,#planner-training-card,#planner-habits-card,#planner-focus-card,#planner-schedule-card,#planner-capture-card{grid-column:1!important}
+  #planner-challenge-card,#planner-training-card,#planner-habits-card,#planner-focus-card,#planner-schedule-card,#planner-capture-card,#planner-sunday-card,#planner-study-card{grid-column:1!important}
   #planner-today .challenge75-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:600px){
@@ -5815,3 +5816,25 @@ body.night-mode .challenge-amend-row{background:var(--paper2)}body.night-mode .c
 .wa-block-logs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}.wa-block-log{min-width:0;padding:14px;border:1px solid var(--border);border-radius:14px;background:var(--paper2)}.wa-block-log label{display:flex;flex-direction:column;gap:2px;margin-bottom:9px}.wa-block-log label span{font-size:11px;color:var(--text3)}.wa-block-log .wa-stepper{grid-template-columns:minmax(0,1fr) auto;padding:0 9px}.wa-block-log .wa-stepper input{text-align:left}
 @media(max-width:600px){.challenge-page-tabs{grid-template-columns:repeat(2,1fr)}.daily-basics-list,.wa-block-logs{grid-template-columns:1fr}.daily-basics-card{padding:18px}.daily-basics-row{min-height:60px}}
 body.night-mode .daily-basics-row.done{background:#203D2C}
+
+/* ── Routine R2: week chip, gym line, Sunday plan, study tracker ── */
+.routine-week-chip,.routine-study-chip{text-transform:none;letter-spacing:0}
+.routine-location{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;font-size:12px;color:#8a6545}
+.routine-location strong{color:#6b3a1f;font-weight:600}
+.routine-link{background:none;border:none;padding:4px 6px;border-radius:8px;color:#b0563c;font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.routine-link:hover{background:rgba(212,132,90,0.12)}
+.routine-sub{margin-top:4px;font-size:12px;color:var(--text2)}
+.routine-focus{margin-top:10px;padding:8px 10px;border-radius:8px;background:rgba(212,169,106,0.14);font-size:12px;color:#6b3a1f}
+.routine-study-card{border-top:2.5px solid #d4a96a !important}
+.routine-study-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding-top:10px;border-top:1px dashed rgba(160,110,60,0.18);font-size:13px;color:var(--text)}
+.routine-study-row .wa-stepper{grid-template-columns:34px auto 34px;min-width:132px}
+.routine-count{padding:0 10px;font-size:13px !important;font-weight:700;color:var(--text) !important;text-align:center}
+.routine-score-add{display:flex;gap:6px;align-items:center}
+.routine-score-add input{width:70px;height:34px;border:1px solid var(--border);border-radius:9px;padding:0 8px;background:#fff;color:var(--text);font-size:13px}
+.routine-scores{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.routine-scores span{font-size:11px;padding:4px 8px;border-radius:999px;background:rgba(107,158,122,0.12);color:#4f7a5e}
+.routine-booked{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;color:var(--text2);cursor:pointer}
+.routine-sunday-card{border-top:2.5px solid #6b9e7a !important}
+body.night-mode .routine-score-add input{background:var(--paper2)}
+.wa-fuel-rules{margin:10px 0 0;padding-left:18px;font-size:13px;line-height:1.6;color:var(--text2)}
+.routine-study-card .planner-train-done{margin-top:0;display:flex;align-items:center}

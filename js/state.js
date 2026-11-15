@@ -180,6 +180,10 @@ var DEFAULT_STATE = {
   // generic workouts remain in `workouts` and are never rewritten into this map.
   trainingSessions:{},
   dailyCheckIns:{},
+  // Routine R2: house per stay (Sunday-keyed overrides) and Sunday plan ticks.
+  routine:{version:1,stays:{},sundayPlans:{}},
+  // AWS AI Practitioner study tracker (exam Thu 17 Dec 2026).
+  study:{version:1,goal:{id:'aws-aif-c01',label:'AWS AI Practitioner (AIF-C01)',examDate:'2026-12-17',examBooked:false,slot:'14:00',backupSlot:'16:15'},course:{label:'Ultimate AWS Certified AI Practitioner AIF-C01',sectionsTotal:14,sectionsDone:0},sessions:{},practiceScores:[]},
   reading:{sessions:{},activeSessionId:null},
   cycle:{settings:{defaultLengthDays:30},observedStarts:[],estimates:['2026-10-16','2026-11-15','2026-12-15']},
   weeklyCheckIns:{},

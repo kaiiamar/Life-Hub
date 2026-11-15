@@ -259,6 +259,8 @@ var PLANNER_CARDS={
   welcome:    {host:'planner-welcome-card',  build:function(todayKey){return plannerWelcomeCard(todayKey)}},
   basics:     {host:'planner-daily-basics-card',build:function(todayKey){return typeof renderDailyBasicsCard==='function'?renderDailyBasicsCard(todayKey):''}},
   training:   {host:'planner-training-card', build:function(todayKey){return plannerTrainingCard(todayKey)}},
+  sunday:     {host:'planner-sunday-card',   build:function(todayKey){return typeof routineSundayCard==='function'?routineSundayCard(todayKey):''}},
+  study:      {host:'planner-study-card',    build:function(todayKey){return typeof routineStudyCard==='function'?routineStudyCard(todayKey):''}},
   habits:     {host:'planner-habits-card',   build:function(){return plannerHabitCard()}},
   focus:      {host:'planner-focus-card',    build:function(todayKey){return plannerFocusCard(todayKey)}},
   suggested:  {host:'pc-suggested',          build:function(todayKey){return plannerSuggestedCard(todayKey)}},
@@ -291,7 +293,7 @@ var PLANNER_FOCUS_SLATE_CARDS=['focus','schedule'];
 // two first-action cards, with the evening sweep near the end so it never
 // interrupts them and the Inbox last as the quiet sorting surface.
 function plannerTodayOrder(){
-  return ['basics','training','habits','focus','schedule','capture'];
+  return ['basics','sunday','training','habits','study','focus','schedule','capture'];
 }
 
 // ── Quiet-day re-entry ─────────────────────────────────────
@@ -1614,12 +1616,39 @@ function plannerTrainingLoggedToday(dateKey,planned){
 function plannerTrainingCard(todayKey){
   if(typeof effectiveWinterArcOccurrence!=='function')return '';
   var key=todayKey||localDateKey(new Date()),t=effectiveWinterArcOccurrence(key);if(!t)return '';
+  if(t.planContentRevision==='R2')return plannerRotationCard(key,t);
   var session=(STATE.trainingSessions||{})[t.id],status=session&&session.status,duration=Array.isArray(t.durationMin)?t.durationMin.join('–'):t.durationMin;
   var pace=t.kind==='strength'?duration+' minutes · controlled technique':t.code==='MOBILITY-PILATES'||t.code==='REC-SAFETY'?'20 min Mobility · 25 min Beginner Pilates':t.code==='CARDIO'?'25 min Stationary cycle · 20 min StairMaster':t.code==='EXTRA-LONG-WALK'?'Minimum 90 minutes':duration+' minutes';
   var html='<div class="card planner-card planner-training-card" id="planner-training-card"><div class="planner-card-head"><span class="planner-card-title"><span class="pw-train-bar"></span>Today’s planned workout</span><span class="pw-train-badge">ONGOING</span></div><div class="planner-train-line"><span class="planner-train-icon">'+escapeHtml(t.kind==='strength'?'🏋🏽‍♀️':t.kind==='cardio'?'💓':t.kind==='rest'?'🛌':'🌸')+'</span><span class="planner-train-text">'+escapeHtml(t.code+' · '+t.label)+'</span></div><div class="planner-train-pace">'+escapeHtml(pace)+'</div>';
   if(t.safety.action!=='planned')html+='<div class="wa-safety-mini '+escapeHtml(t.safety.level)+'"><strong>'+escapeHtml(t.safety.title)+'</strong><span>'+escapeHtml(t.safety.message)+'</span></div>';else html+='<div class="planner-train-context">Consistency and technique first. Change one variable at a time only while symptoms stay stable.</div>';
   html+='<div class="planner-train-actions">';if(t.kind==='rest')html+='<span class="planner-train-done">Full rest selected</span><button type="button" class="btn btn-sm btn-ghost" onclick="restoreWinterArcPlan(\''+key+'\')">Restore planned workout</button>';else{html+='<button type="button" class="btn btn-sm pw-train-log-btn" data-training-date="'+key+'" onclick="openWinterArcWorkout(\''+key+'\')">'+(status==='completed'?'View summary':status==='in-progress'?'Resume workout':'Start workout')+'</button>';if(t.originalCode)html+='<button type="button" class="btn btn-sm btn-ghost" onclick="restoreWinterArcPlan(\''+key+'\')">Restore planned workout</button>';else if(t.kind!=='recovery')html+='<button type="button" class="btn btn-sm btn-ghost" onclick="chooseWinterArcRecovery(\''+key+'\')">Use Recovery instead</button>';html+='<button type="button" class="btn btn-sm btn-ghost" onclick="chooseWinterArcFullRest(\''+key+'\')">Full rest today</button>'}return html+'</div></div>';
 }
+
+// R2 rotation card: the next session in the 4-session rotation, this week's
+// count and gym, and a 20-minute minimum that counts. Nothing here says missed.
+function plannerRotationCard(key,t){
+  var session=typeof winterArcCurrentSessionForDate==='function'?winterArcCurrentSessionForDate(key):(STATE.trainingSessions||{})[t.id],status=session&&session.status,minimum=t.code==='MIN-CARDIO'||t.originalCode==='MIN-CARDIO';
+  var pace=minimum?'20 minutes · bike, rower, stair climber or incline walk':t.kind==='rest'?'Rest is part of the plan':t.code==='REC-SAFETY'?'20 min Mobility · 25 min Beginner Pilates':'About '+t.durationMin+' min · 5 min bike warm-up, then the cardio finisher';
+  var heading=status==='completed'?'Done today':status==='in-progress'?'In progress':'Next up';
+  var html='<div class="card planner-card planner-training-card" id="planner-training-card"><div class="planner-card-head"><span class="planner-card-title"><span class="pw-train-bar"></span>Today’s workout</span>'+(typeof routineWeekChip==='function'?routineWeekChip(key):'')+'</div>';
+  html+='<div class="planner-train-line"><span class="planner-train-icon">'+escapeHtml(t.kind==='strength'?'🏋🏽‍♀️':t.kind==='cardio'?'💓':t.kind==='rest'?'🛌':'🌸')+'</span><span class="planner-train-text">'+escapeHtml(heading+': '+t.label+(t.focus?' · '+t.focus:''))+'</span></div><div class="planner-train-pace">'+escapeHtml(pace)+'</div>';
+  html+=typeof routineLocationLine==='function'?routineLocationLine(key):'';
+  if(t.safety&&t.safety.action!=='planned')html+='<div class="wa-safety-mini '+escapeHtml(t.safety.level)+'"><strong>'+escapeHtml(t.safety.title)+'</strong><span>'+escapeHtml(t.safety.message)+'</span></div>';
+  else if(!status)html+='<div class="planner-train-context">Sessions run in order, not by day: just do the next one. 20 minutes counts.</div>';
+  html+='<div class="planner-train-actions">';
+  if(t.kind==='rest'){html+='<span class="planner-train-done">Full rest selected</span><button type="button" class="btn btn-sm btn-ghost" onclick="restoreWinterArcPlan(\''+key+'\')">Back to today’s workout</button>';return html+'</div></div>'}
+  html+='<button type="button" class="btn btn-sm pw-train-log-btn" data-training-date="'+key+'" onclick="openWinterArcWorkout(\''+key+'\')">'+(status==='completed'?'View summary':status==='in-progress'?'Resume workout':'Start workout')+'</button>';
+  if(!session){
+    if(minimum)html+='<button type="button" class="btn btn-sm btn-ghost" onclick="plannerChooseFullSession(\''+key+'\')">Back to the full session</button>';
+    else if(!t.originalCode)html+='<button type="button" class="btn btn-sm btn-ghost" onclick="plannerChooseMinimum(\''+key+'\')">20-min minimum instead</button>';
+    if(t.originalCode)html+='<button type="button" class="btn btn-sm btn-ghost" onclick="restoreWinterArcPlan(\''+key+'\')">Back to today’s workout</button>';
+    else if(t.kind!=='recovery'&&!minimum)html+='<button type="button" class="btn btn-sm btn-ghost" onclick="chooseWinterArcRecovery(\''+key+'\')">Recovery instead</button>';
+    html+='<button type="button" class="btn btn-sm btn-ghost" onclick="chooseWinterArcFullRest(\''+key+'\')">Rest today</button>';
+  }
+  return html+'</div></div>';
+}
+function plannerChooseMinimum(key){if(typeof chooseMinimumSession==='function'&&chooseMinimumSession(key))refreshPlannerCards(['training'])}
+function plannerChooseFullSession(key){if(typeof chooseFullSession==='function'&&chooseFullSession(key))refreshPlannerCards(['training'])}
 
 // "Daily Focus (1–3)" — lined-notebook style with rounded-square checkboxes.
 function plannerFocusCard(todayKey){

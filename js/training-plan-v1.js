@@ -317,6 +317,79 @@
     }
   };
 
+  // R2 (from Mon 16 Nov 2026): four gym sessions a week, run as a rotation
+  // rather than tied to weekdays, because gym days move with alternate-week
+  // stays at Martin's. Same plan id as R1 so history stays in one series.
+  function finisher(id,name,minutes){return {id:id,name:'Finisher: '+name,mode:'time',unit:'minutes',loadType:'time',fixedSets:1,prescribedDurationSec:minutes*60,targetLabel:minutes+' minutes',noProgression:true}}
+  var ROTATION_PLAN={
+    id:'daily-basics-recurring-2026',version:1,contentRevision:'R2',title:'Workout plan · 4-session rotation',
+    effectiveDate:'2026-11-16',weekStartsOn:1,scheduling:'rotation',weeklyTarget:4,goodWeek:3,
+    rotation:['UPPER-A','LOWER-A','UPPER-B','LOWER-B'],
+    minimumCode:'MIN-CARDIO',
+    safety:Object.assign({},RECURRING_PLAN.safety,{
+      avoid:'No running, jumping, lunges, Bulgarian split squats, step-ups or cross trainer.',
+      running:'Running is excluded following GP advice. Also avoid jumping, lunges, Bulgarian split squats and step-ups.'
+    }),
+    progression:{key:'evergreen',rangeKey:'consistency',label:'Ongoing practice',rir:2,progressionMode:'top-of-range',guidance:'Hit the top of the rep range on every set, then add the smallest step next time. Leave about 2 reps in the tank. Stop, swap or skip anything that provokes the hip.'},
+    sessions:{
+      'UPPER-A':{code:'UPPER-A',label:'Upper A',focus:'Pull focus',kind:'strength',durationMin:55,warmUp:'5 min easy bike',qualifies:true},
+      'LOWER-A':{code:'LOWER-A',label:'Lower A',focus:'Glutes and quads',kind:'strength',durationMin:55,warmUp:'5 min easy bike',qualifies:true},
+      'UPPER-B':{code:'UPPER-B',label:'Upper B',focus:'Push focus',kind:'strength',durationMin:55,warmUp:'5 min easy bike',qualifies:true},
+      'LOWER-B':{code:'LOWER-B',label:'Lower B',focus:'Glutes and hamstrings',kind:'strength',durationMin:55,warmUp:'5 min easy bike',qualifies:true},
+      'MIN-CARDIO':{code:'MIN-CARDIO',label:'Minimum session',focus:'20 min cardio — it counts',kind:'cardio',durationMin:20,minimum:true,options:['Bike','Rower','Stair climber','Incline walk'],guidance:'Any of bike, rower, stair climber or incline walk. This counts as a session.',qualifies:true}
+    },
+    exercises:{
+      'UPPER-A':[
+        strength('R2UA1','Dead hang',3,10,20,'bodyweight',{unit:'seconds',skill:'pull-up'}),
+        strength('R2UA2','Assisted pull-up machine',3,6,8,'assistance',{skill:'pull-up'}),
+        strength('R2UA3','Lat pulldown',3,8,12,'cable'),
+        strength('R2UA4','Seated cable row',3,10,12,'cable'),
+        strength('R2UA5','Incline push-up (hands on bench)',3,5,8,'bodyweight',{skill:'push-up'}),
+        finisher('R2UA-FIN','Rower, easy to moderate',10)
+      ],
+      'LOWER-A':[
+        strength('R2LA1','Leg press',3,10,12,'machine',{lowerBody:true}),
+        strength('R2LA2','Hip thrust machine',3,10,12,'machine',{lowerBody:true}),
+        strength('R2LA3','Seated hamstring curl',3,12,15,'machine',{lowerBody:true}),
+        strength('R2LA4','Leg extension',2,12,15,'machine',{lowerBody:true}),
+        strength('R2LA5','Hip abduction machine',2,15,20,'machine',{lowerBody:true}),
+        strength('R2LA6','Dead bug',2,8,8,'bodyweight',{sides:'each'}),
+        finisher('R2LA-FIN','Bike, steady',15)
+      ],
+      'UPPER-B':[
+        strength('R2UB1','Knee push-ups',3,1,8,'bodyweight',{skill:'push-up',instruction:'As many as you can, stopping 1 rep before failure'}),
+        strength('R2UB2','Machine chest press',3,8,12,'machine'),
+        strength('R2UB3','Assisted pull-up, 3-second lowering',3,5,5,'assistance',{skill:'pull-up'}),
+        strength('R2UB4','Chest-supported row',3,10,12,'machine'),
+        strength('R2UB5','Seated shoulder press',2,10,12,'machine'),
+        strength('R2UB6','Plank',3,20,30,'bodyweight',{unit:'seconds'}),
+        finisher('R2UB-FIN','Stair climber',10)
+      ],
+      'LOWER-B':[
+        strength('R2LB1','Dumbbell Romanian deadlift',3,10,10,'db-pair',{lowerBody:true}),
+        strength('R2LB2','Glute bridge (dumbbell on hips)',3,12,12,'db',{lowerBody:true}),
+        strength('R2LB3','Leg press',3,12,12,'machine',{lowerBody:true}),
+        strength('R2LB4','Seated hamstring curl',2,12,15,'machine',{lowerBody:true}),
+        strength('R2LB5','Hip abduction machine',2,15,20,'machine',{lowerBody:true}),
+        strength('R2LB6','Pallof press',2,10,10,'cable',{sides:'each'}),
+        finisher('R2LB-FIN','Incline walk',15)
+      ],
+      'MIN-CARDIO':[
+        {id:'R2MC1',name:'Cardio: bike, rower, stairs or incline walk',mode:'time',unit:'minutes',loadType:'time',fixedSets:1,prescribedDurationSec:1200,targetLabel:'20 minutes',noProgression:true}
+      ]
+    },
+    skills:{
+      'push-up':['3 × 8 knee push-ups','Incline push-ups, lowering the bench over time','3 × 8 on a low incline','First full push-up'],
+      'pull-up':['30-second dead hang','Assisted pull-up: drop one notch at 3 × 8','Slow negatives from a box once assistance is light','First full pull-up']
+    },
+    locations:{
+      home:{key:'home',label:'Home week',gym:'The Gym Group Peckham',slots:'Mon, Wed, Fri at lunch (12:30) + Sat late morning',backup:'Same day, 17:30'},
+      martin:{key:'martin',label:"Martin's week",gym:'PureGym Dartford',slots:"4 mornings, matched to when Martin goes — set on Sunday from his shifts",backup:'Same day, after work'}
+    },
+    locationAnchor:{stayStart:'2026-11-15',location:'home',switchDay:0}
+  };
+
   global.WINTER_ARC_TRAINING_V1=deepFreeze(PLAN);
   global.DAILY_BASICS_RECURRING_PLAN=deepFreeze(RECURRING_PLAN);
+  global.DAILY_BASICS_RECURRING_PLAN_R2=deepFreeze(ROTATION_PLAN);
 })(typeof window!=='undefined'?window:globalThis);
