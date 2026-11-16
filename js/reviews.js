@@ -242,7 +242,7 @@ function renderSmartPrompts(key,saved,stats){
   if(habPct>=80){
     prompts.push({color:'var(--green)',icon:'✨',text:'You hit '+habPct+'% of habits this month — what made it easier?'});
   }else if(habPct<=40&&habTotal>0){
-    prompts.push({color:'var(--gold)',icon:'💭',text:'Habit completion was '+habPct+'% — what got in the way?'});
+    prompts.push({color:'var(--gold)',icon:'💭',text:'Which habit felt easiest to keep this month?'});
   }
 
   if(!prompts.length){

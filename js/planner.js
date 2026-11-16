@@ -257,7 +257,7 @@ function deleteInboxTask(id){
 var PLANNER_CARDS={
   reentry:    {host:'pc-reentry',            build:function(todayKey){return plannerReentryCard(todayKey)}},
   welcome:    {host:'planner-welcome-card',  build:function(todayKey){return plannerWelcomeCard(todayKey)}},
-  basics:     {host:'planner-daily-basics-card',build:function(todayKey){return typeof renderDailyBasicsCard==='function'?renderDailyBasicsCard(todayKey):''}},
+  basics:     {host:'planner-daily-basics-card',build:function(todayKey){return typeof renderDailyBasicsCard==='function'?renderDailyBasicsCard(todayKey,{hideWorkout:!!plannerTrainingCard(todayKey)}):''}},
   training:   {host:'planner-training-card', build:function(todayKey){return plannerTrainingCard(todayKey)}},
   sunday:     {host:'planner-sunday-card',   build:function(todayKey){return typeof routineSundayCard==='function'?routineSundayCard(todayKey):''}},
   study:      {host:'planner-study-card',    build:function(todayKey){return typeof routineStudyCard==='function'?routineStudyCard(todayKey):''}},
@@ -1433,9 +1433,8 @@ function plannerHabitCard(){
     return s==='done'||s==='todo'||s==='optional';
   });
   var rows;
-  if(!habits.length){
-    rows='<div class="planner-empty-line">No physio or recovery rhythm is due today.</div>';
-  } else {
+  if(!habits.length)return ''; // nothing due: no card
+  {
     rows='<div class="pw-habits-list">';
     rows+=habits.map(function(h){
       var done=!!(h.logs&&h.logs[today]),manual=done&&typeof habitManualCompleted==='function'&&habitManualCompleted(h,today),sourceOnly=done&&!manual;
@@ -1508,6 +1507,7 @@ function plannerScheduleCard(todayKey){
 
   var dotColors=['var(--moss)','var(--sky)','var(--amber)','var(--clay)','var(--text2)'];
 
+  if(!items.length)return ''; // empty: "+ Time block" lives on the capture card
   var html='<div class="card planner-card planner-schedule-card" id="planner-schedule-card">';
   html+='<div class="planner-card-head"><span class="planner-card-title">Schedule</span>'
     +'<button class="btn btn-sm btn-ghost" onclick="openModal(\'addTimeBlock\')" title="Add time block">+ Block</button></div>';
@@ -1642,10 +1642,15 @@ function plannerRotationCard(key,t){
     if(minimum)html+='<button type="button" class="btn btn-sm btn-ghost" onclick="plannerChooseFullSession(\''+key+'\')">Back to the full session</button>';
     else if(!t.originalCode)html+='<button type="button" class="btn btn-sm btn-ghost" onclick="plannerChooseMinimum(\''+key+'\')">20-min minimum instead</button>';
     if(t.originalCode)html+='<button type="button" class="btn btn-sm btn-ghost" onclick="restoreWinterArcPlan(\''+key+'\')">Back to today’s workout</button>';
-    else if(t.kind!=='recovery'&&!minimum)html+='<button type="button" class="btn btn-sm btn-ghost" onclick="chooseWinterArcRecovery(\''+key+'\')">Recovery instead</button>';
-    html+='<button type="button" class="btn btn-sm btn-ghost" onclick="chooseWinterArcFullRest(\''+key+'\')">Rest today</button>';
   }
-  return html+'</div></div>';
+  html+='</div>';
+  // Two choices up front; recovery and rest stay one tap away without crowding the card.
+  if(!session){
+    html+='<details class="routine-more"><summary>Not today</summary><div class="planner-train-actions">';
+    if(!t.originalCode&&t.kind!=='recovery'&&!minimum)html+='<button type="button" class="btn btn-sm btn-ghost" onclick="chooseWinterArcRecovery(\''+key+'\')">Recovery instead</button>';
+    html+='<button type="button" class="btn btn-sm btn-ghost" onclick="chooseWinterArcFullRest(\''+key+'\')">Rest today</button></div></details>';
+  }
+  return html+'</div>';
 }
 function plannerChooseMinimum(key){if(typeof chooseMinimumSession==='function'&&chooseMinimumSession(key))refreshPlannerCards(['training'])}
 function plannerChooseFullSession(key){if(typeof chooseFullSession==='function'&&chooseFullSession(key))refreshPlannerCards(['training'])}
@@ -1655,6 +1660,7 @@ function plannerFocusCard(todayKey){
   var focus=getTodayFocus(todayKey);
   var doneCount=focus.filter(function(t){return t.done}).length;
 
+  if(!focus.length&&!plannerFocusChooserOpen)return ''; // empty: "Pick today's focus" lives on the capture card
   var html='<div class="card planner-card planner-focus-card" id="planner-focus-card">';
   html+='<div class="planner-card-head"><span class="planner-card-title">Daily focus</span>'
     +(focus.length?'<span class="planner-card-count">'+doneCount+'/'+focus.length+'</span>':'<span class="pw-focus-hint">just 3 things</span>')
@@ -1771,6 +1777,14 @@ function plannerChooserRow(t){
 // Two controls: `+` files the text as an Inbox_Task (R14.4) and "+ Today" asks
 // for it as one of today's three Focus_Tasks (R14.1). Both are native buttons,
 // so both are keyboard-operable as they stand (R26.9).
+// Entry points for the Daily focus and Schedule cards while they are hidden for
+// being empty, so nothing becomes unreachable.
+function plannerCaptureLinks(){
+  var todayKey=localDateKey(new Date()),links=[];
+  if(!plannerFocusCard(todayKey))links.push('<button type="button" class="routine-link" onclick="plannerShowFocusChooser()">Pick today’s focus</button>');
+  if(!plannerScheduleCard(todayKey))links.push('<button type="button" class="routine-link" onclick="openModal(\'addTimeBlock\')">+ Time block</button>');
+  return links.length?'<div class="planner-capture-links">'+links.join('')+'</div>':'';
+}
 function plannerCaptureCard(hostId){
   var host=hostId||'planner-capture-card';
   var inputId=(host==='planner-capture-card')?'planner-capture-input':host+'-input';
@@ -1782,6 +1796,7 @@ function plannerCaptureCard(hostId){
       +'<button class="planner-capture-btn" onclick="plannerQuickCapture('+readInbox+')" title="Add to your inbox" aria-label="Add to your inbox">+</button>'
       +'<button class="btn btn-ghost btn-sm planner-capture-today" onclick="plannerQuickCapture('+readFocus+')" title="Add as one of today\'s focus tasks">+ Today</button>'
     +'</div>'
+    +(host==='planner-capture-card'?plannerCaptureLinks():'')
   +'</div>';
 }
 

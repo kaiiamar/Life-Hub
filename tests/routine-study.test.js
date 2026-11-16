@@ -106,3 +106,56 @@ describe('Today rotation card',function(){
     expect(window.PLANNER_CARDS.study.build('2026-11-23')).toContain('AWS AI Practitioner');
   });
 });
+
+describe('Quieter Today (step 1)',function(){
+  it('keeps the workout card to two choices with recovery and rest tucked under Not today',function(){
+    const {window}=plannerHarness('2026-11-16');
+    const card=window.plannerTrainingCard('2026-11-16'),top=card.slice(0,card.indexOf('<details'));
+    expect((top.match(/<button/g)||[]).length).toBe(3); // Switch link + Start + 20-min minimum
+    expect(top).toContain('Start workout');
+    expect(top).toContain('20-min minimum instead');
+    expect(top).not.toContain('Rest today');
+    const more=card.slice(card.indexOf('<details'));
+    expect(more).toContain('Not today');
+    expect(more).toContain('Recovery instead');
+    expect(more).toContain('Rest today');
+  });
+
+  it('drops the workout row and the In progress labels from Daily Basics on Today only',function(){
+    const {window}=plannerHarness('2026-11-16');
+    const today=window.PLANNER_CARDS.basics.build('2026-11-16');
+    expect(today).toContain('data-daily-basic="steps"');
+    expect(today).toContain('data-daily-basic="water"');
+    expect(today).not.toContain('data-daily-basic="workout"');
+    expect(today).not.toContain('In progress');
+    expect(window.renderDailyBasicsCard('2026-11-16')).toContain('data-daily-basic="workout"');
+    expect(window.dailyBasicsStatus('2026-11-16').rows.map(function(r){return r.id})).toEqual(['steps','workout','water']);
+  });
+
+  it('hides empty cards and keeps their entry points on the capture card',function(){
+    const {window}=plannerHarness('2026-11-16');
+    expect(window.PLANNER_CARDS.habits.build('2026-11-16')).toBe('');
+    expect(window.PLANNER_CARDS.focus.build('2026-11-16')).toBe('');
+    expect(window.PLANNER_CARDS.schedule.build('2026-11-16')).toBe('');
+    const capture=window.PLANNER_CARDS.capture.build('2026-11-16');
+    expect(capture).toContain('Pick today’s focus');
+    expect(capture).toContain('+ Time block');
+    window.STATE.tasks=[{id:'t1',text:'Book the exam',done:false,focusDate:'2026-11-16'}];
+    expect(window.PLANNER_CARDS.focus.build('2026-11-16')).toContain('Book the exam');
+    expect(window.PLANNER_CARDS.capture.build('2026-11-16')).not.toContain('Pick today’s focus');
+  });
+
+  it('folds course progress on the study card and remembers when it is opened',function(){
+    const {window}=routineHarness('2026-11-18');
+    let card=window.routineStudyCard('2026-11-18');
+    const top=card.slice(0,card.indexOf('<details'));
+    expect(top).toContain('Log 45 min');
+    expect(top).not.toContain('Exam booked');
+    expect(card).toContain('<details class="routine-more" id="routine-study-details" ontoggle');
+    expect(card).toContain('Course progress · 0 of 14 sections · exam not booked yet');
+    window.routineStudyDetailsToggled(true);window.changeStudySections(1);
+    card=window.routineStudyCard('2026-11-18');
+    expect(card).toContain('id="routine-study-details" open');
+    expect(card).toContain('Course progress · 1 of 14 sections');
+  });
+});

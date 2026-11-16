@@ -54,7 +54,7 @@ var gymTarget=Math.max(1,Math.round((dayOfMonth/7)*3));
 var gymCount=(STATE.workouts||[]).filter(function(w){return w.date&&w.date.startsWith(thisMonth)&&String(w.type||w.name||'').toLowerCase()!=='rest'&&String(w.name||'').toLowerCase()!=='rest day'}).length;
 gymCount+=((((STATE.metrics||{}).run)||((STATE.metrics||{}).runs)||[]).filter(function(run){return run.date&&run.date.startsWith(thisMonth)}).length);
 var gymPct=Math.min(100,Math.round(gymCount/gymTarget*100));
-scores.push({label:'Training',pct:gymPct,color:'var(--clay)',tip:gymCount+' sessions this month · '+gymTarget+' at 3×/week pace'});
+scores.push({label:'Training',pct:gymPct,color:'var(--clay)',tip:gymCount+' session'+(gymCount===1?'':'s')+' this month'});
 // Mood — average mood last 30 days (1-5 scale → %)
 var moodDays=last30.filter(function(d){return (STATE.mood||{})[d]&&(STATE.mood||{})[d].mood});
 var moodAvg=moodDays.length?Math.round(moodDays.reduce(function(s,d){return s+Number(STATE.mood[d].mood)},0)/moodDays.length*20):0;
@@ -101,7 +101,7 @@ return '<div data-pulse-bar="'+escapeHtml(s.label)+'"'+(s.empty?' data-pulse-emp
 // The contributor line names exactly the components behind the displayed score,
 // so an excluded component is visible in the composite rather than silent.
 // Requirement 2.4.
-+(contributing.length===scores.length?'':'<div id="pulse-contributors" data-pulse-contributors="'+escapeHtml(contributing.map(function(s){return s.label}).join(','))+'" style="font-size:11px;color:var(--text3);line-height:1.5;border-top:1px solid var(--border2);padding-top:8px">'
++(true?'':'<div id="pulse-contributors" data-pulse-contributors="'+escapeHtml(contributing.map(function(s){return s.label}).join(','))+'" style="font-size:11px;color:var(--text3);line-height:1.5;border-top:1px solid var(--border2);padding-top:8px">'
 +(contributing.length?'Score from '+escapeHtml(insightJoinLabels(contributing.map(function(s){return s.label})))+'.':'No components have data for this window yet.')
 +'</div>');
 
@@ -126,7 +126,8 @@ var thisWkHabit=insightHabitStats(thisWkDays.filter(function(day){return day<=to
 var lastWkHabit=insightHabitStats(lastWkDays,todayKey);
 var thisWkPct=thisWkHabit.pct;
 var lastWkPct=lastWkHabit.pct;
-if(thisWkHabit.total>0&&lastWkHabit.total>0){
+// Only a rise is called out; a quieter week is not scored against the last one.
+if(thisWkHabit.total>0&&lastWkHabit.total>0&&thisWkPct>lastWkPct){
   var delta=thisWkPct-lastWkPct;
   var arrow=delta>0?'↑':delta<0?'↓':'→';
   var tone=delta>0?'positive':'info';
@@ -152,7 +153,7 @@ if(thisWkMood.length>0&&lastWkMood.length>0){
   var thisAvg=thisWkMood.reduce(function(s,d){return s+Number((STATE.mood||{})[d].mood)},0)/thisWkMood.length;
   var lastAvg=lastWkMood.reduce(function(s,d){return s+Number((STATE.mood||{})[d].mood)},0)/lastWkMood.length;
   var moodDelta=Math.round((thisAvg-lastAvg)*10)/10;
-  if(Math.abs(moodDelta)>=0.5){
+  if(moodDelta>=0.5){
     var moodArrow=moodDelta>0?'↑':'↓';
     var moodTone=moodDelta>0?'positive':'info';
     cards.push(mkInsightCard('🌈','Mood '+moodArrow+' '+thisAvg.toFixed(1),(moodDelta>0?'+'+moodDelta:moodDelta)+' from last week\'s '+lastAvg.toFixed(1),moodTone));

@@ -291,7 +291,7 @@ function buildDashboardViewModel(){
 function renderDashboardTodayBridge(view){
   var el=document.getElementById('dash-today-bridge');if(!el)return;
   var model=typeof dailyBasicsStatus==='function'?dailyBasicsStatus(view.todayKey):null,rows=model&&model.applicable?model.rows:[];
-  el.innerHTML='<div class="dashboard-today-head"><div><h2 id="dash-today-title">Daily Basics</h2><p>Small actions from today’s canonical logs.</p></div><button class="btn btn-accent btn-sm" onclick="openToday(\'today\')">Open Today</button></div><div class="dashboard-basics-list">'+rows.map(function(row){return '<div class="dashboard-next-line"><span>'+(row.done?'✓':'○')+'</span><span><strong>'+escapeHtml(row.label)+'</strong> · '+escapeHtml(row.status)+'</span></div>'}).join('')+'</div>';
+  el.innerHTML='<div class="dashboard-today-head"><div><h2 id="dash-today-title">Daily Basics</h2><p>Three small things for today.</p></div><button class="btn btn-accent btn-sm" onclick="openToday(\'today\')">Open Today</button></div><div class="dashboard-basics-list">'+rows.map(function(row){return '<div class="dashboard-next-line"><span>'+(row.done?'✓':'○')+'</span><span><strong>'+escapeHtml(row.label)+'</strong> · '+escapeHtml(row.status)+'</span></div>'}).join('')+'</div>';
 }
 
 function renderDashChrome(view){
@@ -303,7 +303,8 @@ function renderDashChrome(view){
   var dEl=document.getElementById('dash-date-sub');
   if(dEl){
     var dateStr=now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
-    dEl.textContent=dateStr+' · '+view.habits.done+' of '+view.habits.total+' habit check-ins · '+view.focus.done+' of '+view.focus.total+' focus tasks';
+    // Only what has happened: counts appear once there is something to count.
+    dEl.textContent=dateStr+(view.habits.done>0?' · '+view.habits.done+' habit check-in'+(view.habits.done===1?'':'s')+' this week':'')+(view.focus.total>0?' · '+view.focus.done+' of '+view.focus.total+' focus tasks':'');
   }
   renderDashMonthlyFocus();
   renderDashMoodMini();
@@ -314,13 +315,13 @@ function renderDashboardPulse(view){
   var el=document.getElementById('dashboard-pulse-grid');if(!el)return;
   var moodValue=view.mood.mood==null?'—':view.mood.mood.toFixed(1)+'/5';
   var cards=[
-    {icon:'✅',label:'Habit consistency',value:view.habits.pct+'%',detail:view.habits.done+'/'+view.habits.total+' available check-ins',delta:dashboardDelta(view.habits.pct,view.previousHabits.pct,' pts'),pct:view.habits.pct,color:'var(--moss)'},
-    {icon:'🏋️',label:'Training',value:String(view.sessions),detail:'sessions logged this week',delta:dashboardDelta(view.sessions,view.previousSessions,' sessions'),pct:null,color:'var(--clay)'},
-    {icon:'🌡️',label:'Mood',value:moodValue,detail:view.mood.sleep==null?view.mood.logged+' check-ins':view.mood.sleep.toFixed(1)+'h average sleep',delta:dashboardDelta(view.mood.mood,view.previousMood.mood,' mood'),pct:view.mood.mood==null?0:view.mood.mood*20,color:'var(--sky)'},
+    {icon:'✅',label:'Habits',value:String(view.habits.done),detail:'check-in'+(view.habits.done===1?'':'s')+' this week',delta:'',pct:null,color:'var(--moss)'},
+    {icon:'🏋️',label:'Training',value:String(view.sessions),detail:'session'+(view.sessions===1?'':'s')+' logged this week',delta:'',pct:null,color:'var(--clay)'},
+    {icon:'🌡️',label:'Mood',value:moodValue,detail:view.mood.sleep==null?view.mood.logged+' check-ins':view.mood.sleep.toFixed(1)+'h average sleep',delta:'',pct:view.mood.mood==null?null:view.mood.mood*20,color:'var(--sky)'},
     {icon:'💷',label:'Monthly plan',value:view.finance.margin>=0?fmtMoney(view.finance.margin):'−'+fmtMoney(view.finance.margin),detail:fmtMoney(view.finance.savings)+' in savings accounts',delta:view.finance.margin>=0?'planned margin after recurring costs':'planned gap to revisit',pct:null,color:'var(--amber)'}
   ];
   el.innerHTML=cards.map(function(card){
-    return '<article class="dashboard-pulse-card"><div class="dashboard-pulse-icon" aria-hidden="true">'+card.icon+'</div><div class="dashboard-pulse-label">'+card.label+'</div><div class="dashboard-pulse-value">'+card.value+'</div><div class="dashboard-pulse-detail">'+card.detail+'</div>'+(card.pct==null?'':'<div class="dashboard-pulse-track" role="progressbar" aria-label="'+card.label+'" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+Math.round(card.pct)+'"><span style="width:'+Math.max(0,Math.min(100,card.pct))+'%;background:'+card.color+'"></span></div>')+'<div class="dashboard-pulse-delta">'+card.delta+'</div></article>';
+    return '<article class="dashboard-pulse-card"><div class="dashboard-pulse-icon" aria-hidden="true">'+card.icon+'</div><div class="dashboard-pulse-label">'+card.label+'</div><div class="dashboard-pulse-value">'+card.value+'</div><div class="dashboard-pulse-detail">'+card.detail+'</div>'+(card.pct==null?'':'<div class="dashboard-pulse-track" role="progressbar" aria-label="'+card.label+'" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+Math.round(card.pct)+'"><span style="width:'+Math.max(0,Math.min(100,card.pct))+'%;background:'+card.color+'"></span></div>')+''+(card.delta?'<div class="dashboard-pulse-delta">'+card.delta+'</div>':'')+'</article>';
   }).join('');
 }
 
@@ -343,7 +344,7 @@ function renderDashboardMovement(view){
     var session=view.recentSessions[0];
     cards.push('<article class="card card-quiet dashboard-movement-card"><div class="dashboard-movement-kicker">'+session.icon+' Latest training</div><strong>'+escapeHtml(session.title)+'</strong><p>'+escapeHtml(session.detail)+' · '+fmtDate(session.date)+'</p><button class="dashboard-inline-link" onclick="nav(\'workout\')">Open training →</button></article>');
   }
-  cards.push('<article class="card card-quiet dashboard-movement-card"><div class="dashboard-movement-kicker">🌿 Weekly rhythm</div><strong>'+view.habits.pct+'% habit consistency</strong><p>'+dashboardDelta(view.habits.pct,view.previousHabits.pct,' points')+'. '+view.sessions+' training session'+(view.sessions===1?'':'s')+' logged.</p><button class="dashboard-inline-link" onclick="openInsights()">See patterns →</button></article>');
+  cards.push('<article class="card card-quiet dashboard-movement-card"><div class="dashboard-movement-kicker">🌿 Weekly rhythm</div><strong>'+view.habits.done+' habit check-in'+(view.habits.done===1?'':'s')+' this week</strong><p>'+view.sessions+' training session'+(view.sessions===1?'':'s')+' logged.</p><button class="dashboard-inline-link" onclick="openInsights()">See patterns →</button></article>');
   if(view.latestGratitude){
     var gratitude=view.latestGratitude.wins||view.latestGratitude.gratitude||'';
     cards.push('<article class="card card-quiet dashboard-movement-card"><div class="dashboard-movement-kicker">🙏 Latest reflection</div><strong>'+fmtDate(view.latestGratitude.date)+'</strong><p>'+escapeHtml(String(gratitude).split('\n')[0].slice(0,120))+'</p><button class="dashboard-inline-link" onclick="nav(\'gratitude\')">Open gratitude →</button></article>');

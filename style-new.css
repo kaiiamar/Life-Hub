@@ -5838,3 +5838,13 @@ body.night-mode .daily-basics-row.done{background:#203D2C}
 body.night-mode .routine-score-add input{background:var(--paper2)}
 .wa-fuel-rules{margin:10px 0 0;padding-left:18px;font-size:13px;line-height:1.6;color:var(--text2)}
 .routine-study-card .planner-train-done{margin-top:0;display:flex;align-items:center}
+
+/* ── Step 1: quieter Today ── */
+.routine-more{margin-top:10px}
+.routine-more>summary{cursor:pointer;font-size:12px;font-weight:600;color:#8a6545;list-style:none;display:inline-flex;align-items:center;gap:6px;padding:4px 0}
+.routine-more>summary::-webkit-details-marker{display:none}
+.routine-more>summary::before{content:'▸';font-size:10px}
+.routine-more[open]>summary::before{content:'▾'}
+.routine-more>.planner-train-actions{margin-top:6px}
+.planner-capture-links{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px}
+.daily-basics-state:empty{display:none}
