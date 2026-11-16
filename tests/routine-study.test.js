@@ -101,7 +101,7 @@ describe('Today rotation card',function(){
 
   it('places the new cards in the Today order',function(){
     const {window}=plannerHarness('2026-11-22');
-    expect(window.plannerTodayOrder()).toEqual(['basics','sunday','training','habits','study','focus','schedule','capture']);
+    expect(window.plannerTodayOrder()).toEqual(['reminders','now','basics','sunday','training','habits','study','checkin','focus','schedule','capture']);
     expect(window.PLANNER_CARDS.sunday.build('2026-11-22')).toContain('Plan the week');
     expect(window.PLANNER_CARDS.study.build('2026-11-23')).toContain('AWS AI Practitioner');
   });
@@ -157,5 +157,78 @@ describe('Quieter Today (step 1)',function(){
     card=window.routineStudyCard('2026-11-18');
     expect(card).toContain('id="routine-study-details" open');
     expect(card).toContain('Course progress · 1 of 14 sections');
+  });
+});
+
+describe('One-tap Today (step 2)',function(){
+  it('suggests one thing by time of day and nothing once it is done',function(){
+    const {window}=plannerHarness('2026-11-16');
+    expect(window.routineNowChoice('2026-11-16',9).kind).toBe('workout');
+    expect(window.routineNowChoice('2026-11-16',15).kind).toBe('study');
+    expect(window.routineNowChoice('2026-11-16',18).kind).toBe('workout');
+    expect(window.routineNowChoice('2026-11-16',21).kind).toBe('close');
+    expect(window.routineNowChoice('2026-11-17',9)).toBeNull();
+    const card=window.routineNowCard('2026-11-16',9);
+    expect(card).toContain('Upper A · The Gym Group Peckham');
+    expect((card.match(/<button/g)||[]).length).toBe(1);
+    expect(window.logStudyMinutes(15)).toBe(true);
+    expect(window.routineNowChoice('2026-11-16',15).kind).toBe('workout');
+    window.STATE.trainingSessions={};
+    const id=window.startWinterArcSession('2026-11-16');
+    expect(window.routineNowCard('2026-11-16',15)).toContain('Resume workout');
+    window.STATE.trainingSessions[id].exercises.forEach(function(ex){ex.sets.forEach(function(set){window.updateTrainingSet(id,ex.id,set.id,{done:true})})});
+    expect(window.finishWinterArcSession(id)).toBe(true);
+    expect(window.routineNowChoice('2026-11-16',15)).toBeNull();
+    expect(window.routineNowCard('2026-11-16',15)).toBe('');
+  });
+
+  it('skips the study suggestion at weekends',function(){
+    const {window}=plannerHarness('2026-11-21');
+    expect(window.routineNowChoice('2026-11-21',15).kind).toBe('workout');
+  });
+
+  it('logs mood in one tap and asks for one weigh-in a week',function(){
+    const {window}=plannerHarness('2026-11-16');
+    window.quickLogMood=function(value,date){if(!window.STATE.mood)window.STATE.mood={};window.STATE.mood[date]={mood:value}};
+    let card=window.routineCheckinCard('2026-11-16');
+    expect((card.match(/routineLogMood\(/g)||[]).length).toBe(5);
+    expect(card).toContain('Weekly weigh-in');
+    expect(window.routineLogMood(4)).toBe(true);
+    expect(window.STATE.mood['2026-11-16'].mood).toBe(4);
+    card=window.routineCheckinCard('2026-11-16');
+    expect(card).not.toContain('routineLogMood(');
+    window.document.body.innerHTML=card;
+    window.document.getElementById('routine-weight-input').value='90.9';
+    expect(window.routineSaveWeighIn()).toBe(true);
+    expect(window.STATE.metrics.weight.slice(-1)[0]).toMatchObject({date:'2026-11-16',value:90.9});
+    expect(window.routineCheckinCard('2026-11-16')).toBe('');
+    window.document.body.innerHTML='<input id="routine-weight-input" value="900">';
+    expect(window.routineSaveWeighIn()).toBe(false);
+    expect(window.routineLogMood(9)).toBe(false);
+  });
+
+  it('adds a one-tap glass to the water row on Today only',function(){
+    const {window}=plannerHarness('2026-11-16');
+    window.STATE.water={'2026-11-16':2};
+    const today=window.PLANNER_CARDS.basics.build('2026-11-16');
+    expect(today).toContain('onclick="logWaterGlass(3)"');
+    expect(today).toContain('+1 glass');
+    expect(window.renderDailyBasicsCard('2026-11-16')).not.toContain('logWaterGlass(');
+  });
+
+  it('offers three default reminders once and never doubles them',function(){
+    const {window}=plannerHarness('2026-11-16');
+    window.Notification={permission:'default',requestPermission:function(){window.Notification.permission='granted';return Promise.resolve('granted')}};
+    expect(window.routineRemindersCard()).toContain('Turn on reminders');
+    window.STATE.reminders=[];
+    expect(window.routineSeedReminders()).toBe(true);
+    expect(window.STATE.reminders.map(function(r){return r.id+'@'+r.hour+':'+r.minute+':'+r.enabled})).toEqual(['plan@8:30:true','study@14:0:true','close@21:0:true']);
+    expect(window.routineSeedReminders()).toBe(false);
+    expect(window.STATE.reminders).toHaveLength(3);
+    window.Notification.permission='granted';
+    expect(window.routineRemindersCard()).toBe('');
+    window.Notification.permission='denied';
+    expect(window.routineRemindersCard()).toContain('blocked');
+    expect(window.routineRemindersCard()).not.toContain('Turn on reminders');
   });
 });

@@ -41,7 +41,7 @@
   function commit(snapshot,domain,action){
     if(typeof saveStateOrRollback==='function'&&!saveStateOrRollback(snapshot))return false;
     if(typeof emitLifeHubChange==='function')emitLifeHubChange({action:action,domains:[domain],source:'routine',rendered:true});
-    if(typeof refreshPlannerCards==='function')refreshPlannerCards(domain==='study'?['study']:['training','sunday']);
+    if(typeof refreshPlannerCards==='function')refreshPlannerCards(domain==='study'?['study','now']:['training','sunday','now']);
     return true;
   }
 
@@ -136,6 +136,102 @@
   function routineStudyDetailsToggled(open){studyDetailsOpen=!!open}
   function routineAddScoreFromInput(){var input=document.getElementById('routine-score-input');if(!input||input.value==='')return false;var ok=addPracticeScore(input.value);if(ok)input.value='';return ok}
 
+  // ── Now card ─────────────────────────────────────────────
+  // One suggestion for this moment, with one button. Workout first before 14:00
+  // and after 17:00, study first in the afternoon, close the day from 21:00.
+  // Returns '' when nothing is waiting, so the card never nags.
+  function routineNowChoice(value,hourOverride){
+    var key=keyOf(value),hour=typeof hourOverride==='number'?hourOverride:new Date().getHours();if(key<ROUTINE_START||key!==todayKey())return null;
+    if(hour>=21){var st=typeof sweepState==='function'?sweepState(key):null;return st&&st.step==='summary'?null:{kind:'close'}}
+    var week=typeof rotationWeek==='function'?rotationWeek(key):null,doneToday=!!(week&&week.sessions.some(function(s){return s.date===key}));
+    var occ=typeof effectiveWinterArcOccurrence==='function'?effectiveWinterArcOccurrence(key):null,session=typeof winterArcCurrentSessionForDate==='function'?winterArcCurrentSessionForDate(key):null;
+    var workout=occ&&occ.kind!=='rest'&&!doneToday&&(!week||week.count<week.target||!!session)?{kind:'workout',occurrence:occ,inProgress:!!(session&&session.status==='in-progress')}:null;
+    var dow=new Date(key+'T12:00:00').getDay(),study=studyState(),studyOpen=dow>=1&&dow<=5&&key<=study.goal.examDate&&studyMinutesOn(key)===0?{kind:'study'}:null;
+    if(workout&&workout.inProgress)return workout;
+    return hour>=14&&hour<17?(studyOpen||workout):(workout||studyOpen);
+  }
+  function routineNowCard(value,hourOverride){
+    var key=keyOf(value),choice=routineNowChoice(key,hourOverride);if(!choice)return '';
+    var html='<div class="card planner-card planner-now-card" id="planner-now-card"><div class="planner-now-kicker">Now</div>';
+    if(choice.kind==='workout'){
+      var occ=choice.occurrence,loc=routineLocation(key);
+      html+='<div class="planner-now-title">'+esc(occ.label)+(loc?' · '+esc(loc.gym):'')+'</div><div class="routine-sub">'+(occ.code==='MIN-CARDIO'||occ.kind!=='strength'?'About '+Number(occ.durationMin||20)+' minutes.':'About '+Number(occ.durationMin||55)+' minutes. 20 minutes counts too.')+'</div>';
+      html+='<div class="planner-train-actions"><button type="button" class="btn btn-sm pw-train-log-btn" data-planner-control="now:workout" onclick="openWinterArcWorkout(\''+key+'\')">'+(choice.inProgress?'Resume workout':'Start workout')+'</button></div>';
+    }else if(choice.kind==='study'){
+      html+='<div class="planner-now-title">AWS study block</div><div class="routine-sub">45 minutes. 15 counts too.</div>';
+      html+='<div class="planner-train-actions"><button type="button" class="btn btn-sm pw-train-log-btn" data-planner-control="now:study45" onclick="logStudyMinutes(45,\'course\')">Log 45 min</button><button type="button" class="btn btn-sm btn-ghost" data-planner-control="now:study15" onclick="logStudyMinutes(15,\'course\')">Log 15 min</button></div>';
+    }else{
+      html+='<div class="planner-now-title">Close the day</div><div class="routine-sub">Two minutes to log today and set up tomorrow.</div>';
+      html+='<div class="planner-train-actions"><button type="button" class="btn btn-sm pw-train-log-btn" data-planner-control="now:close" onclick="openCloseDayModal()">Close the day</button></div>';
+    }
+    return html+'</div>';
+  }
+
+  // ── Check-in card: one-tap mood, plus a weekly weigh-in ──
+  var MOOD_FACES=['😞','😐','🙂','😊','🤩'],MOOD_LABELS=['Low','Flat','Okay','Good','Great'];
+  function weighInThisWeek(key){var monday=mondayOf(key);return (((STATE.metrics||{}).weight)||[]).some(function(w){return w&&w.date>=monday&&w.date<=key})}
+  function routineCheckinCard(value){
+    var key=keyOf(value);if(key!==todayKey())return '';
+    var mood=Number(((STATE.mood||{})[key]||{}).mood||0),needsWeight=key>=ROUTINE_START&&!weighInThisWeek(key);if(mood&&!needsWeight)return '';
+    var html='<div class="card planner-card planner-checkin-card" id="planner-checkin-card">';
+    if(!mood)html+='<div class="routine-checkin-row"><span class="routine-checkin-label">Mood</span><div class="dash-mood-mini-row" aria-label="Log today\'s mood">'+MOOD_FACES.map(function(face,i){return '<button type="button" class="dash-mood-mini-btn" data-planner-control="mood:'+(i+1)+'" aria-label="Log mood as '+MOOD_LABELS[i]+'" onclick="routineLogMood('+(i+1)+')">'+face+'</button>'}).join('')+'</div></div>';
+    if(needsWeight)html+='<div class="routine-checkin-row"><label class="routine-checkin-label" for="routine-weight-input">Weekly weigh-in</label><div class="routine-score-add"><input id="routine-weight-input" type="number" min="30" max="300" step="0.1" inputmode="decimal" placeholder="kg" onkeydown="if(event.key===\'Enter\')routineSaveWeighIn()"><button type="button" class="btn btn-sm btn-ghost" data-planner-control="weight:save" onclick="routineSaveWeighIn()">Save</button></div></div>';
+    return html+'</div>';
+  }
+  function routineLogMood(value){
+    var v=Number(value);if(!(v>=1&&v<=5)||typeof quickLogMood!=='function')return false;quickLogMood(v,todayKey());
+    if(typeof refreshPlannerCards==='function')refreshPlannerCards(['checkin'],{includeInputCards:true});return true;
+  }
+  function routineSaveWeighIn(){
+    var input=document.getElementById('routine-weight-input'),v=Math.round(Number(input&&input.value)*10)/10;if(!input||input.value===''||!Number.isFinite(v)||v<30||v>300)return false;
+    var snapshot=clone(STATE);if(!STATE.metrics||typeof STATE.metrics!=='object')STATE.metrics={};if(!Array.isArray(STATE.metrics.weight))STATE.metrics.weight=[];
+    STATE.metrics.weight.push({id:newId('w'),date:todayKey(),value:v,note:''});
+    if(typeof saveStateOrRollback==='function'&&!saveStateOrRollback(snapshot))return false;
+    if(typeof emitLifeHubChange==='function')emitLifeHubChange({action:'weight-create',domains:['metrics'],source:'routine',rendered:true});
+    if(typeof refreshPlannerCards==='function')refreshPlannerCards(['checkin'],{includeInputCards:true});
+    if(typeof showCelebrationToast==='function')showCelebrationToast('Weigh-in saved','⚖️');return true;
+  }
+
+  // ── Reminders: three nudges a day ────────────────────────
+  var REMINDER_DEFAULTS=[
+    {id:'plan',label:'Plan the day',emoji:'🗓️',message:'Open Today and pick the next thing.',hour:8,minute:30,enabled:true,condition:'none'},
+    {id:'study',label:'Study block',emoji:'📘',message:'45 minutes of AWS. 15 counts.',hour:14,minute:0,enabled:true,condition:'none'},
+    {id:'close',label:'Close the day',emoji:'🌙',message:'Two minutes to log today and set up tomorrow.',hour:21,minute:0,enabled:true,condition:'none'}
+  ];
+  var REMINDERS_DISMISS_KEY='lh_reminders_card_dismissed';
+  function remindersDismissed(){try{return localStorage.getItem(REMINDERS_DISMISS_KEY)==='1'}catch(e){return false}}
+  function remindersOn(){return typeof Notification!=='undefined'&&Notification.permission==='granted'&&(STATE.reminders||[]).some(function(r){return r&&r.enabled})}
+  function routineRemindersCard(){
+    if(remindersOn()||remindersDismissed())return '';
+    var supported=typeof Notification!=='undefined',blocked=supported&&Notification.permission==='denied';
+    var html='<div class="card planner-card planner-reminders-card" id="planner-reminders-card"><div class="planner-card-head"><span class="planner-card-title">Reminders</span></div>';
+    if(!supported)html+='<div class="routine-sub">To get reminders on your phone, add Life Hub to your Home Screen and open it from there.</div>';
+    else if(blocked)html+='<div class="routine-sub">Notifications are blocked for Life Hub on this device. Allow them in your browser or system settings, then reopen the app.</div>';
+    else html+='<div class="routine-sub">Three nudges a day: 08:30 plan the day, 14:00 study block, 21:00 close the day.</div>';
+    html+='<div class="planner-train-actions">'+(supported&&!blocked?'<button type="button" class="btn btn-sm pw-train-log-btn" data-planner-control="reminders:on" onclick="routineEnableReminders()">Turn on reminders</button>':'')+'<button type="button" class="btn btn-sm btn-ghost" data-planner-control="reminders:dismiss" onclick="routineDismissReminders()">Not now</button></div>';
+    return html+'</div>';
+  }
+  function routineDismissReminders(){try{localStorage.setItem(REMINDERS_DISMISS_KEY,'1')}catch(e){}if(typeof renderPlanner==='function')renderPlanner();return true}
+  function routineSeedReminders(){
+    if((STATE.reminders||[]).some(function(r){return r&&r.enabled}))return false;
+    var snapshot=clone(STATE),existing=Array.isArray(STATE.reminders)?STATE.reminders:[],ids=existing.map(function(r){return r&&r.id});
+    STATE.reminders=existing.concat(clone(REMINDER_DEFAULTS).filter(function(r){return ids.indexOf(r.id)===-1}));
+    STATE.reminders.forEach(function(r){if(r&&REMINDER_DEFAULTS.some(function(d){return d.id===r.id}))r.enabled=true});
+    if(typeof saveStateOrRollback==='function'&&!saveStateOrRollback(snapshot))return false;return true;
+  }
+  function routineEnableReminders(){
+    if(typeof Notification==='undefined')return Promise.resolve(false);
+    return Promise.resolve(Notification.requestPermission()).then(function(permission){
+      if(permission!=='granted'){if(typeof renderPlanner==='function')renderPlanner();return false}
+      routineSeedReminders();
+      if(typeof setupReminders==='function')setupReminders();
+      if(typeof syncRemindersToBackend==='function')syncRemindersToBackend();
+      if(typeof renderPlanner==='function')renderPlanner();return true;
+    });
+  }
+
+  global.routineNowChoice=routineNowChoice;global.routineNowCard=routineNowCard;global.routineCheckinCard=routineCheckinCard;global.routineLogMood=routineLogMood;global.routineSaveWeighIn=routineSaveWeighIn;
+  global.ROUTINE_REMINDER_DEFAULTS=REMINDER_DEFAULTS;global.routineRemindersCard=routineRemindersCard;global.routineDismissReminders=routineDismissReminders;global.routineSeedReminders=routineSeedReminders;global.routineEnableReminders=routineEnableReminders;
   global.ROUTINE_START=ROUTINE_START;global.ROUTINE_SUNDAY_ITEMS=SUNDAY_ITEMS;
   global.routineStayStart=routineStayStart;global.routineLocation=routineLocation;global.setRoutineLocation=setRoutineLocation;global.toggleRoutineLocation=toggleRoutineLocation;
   global.sundayPlan=sundayPlan;global.toggleSundayItem=toggleSundayItem;

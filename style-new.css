@@ -5366,7 +5366,7 @@ body.night-mode .btn-ghost{color:var(--text2)!important}
 #planner-focus-card{grid-column:1/7}
 #planner-schedule-card{grid-column:7/-1}
 #planner-capture-card{grid-column:1/-1}
-#planner-sunday-card,#planner-study-card{grid-column:1/-1}
+#planner-sunday-card,#planner-study-card,#planner-now-card,#planner-checkin-card,#planner-reminders-card{grid-column:1/-1}
 .planner-card{padding:20px}
 .planner-card-title{font-size:14px;font-weight:800;letter-spacing:-.01em;color:var(--text)}
 .planner-card-count{border-radius:8px;background:var(--moss-dim);color:var(--moss-dark);font:700 11px var(--mono)}
@@ -5477,7 +5477,7 @@ body.night-mode #planner-today .challenge75-card{background:#17271B!important}
 }
 @media(max-width:900px){
   #planner-today.planner-tab.active{grid-template-columns:1fr}
-  #planner-challenge-card,#planner-training-card,#planner-habits-card,#planner-focus-card,#planner-schedule-card,#planner-capture-card,#planner-sunday-card,#planner-study-card{grid-column:1!important}
+  #planner-challenge-card,#planner-training-card,#planner-habits-card,#planner-focus-card,#planner-schedule-card,#planner-capture-card,#planner-sunday-card,#planner-study-card,#planner-now-card,#planner-checkin-card,#planner-reminders-card{grid-column:1!important}
   #planner-today .challenge75-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:600px){
@@ -5848,3 +5848,17 @@ body.night-mode .routine-score-add input{background:var(--paper2)}
 .routine-more>.planner-train-actions{margin-top:6px}
 .planner-capture-links{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px}
 .daily-basics-state:empty{display:none}
+
+/* ── Step 2: Now card, one-tap check-ins, reminders ── */
+.planner-now-card{border-left:4px solid #b0563c !important}
+.planner-now-kicker{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#b0563c}
+.planner-now-title{margin-top:4px;font-size:18px;font-weight:700;color:var(--text);line-height:1.25}
+.routine-checkin-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.routine-checkin-row+.routine-checkin-row{margin-top:12px;padding-top:12px;border-top:1px dashed rgba(160,110,60,0.18)}
+.routine-checkin-label{font-size:13px;font-weight:600;color:var(--text)}
+.planner-checkin-card .dash-mood-mini-row{flex:1;min-width:200px}
+.daily-basics-rowline{display:flex;align-items:stretch;gap:8px}
+.daily-basics-rowline>.daily-basics-row{flex:1;min-width:0}
+.daily-basics-plus{flex-shrink:0;padding:0 14px;border-radius:14px;border:1.5px solid rgba(110,147,174,0.5);background:rgba(110,147,174,0.12);color:#4a7391;font-size:13px;font-weight:700;cursor:pointer}
+.daily-basics-plus:hover{background:rgba(110,147,174,0.22)}
+.planner-reminders-card{border-top:2.5px solid #d4a96a !important}

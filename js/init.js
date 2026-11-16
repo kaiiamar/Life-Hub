@@ -745,6 +745,7 @@ function subscribeToPush(){
       return reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key})
     }).then(function(sub){
       if(!sub)return;
+      _pushSubscribed=true;
       return lifeHubApiFetch(NOTIF_API+'/api/subscribe',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
@@ -790,8 +791,12 @@ function getReminders(){
   return STATE.reminders
 }
 var _notifFired={};
+var _inAppRemindersStarted=false,_pushSubscribed=false;
 function setupInAppReminders(){
+  if(_inAppRemindersStarted)return; // one timer, however often reminders are (re)enabled
+  _inAppRemindersStarted=true;
   setInterval(function(){
+    if(_pushSubscribed)return; // the backend push covers it; avoid a double ping
     var now=new Date();var h=now.getHours();var m=now.getMinutes();var today=localDateKey(now);
     getReminders().forEach(function(r){
       if(!r.enabled||h!==r.hour||m!==r.minute)return;

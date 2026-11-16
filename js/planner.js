@@ -257,8 +257,11 @@ function deleteInboxTask(id){
 var PLANNER_CARDS={
   reentry:    {host:'pc-reentry',            build:function(todayKey){return plannerReentryCard(todayKey)}},
   welcome:    {host:'planner-welcome-card',  build:function(todayKey){return plannerWelcomeCard(todayKey)}},
-  basics:     {host:'planner-daily-basics-card',build:function(todayKey){return typeof renderDailyBasicsCard==='function'?renderDailyBasicsCard(todayKey,{hideWorkout:!!plannerTrainingCard(todayKey)}):''}},
+  basics:     {host:'planner-daily-basics-card',build:function(todayKey){return typeof renderDailyBasicsCard==='function'?renderDailyBasicsCard(todayKey,{hideWorkout:!!plannerTrainingCard(todayKey),quickWater:true}):''}},
   training:   {host:'planner-training-card', build:function(todayKey){return plannerTrainingCard(todayKey)}},
+  reminders:  {host:'planner-reminders-card',build:function(){return typeof routineRemindersCard==='function'?routineRemindersCard():''}},
+  now:        {host:'planner-now-card',      build:function(todayKey){return typeof routineNowCard==='function'?routineNowCard(todayKey):''}},
+  checkin:    {host:'planner-checkin-card',  build:function(todayKey){return typeof routineCheckinCard==='function'?routineCheckinCard(todayKey):''}},
   sunday:     {host:'planner-sunday-card',   build:function(todayKey){return typeof routineSundayCard==='function'?routineSundayCard(todayKey):''}},
   study:      {host:'planner-study-card',    build:function(todayKey){return typeof routineStudyCard==='function'?routineStudyCard(todayKey):''}},
   habits:     {host:'planner-habits-card',   build:function(){return plannerHabitCard()}},
@@ -273,7 +276,7 @@ var PLANNER_CARDS={
   inbox:      {host:'planner-inbox-card',    build:function(){return plannerInboxCard()}},
   short:      {host:'pc-short',              build:function(todayKey){return plannerShortVersionCard(todayKey)}}
 },
-PLANNER_INPUT_CARDS=['capture'];
+PLANNER_INPUT_CARDS=['capture','checkin'];
 
 // The cards that change when a task joins or leaves today's focus slate — one
 // row of the mutation table in Components §C, shared by every handler that
@@ -293,7 +296,7 @@ var PLANNER_FOCUS_SLATE_CARDS=['focus','schedule'];
 // two first-action cards, with the evening sweep near the end so it never
 // interrupts them and the Inbox last as the quiet sorting surface.
 function plannerTodayOrder(){
-  return ['basics','sunday','training','habits','study','focus','schedule','capture'];
+  return ['reminders','now','basics','sunday','training','habits','study','checkin','focus','schedule','capture'];
 }
 
 // ── Quiet-day re-entry ─────────────────────────────────────
@@ -1428,7 +1431,8 @@ function renderPlannerWater(){
 function plannerHabitCard(){
   var today=localDateKey(new Date());
   var habits=(STATE.habits||[]).filter(function(h){
-    if(!h||!(h.id==='hip-physio-reentry-v1'||/\b(physio|rehab)\b/i.test(h.name||'')))return false;
+    if(!h||h.managedBy==='lifehub')return false; // Steps lives in Daily Basics
+    if(typeof habitDayStatus!=='function')return false;
     var s=habitDayStatus(h,today);
     return s==='done'||s==='todo'||s==='optional';
   });
@@ -1457,7 +1461,7 @@ function plannerHabitCard(){
   var wavySvg='<svg class="pw-wavy-underline" viewBox="0 0 220 6" preserveAspectRatio="none" aria-hidden="true"><path d="M0 3 Q10 0 20 3 T40 3 T60 3 T80 3 T100 3 T120 3 T140 3 T160 3 T180 3 T200 3 T220 3" fill="none" stroke="var(--moss)" stroke-width="1.5" opacity="0.4"/></svg>';
   return ''
     +'<div class="card planner-card planner-habits-card" id="planner-habits-card">'
-      +'<div class="planner-card-head"><span class="planner-card-title">Recovery support</span>'
+      +'<div class="planner-card-head"><span class="planner-card-title">Habits</span>'
         +'<span class="pw-habit-count">'+doneCount+' / '+habits.length+'</span></div>'
       +wavySvg
       +rows
@@ -1652,8 +1656,8 @@ function plannerRotationCard(key,t){
   }
   return html+'</div>';
 }
-function plannerChooseMinimum(key){if(typeof chooseMinimumSession==='function'&&chooseMinimumSession(key))refreshPlannerCards(['training'])}
-function plannerChooseFullSession(key){if(typeof chooseFullSession==='function'&&chooseFullSession(key))refreshPlannerCards(['training'])}
+function plannerChooseMinimum(key){if(typeof chooseMinimumSession==='function'&&chooseMinimumSession(key))refreshPlannerCards(['training','now'])}
+function plannerChooseFullSession(key){if(typeof chooseFullSession==='function'&&chooseFullSession(key))refreshPlannerCards(['training','now'])}
 
 // "Daily Focus (1–3)" — lined-notebook style with rounded-square checkboxes.
 function plannerFocusCard(todayKey){
@@ -1783,6 +1787,7 @@ function plannerCaptureLinks(){
   var todayKey=localDateKey(new Date()),links=[];
   if(!plannerFocusCard(todayKey))links.push('<button type="button" class="routine-link" onclick="plannerShowFocusChooser()">Pick today’s focus</button>');
   if(!plannerScheduleCard(todayKey))links.push('<button type="button" class="routine-link" onclick="openModal(\'addTimeBlock\')">+ Time block</button>');
+  if(typeof Notification!=='undefined'&&Notification.permission==='granted'&&(STATE.reminders||[]).some(function(r){return r&&r.enabled}))links.push('<button type="button" class="routine-link" onclick="openModal(\'notifSettings\')">Reminders</button>');
   return links.length?'<div class="planner-capture-links">'+links.join('')+'</div>':'';
 }
 function plannerCaptureCard(hostId){
