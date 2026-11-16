@@ -3,15 +3,15 @@ import path from 'node:path';
 import {describe,expect,it} from 'vitest';
 import {ROOT} from './harness.js';
 
-describe('v71 shell release',function(){
+describe('v72 shell release',function(){
   it('keeps every local shell query and service worker version aligned',function(){
     const index=fs.readFileSync(path.join(ROOT,'index.html'),'utf8');
     const serviceWorker=fs.readFileSync(path.join(ROOT,'sw.js'),'utf8');
     const versions=Array.from(index.matchAll(/(?:src|href)="(?:js\/[^"?]+|style-new\.css)\?v=(\d+)"/g),function(match){return match[1]});
     expect(versions).toHaveLength(20);
-    expect(new Set(versions)).toEqual(new Set(['71']));
-    expect(serviceWorker).toContain("var VERSION='v71';");
-    expect(index).not.toContain('?v=70');
+    expect(new Set(versions)).toEqual(new Set(['72']));
+    expect(serviceWorker).toContain("var VERSION='v72';");
+    expect(index).not.toContain('?v=71');
   });
 
   it('retains responsive tile and amendment geometry rules',function(){

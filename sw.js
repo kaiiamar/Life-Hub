@@ -5,7 +5,7 @@
 // supersedes the ?v= query strings on the script/style tags in index.html
 // (those are left in place — harmless). On activate, only stale Life Hub
 // shell/runtime caches are deleted; unrelated origin caches are preserved.
-var VERSION='v71';
+var VERSION='v72';
 var SHELL_PREFIX='lifehub-shell-';
 var RUNTIME_PREFIX='lifehub-runtime-';
 var CACHE=SHELL_PREFIX+VERSION;
@@ -52,7 +52,13 @@ self.addEventListener('install',function(e){
   e.waitUntil(
     caches.open(CACHE).then(function(cache){
       return Promise.all(SHELL.map(function(asset){
-        return cache.add(asset).catch(function(err){
+        // Fetch a version-stamped URL so GitHub Pages' CDN can't hand back a
+        // stale copy from before the deploy, then store it under the plain path.
+        var busted=asset+(asset.indexOf('?')===-1?'?':'&')+'sw='+VERSION;
+        return fetch(busted,{cache:'no-store'}).then(function(res){
+          if(!res||!res.ok)throw new Error('HTTP '+(res&&res.status));
+          return cache.put(asset,res);
+        }).catch(function(err){
           console.warn('Shell asset was not cached:',asset,err);
         });
       }));
