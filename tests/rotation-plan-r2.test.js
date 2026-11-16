@@ -115,6 +115,18 @@ describe('R2 persistence',function(){
     const wrongCode=clone(window,session);wrongCode.code='CARDIO';expect(validate(window,{[wrongCode.id]:wrongCode}).ok).toBe(false);
   });
 
+  it('accepts sessions whose stored objects come back from the cloud with keys in a different order',function(){
+    const early=validator('2026-11-03').window,session=early.buildTrainingSession('2026-11-03');
+    expect(session.code).toBe('MOBILITY-PILATES');
+    const shuffle=function(obj){return Object.keys(obj).reverse().reduce(function(out,key){out[key]=obj[key];return out},{})};
+    const reordered=clone(early,session);reordered.phase=shuffle(reordered.phase);reordered.blockLogs=reordered.blockLogs.map(shuffle);reordered.status='completed';reordered.manualCompletion=true;reordered.startedAt='2026-11-03T11:59:24.686Z';reordered.completedAt='2026-11-03T12:00:27.734Z';reordered.updatedAt=reordered.completedAt;
+    expect(early.workoutSessionMatchesOccurrence(reordered)).toBe(true);
+    const later=validator('2026-11-16').window;
+    expect(validate(later,{[reordered.id]:reordered})).toEqual({ok:true,errors:[]});
+    const monday=harness('2026-11-16'),done=completeToday(monday),r2=clone(monday.window,done);r2.phase=shuffle(r2.phase);r2.exercises=r2.exercises.map(function(ex){const out=shuffle(ex);out.sets=ex.sets.map(shuffle);return out});
+    expect(monday.window.workoutSessionMatchesOccurrence(r2)).toBe(true);
+  });
+
   it('rejects malformed routine and study areas',function(){
     const {window}=validator('2026-11-16');
     expect(validate(window,{},{routine:[]}).ok).toBe(false);
