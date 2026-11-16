@@ -8,7 +8,7 @@ describe('Daily Basics evidence integration',function(){
   it('uses the 8,000 threshold and retracts only its owned source',function(){
     const {window,state,emitted}=createHarness({today:'2026-11-02'});expect(window.reconcileDailyBasicsState(state).ok).toBe(true);const habit=managed(state),key='2026-11-02';
     window.setManualHabitCompletion(habit,key,true);habit.logProvenance[key].sources['workout:independent']=true;window.projectHabitLogs(habit);
-    expect(window.setDailySteps(key,7999)).toBe(true);expect(habit.logProvenance[key].sources['basics:steps__'+key]).toBeUndefined();expect(window.dailyBasicsStatus(key).rows[0].done).toBe(true);
+    expect(window.setDailySteps(key,7999)).toBe(true);expect(habit.logProvenance[key].sources['basics:steps__'+key]).toBeUndefined();expect(window.dailyBasicsStatus(key).rows[0].done).toBe(false);
     expect(window.setDailySteps(key,8000)).toBe(true);expect(emitted.at(-1).domains).toEqual(['dailyCheckIns','habits']);expect(emitted.at(-1).domains).not.toContain('challenges');expect(habit.logProvenance[key].sources['basics:steps__'+key]).toBe(true);
     expect(window.setDailySteps(key,7000)).toBe(true);expect(habit.logProvenance[key]).toEqual({manual:true,sources:{'workout:independent':true}});
     window.setManualHabitCompletion(habit,key,false);window.removeHabitSource('workout','independent');expect(window.dailyBasicsStatus(key).rows[0].done).toBe(false);

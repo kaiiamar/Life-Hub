@@ -6,849 +6,105 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Kai's Life Hub">
-<meta name="theme-color" content="#B93F77">
+<meta name="theme-color" content="#3F5A44">
 <link rel="apple-touch-icon" href="/Life-Hub/icon-192.jpg">
 <link rel="manifest" href="/Life-Hub/manifest.json">
-<title>Kai's Life Hub 🤎</title>
+<title>Kai's Life Hub</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style-new.css?v=74">
-<!-- Chart.js is lazy-loaded on first visit to a chart page — see ensureChartJs() in js/navigation.js (Part 5.3) -->
+<link rel="stylesheet" href="style-new.css?v=75">
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
-<div class="app">
-
-  <!-- TOP NAV -->
-  <nav class="topnav" id="topnav">
+<div class="app app-v75">
+  <nav class="topnav" id="topnav" aria-label="Primary navigation">
     <div class="topnav-inner">
-      <div class="topnav-brand">
-        <span class="topnav-logo" aria-hidden="true">♡</span>
-        <span class="topnav-name">Life Hub</span>
-      </div>
-      <div class="topnav-links">
+      <div class="topnav-brand"><span class="topnav-logo" aria-hidden="true">♡</span><span class="topnav-name">Life Hub</span></div>
+      <div class="topnav-links v75-primary-nav">
         <div class="topnav-pill-indicator" id="topnav-pill"></div>
-        <button class="topnav-link active" data-page="planner" onclick="nav('planner')">Today</button>
-        <button class="topnav-link" data-page="dashboard" onclick="nav('dashboard')">Dashboard</button>
-        <button class="topnav-link" data-page="habits" onclick="nav('habits')">Habits</button>
+        <button class="topnav-link active" data-page="dashboard" aria-current="page" onclick="nav('dashboard')">Dashboard</button>
         <button class="topnav-link" data-page="workout" onclick="nav('workout')">Movement</button>
-        <button class="topnav-link" data-page="skincare" onclick="nav('skincare')">Skincare</button>
-        <button class="topnav-link" data-page="gratitude" onclick="nav('gratitude')">Gratitude</button>
-        <div class="topnav-more">
-          <button class="topnav-link" id="topnav-more-btn">More <span style="font-size:10px">▾</span></button>
-          <div class="topnav-dropdown" id="topnav-dropdown">
-            <div class="topnav-drop-section">
-              <div class="topnav-drop-label">Plan</div>
-              <button class="topnav-drop-item" onclick="nav('tasks')">Tasks archive</button>
-              <button class="topnav-drop-item" onclick="nav('goals')">Goals</button>
-              <button class="topnav-drop-item" onclick="nav('finance')">Finance</button>
-            </div>
-            <div class="topnav-drop-section">
-              <div class="topnav-drop-label">Reflect</div>
-              <button class="topnav-drop-item" onclick="nav('review')">Reviews</button>
-              <button class="topnav-drop-item" onclick="openInsights()">Insights</button>
-            </div>
-            <div class="topnav-drop-section">
-              <div class="topnav-drop-label">Life</div>
-              <button class="topnav-drop-item" onclick="nav('relationships')">Relationships</button>
-              <button class="topnav-drop-item" onclick="nav('lists')">Lists</button>
-            </div>
-            <div class="topnav-drop-section">
-              <div class="topnav-drop-label">Data</div>
-              <button class="topnav-drop-item" onclick="exportLifeHubData()">Export</button>
-              <button class="topnav-drop-item" onclick="openModal('importData')">Import</button>
-            </div>
-          </div>
-        </div>
+        <button class="topnav-link" data-page="finance" onclick="nav('finance')">Finance</button>
+        <button class="topnav-link" data-page="insights" onclick="nav('insights')">Insights</button>
+        <button class="topnav-link" data-page="more" onclick="nav('more')">More</button>
       </div>
-      <div class="topnav-right">
-        <button class="topnav-theme-toggle" onclick="toggleTheme()" title="Toggle light/dark" aria-label="Toggle theme">
-          <span id="theme-toggle-icon">🌙</span>
-        </button>
-        <span class="topnav-date" id="top-bar-date"></span>
-        <div id="sync-status" class="topnav-sync"></div>
-      </div>
-      <button class="topnav-hamburger" id="topnav-menu-btn" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false" onclick="toggleSidebar()">Menu</button>
+      <div class="topnav-right"><span class="topnav-date" id="top-bar-date"></span><div id="sync-status" class="topnav-sync" aria-live="polite"></div></div>
+      <button class="topnav-hamburger" id="topnav-menu-btn" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false" onclick="toggleSidebar()">Menu</button>
     </div>
   </nav>
   <button type="button" class="mobile-nav-overlay" id="mobile-overlay" aria-label="Close navigation" onclick="closeSidebar()"></button>
-
-  <!-- MOBILE DRAWER -->
-  <nav class="sidebar" id="sidebar" aria-label="All Life Hub sections" aria-hidden="true" inert>
-    <div class="sidebar-logo">
-      <h2>Life Hub</h2>
-      <span>Life Hub command centre</span>
-    </div>
-    <div class="nav-section">
-      <button class="nav-item active" onclick="nav('planner')">Today</button>
-      <button class="nav-item" onclick="nav('dashboard')">Dashboard</button>
-      <button class="nav-item" onclick="nav('goals')">Goals</button>
-      <button class="nav-item" onclick="nav('habits')">Habits</button>
+  <nav class="sidebar" id="sidebar" aria-label="Primary navigation" aria-hidden="true" inert>
+    <div class="sidebar-logo"><h2>Life Hub</h2><span>Choose what matters now</span></div>
+    <div class="nav-section v75-drawer-nav">
+      <button class="nav-item active" aria-current="page" onclick="nav('dashboard')">Dashboard</button>
       <button class="nav-item" onclick="nav('workout')">Movement</button>
       <button class="nav-item" onclick="nav('finance')">Finance</button>
-      <button class="nav-item" onclick="nav('review')">Reviews</button>
-      <button class="nav-item" onclick="nav('gratitude')">Gratitude</button>
-      <button class="nav-item" onclick="openInsights()">Insights</button>
-      <button class="nav-item" onclick="nav('relationships')">Relationships</button>
-      <button class="nav-item" onclick="nav('skincare')">Skincare</button>
-      <button class="nav-item" onclick="nav('lists')">Lists</button>
-      <div class="nav-label">Data &amp; archive</div>
-      <button class="nav-item" onclick="nav('tasks')">Tasks archive</button>
-      <button class="nav-item" onclick="closeSidebar();exportLifeHubData()">Export data</button>
-      <button class="nav-item" onclick="closeSidebar();openModal('importData')">Import data</button>
+      <button class="nav-item" onclick="nav('insights')">Insights</button>
+      <button class="nav-item" onclick="nav('more')">More</button>
     </div>
   </nav>
 
-  <nav class="mobile-command-nav" aria-label="Primary navigation">
-    <button type="button" class="mobile-command-item active" data-page="planner" aria-current="page" onclick="nav('planner')"><span class="mobile-command-mark">TD</span><span>Today</span></button>
-    <button type="button" class="mobile-command-item" data-page="dashboard" onclick="nav('dashboard')"><span class="mobile-command-mark">DB</span><span>Dashboard</span></button>
-    <button type="button" class="mobile-command-item" data-page="habits" onclick="nav('habits')"><span class="mobile-command-mark">HB</span><span>Habits</span></button>
-    <button type="button" class="mobile-command-item" data-page="workout" onclick="nav('workout')"><span class="mobile-command-mark">MV</span><span>Movement</span></button>
-    <button type="button" class="mobile-command-item" id="mobile-command-more" aria-controls="sidebar" aria-expanded="false" onclick="toggleSidebar()"><span class="mobile-command-mark">•••</span><span>More</span></button>
-  </nav>
-
-  <div class="main">
-
-    <!-- ══ TODAY ══ -->
-    <div class="page active" id="page-planner">
-      <div class="page-header">
-        <div class="header-row">
-          <div>
-            <h1>Today</h1>
-            <p>Build the basics gently and keep the rest of your day flexible.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="page-tabs challenge-page-tabs" role="tablist" aria-label="Today views" style="margin-bottom:16px">
-        <button class="page-tab active" id="planner-tab-today" data-planner-tab="today" role="tab" aria-selected="true" aria-controls="planner-today" onclick="switchPlannerTab('today',this)" onkeydown="plannerTabKeydown(event)">Today</button>
-        <button class="page-tab" id="planner-tab-career" data-planner-tab="career" role="tab" aria-selected="false" aria-controls="planner-career" onclick="switchPlannerTab('career',this)" onkeydown="plannerTabKeydown(event)">Career &amp; tasks</button>
-      </div>
-
-      <div class="planner-tab active" id="planner-today" role="tabpanel" aria-labelledby="planner-tab-today"></div>
-      <div class="planner-tab" id="planner-career" role="tabpanel" aria-labelledby="planner-tab-career"></div>
-    </div>
-
-    <!-- ══ DASHBOARD ══ -->
-    <div class="page" id="page-dashboard">
-      <section class="hero hero--overview dashboard-hero" id="hero" aria-labelledby="dashboard-heading">
-        <div class="hero-inner" id="hero-inner">
-          <div class="hero-eyebrow">Dashboard</div>
-          <h1 id="dashboard-heading">Life in motion</h1>
-          <p class="hero-sub" id="dash-date-sub"></p>
-          <button class="hero-focus-banner" id="dash-monthly-focus-card" type="button" style="display:none" onclick="nav('review')">
-            <span class="hero-focus-icon">🌙</span>
-            <span class="hero-focus-label">Monthly intention</span>
-            <span class="hero-focus-text" id="dash-monthly-focus">—</span>
-            <span aria-hidden="true">→</span>
-          </button>
-        </div>
-      </section>
-
-      <div class="dashboard-chrome-grid">
-        <section class="card card-quiet dash-mood-orb" id="dash-mood-orb" aria-labelledby="dash-mood-title">
-          <div class="stat-orb accent" aria-hidden="true">🌡️</div>
-          <h2 class="stat-label" id="dash-mood-title">Mood &amp; energy</h2>
-          <div id="dash-mood-checkin-mini" aria-live="polite"></div>
-        </section>
-        <section class="card card-quiet dashboard-today-bridge" id="dash-today-bridge" aria-labelledby="dash-today-title"></section>
-      </div>
-
-      <div class="page-tabs dashboard-tabs" role="tablist" aria-label="Dashboard views">
-        <button class="page-tab active" id="dash-tab-btn-overview" type="button" role="tab" aria-selected="true" aria-controls="dash-tab-overview" tabindex="0" onclick="switchDashTab('overview',this)" onkeydown="dashboardTabKeydown(event)">Overview</button>
-        <button class="page-tab" id="dash-tab-btn-insights" type="button" role="tab" aria-selected="false" aria-controls="dash-tab-insights" tabindex="-1" onclick="switchDashTab('insights',this)" onkeydown="dashboardTabKeydown(event)">Insights</button>
-        <button class="page-tab" id="dash-tab-btn-numbers" type="button" role="tab" aria-selected="false" aria-controls="dash-tab-numbers" tabindex="-1" onclick="switchDashTab('numbers',this)" onkeydown="dashboardTabKeydown(event)">Numbers</button>
-      </div>
-
-      <div class="dash-tab active" id="dash-tab-overview" role="tabpanel" aria-labelledby="dash-tab-btn-overview">
-        <section class="dashboard-section" aria-labelledby="dashboard-pulse-heading">
-          <div class="dashboard-section-head">
-            <div>
-              <h2 class="dashboard-section-title" id="dashboard-pulse-heading">Current pulse</h2>
-              <p class="dashboard-section-sub">This week compared with the previous one.</p>
-            </div>
-          </div>
-          <div class="dashboard-pulse-grid" id="dashboard-pulse-grid"></div>
-        </section>
-
-        <div class="dashboard-overview-grid">
-          <section class="card dashboard-attention-card" aria-labelledby="dashboard-attention-heading">
-            <div class="card-label" id="dashboard-attention-heading">Worth your attention</div>
-            <div id="dashboard-attention-list"></div>
-          </section>
-          <section class="card" aria-labelledby="dashboard-upcoming-heading">
-            <div class="card-label" id="dashboard-upcoming-heading">Coming up</div>
-            <div id="dashboard-upcoming-list"></div>
-          </section>
-        </div>
-
-        <section class="dashboard-section" aria-labelledby="dashboard-movement-heading">
-          <div class="dashboard-section-head">
-            <div>
-              <h2 class="dashboard-section-title" id="dashboard-movement-heading">Recent movement</h2>
-              <p class="dashboard-section-sub">Useful changes across your life, without repeating Today's actions.</p>
-            </div>
-          </div>
-          <div class="dashboard-movement-grid" id="dashboard-recent-movement"></div>
-        </section>
-
-        <div class="dashboard-context-grid">
-          <section class="card" aria-labelledby="dashboard-goals-heading">
-            <div class="card-label" id="dashboard-goals-heading">🎯 Goals in motion</div>
-            <div id="dash-goals-snapshot"></div>
-          </section>
-          <section class="card" aria-labelledby="dashboard-review-heading">
-            <div class="card-label" id="dashboard-review-heading">📝 Latest review</div>
-            <div id="dash-reviews-snapshot"></div>
-          </section>
-        </div>
-      </div>
-
-      <!-- INSIGHTS TAB (merged from the old standalone Insights page) -->
-      <div class="dash-tab" id="dash-tab-insights" role="tabpanel" aria-labelledby="dash-tab-btn-insights" hidden>
-        <!-- Pulse check -->
-        <div class="card" style="margin-bottom:20px">
-          <div class="card-label">📊 Last 30 days</div>
-          <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;padding:12px 0">
-            <div id="pulse-bars" style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:10px"></div>
-          </div>
-        </div>
-
-        <!-- Charts row -->
-        <div class="grid-2" style="margin-bottom:20px">
-          <div class="card">
-            <div class="card-label">✅ Habit consistency — last 4 weeks</div>
-            <div class="chart-wrap"><canvas id="insightHabitChart" role="img" aria-label="Habit consistency over the last four weeks"></canvas></div>
-            <p class="chart-text-summary" id="insight-habit-summary"></p>
-          </div>
-          <div class="card">
-            <div class="card-label">🌡️ Mood trend — last 14 days</div>
-            <div class="chart-wrap"><canvas id="insightMoodChart" role="img" aria-label="Mood and energy trend over the last fourteen days"></canvas></div>
-            <p class="chart-text-summary" id="insight-mood-summary"></p>
-          </div>
-        </div>
-
-        <!-- AI narrative — this week's story -->
-        <div class="card" id="insights-narrative-card" style="margin-bottom:20px;display:none">
-          <div class="card-label">📖 This week's story</div>
-          <div id="insights-narrative" class="insights-narrative"></div>
-        </div>
-
-        <!-- Mood correlations -->
-        <div class="card" style="margin-bottom:20px">
-          <div class="card-label">✨ Mood correlations</div>
-          <div id="mood-correlations"></div>
-        </div>
-
-        <!-- Smart insights grid -->
-        <div style="margin-bottom:20px">
-          <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px">🧠 Smart observations</div>
-          <div id="insights-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
-        </div>
-
-        <!-- Review trends -->
-        <div class="grid-2" style="margin-bottom:20px">
-          <div class="card">
-            <div class="card-label">📅 Monthly review ratings</div>
-            <div class="chart-wrap"><canvas id="insightReviewChart" role="img" aria-label="Monthly review ratings over time"></canvas></div>
-            <div id="review-trend-summary" style="margin-top:8px"></div>
-          </div>
-          <div class="card">
-            <div class="card-label">📝 Latest review snapshot</div>
-            <div id="review-latest-snapshot"></div>
-          </div>
-        </div>
-
-        <!-- Countdowns + Debt insight -->
-        <div class="grid-2" style="margin-bottom:20px">
-          <div class="card">
-            <div class="card-label">⏳ Goal countdowns</div>
-            <div id="countdown-grid"></div>
-          </div>
-          <div class="card">
-            <div class="card-label">💳 Debt snapshot</div>
-            <div id="debt-calc-auto"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- NUMBERS TAB — the single numbers surface (Requirement 12) -->
-      <div class="dash-tab" id="dash-tab-numbers" role="tabpanel" aria-labelledby="dash-tab-btn-numbers" hidden>
-        <div id="numbers-surface" aria-live="polite"></div>
-      </div>
-
-    </div>
-
-    <!-- ══ GOALS (simplified — high-level only) ══ -->
-    <div class="page" id="page-goals">
-      <div class="page-header">
-        <div class="header-row">
-          <div style="display:flex;align-items:center;gap:12px">
-            <div class="page-emoji-tile">🎯</div>
-            <div><h1>Goals</h1><p>Annual goals and progress</p></div>
-          </div>
-          <button class="btn btn-accent" onclick="openModal('addGoal')">+ Add Goal</button>
-        </div>
-      </div>
-      <div id="goals-summary" style="margin-bottom:16px"></div>
-      <div class="filter-row" id="goal-filters">
-        <button class="filter-btn active" onclick="filterGoals('all',this)">All</button>
-        <button class="filter-btn" onclick="filterGoals('Finance',this)">Finance</button>
-        <button class="filter-btn" onclick="filterGoals('Fitness',this)">Fitness</button>
-        <button class="filter-btn" onclick="filterGoals('Career',this)">Career</button>
-        <button class="filter-btn" onclick="filterGoals('Personal',this)">Personal</button>
-        <button class="filter-btn" onclick="filterGoals('Done',this)">✓ Completed</button>
-        <button class="filter-btn" onclick="filterGoals('Active',this)">In progress</button>
-      </div>
-      <div id="goals-container"></div>
-    </div>
-
-    <!-- ══ HABITS ══ -->
-    <div class="page" id="page-habits">
-      <div class="page-header habit-page-header">
-        <div class="header-row">
-          <div class="habit-page-title">
-            <div class="page-emoji-tile" aria-hidden="true">🌿</div>
-            <div><p class="habit-page-kicker">Your field notes</p><h1>Habits</h1><p>Rhythms, seasons, and the history you have built</p></div>
-          </div>
-          <button type="button" class="btn btn-accent habit-add-btn" onclick="openModal('addHabit')">+ New rhythm</button>
-        </div>
-      </div>
-      <section class="habit-workspace" aria-label="Habit tracker">
-        <div class="habit-view-tabs" role="tablist" aria-label="Habit lifecycle">
-          <button type="button" role="tab" class="habit-view-tab active" data-habit-view="active" aria-selected="true" aria-controls="habits-grid" onclick="setHabitLifecycleView('active')" onkeydown="habitViewKeydown(event)">Active <span class="habit-view-count">0</span></button>
-          <button type="button" role="tab" class="habit-view-tab" data-habit-view="paused" aria-selected="false" aria-controls="habits-grid" tabindex="-1" onclick="setHabitLifecycleView('paused')" onkeydown="habitViewKeydown(event)">Paused <span class="habit-view-count">0</span></button>
-          <button type="button" role="tab" class="habit-view-tab" data-habit-view="archived" aria-selected="false" aria-controls="habits-grid" tabindex="-1" onclick="setHabitLifecycleView('archived')" onkeydown="habitViewKeydown(event)">Archived <span class="habit-view-count">0</span></button>
-        </div>
-        <p id="habit-lifecycle-summary" class="habit-lifecycle-summary" aria-live="polite"></p>
-        <div class="habit-toolbar">
-          <div id="habit-filters" class="habit-filters" aria-label="Filter rhythms by life area"></div>
-          <div class="week-nav habit-week-nav" role="group" aria-label="Habit week">
-            <button type="button" class="habit-week-btn" aria-label="Show previous habit week" onclick="changeWeek(-1)">←</button>
-            <span class="week-label" id="habit-week-label" aria-live="polite"></span>
-            <button type="button" class="habit-week-btn" id="habit-next-week" aria-label="Show next habit week" onclick="changeWeek(1)">→</button>
-          </div>
-        </div>
-        <div id="habits-grid" class="habits-grid" role="tabpanel"></div>
-      </section>
-    </div>
-
-    <!-- ══ TRAINING ══ -->
+  <main class="main" id="main-content">
+    <div class="page active" id="page-dashboard"><div id="v75-dashboard" class="v75-page"></div></div>
     <div class="page" id="page-workout">
-      <div class="page-header">
-        <div class="header-row">
-          <div>
-            <h1>Workout plan</h1>
-            <p>Your repeating weekly plan, symptom-aware progression, physiotherapy guidance, and workout history.</p>
-          </div>
-        </div>
+      <div class="v75-page">
+        <header class="v75-page-header"><div><span class="v75-kicker">MOVEMENT</span><h1>Keep the rotation moving</h1><p>Your next R2 session, this week, and your weight trend.</p></div></header>
+        <div id="v75-movement"></div>
       </div>
-
-      <div class="page-tabs" role="tablist" aria-label="Training views">
-        <button class="page-tab active" type="button" role="tab" data-tab="overview" aria-selected="true" aria-controls="workout-overview" onclick="subNav('workout','overview',this)" onkeydown="trainingTabKeydown(event)">Overview</button>
-        <button class="page-tab" type="button" role="tab" data-tab="calendar" aria-selected="false" aria-controls="workout-calendar" tabindex="-1" onclick="subNav('workout','calendar',this)" onkeydown="trainingTabKeydown(event)">🗓️ Calendar</button>
-        <button class="page-tab" type="button" role="tab" data-tab="fuel" aria-selected="false" aria-controls="workout-fuel" tabindex="-1" onclick="subNav('workout','fuel',this)" onkeydown="trainingTabKeydown(event)">🍽️ Fuel</button>
-        <button class="page-tab" type="button" role="tab" data-tab="body" aria-selected="false" aria-controls="workout-body" tabindex="-1" onclick="subNav('workout','body',this)" onkeydown="trainingTabKeydown(event)">💪 Body</button>
-        <button class="page-tab" type="button" role="tab" data-tab="history" aria-selected="false" aria-controls="workout-history" tabindex="-1" onclick="subNav('workout','history',this)" onkeydown="trainingTabKeydown(event)">📖 History</button>
-      </div>
-
-      <!-- Overview: session counter + streak + events -->
-      <div class="sub-page active" id="workout-overview" role="tabpanel">
-        <!-- Weekly counter -->
-        <div class="card" style="margin-bottom:16px;padding:24px 28px">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px">
-            <div>
-              <div class="card-label" style="margin:0 0 4px">This week</div>
-              <div style="font-family:var(--serif);font-size:30px;font-weight:500;letter-spacing:-0.02em" id="training-week-count">—</div>
-              <div style="font-size:13px;color:var(--text2)" id="training-week-target">— sessions this week</div>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button class="btn btn-ghost" onclick="openModal('quickLog')">Other movement</button>
-            </div>
-          </div>
-          <div id="training-week-grid"></div>
-        </div>
-
-        <!-- Stat cards -->
-        <div class="grid-3" style="margin-bottom:16px">
-          <div class="stat-card">
-            <div class="stat-orb accent">🔥</div>
-            <div class="card-label">Weekly rhythm</div>
-            <div class="stat-big" id="training-streak">—</div>
-            <div class="stat-sub" id="training-streak-sub">consistency and technique</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-orb purple">📊</div>
-            <div class="card-label">This month</div>
-            <div class="stat-big" id="training-month-count">—</div>
-            <div class="stat-sub" id="training-month-breakdown">—</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-orb green">⏱️</div>
-            <div class="card-label">Last session</div>
-            <div class="stat-big" style="font-size:22px" id="training-last-session">—</div>
-            <div class="stat-sub" id="training-last-when">—</div>
-          </div>
-        </div>
-
-        <!-- Events -->
-        <div class="card" style="margin-bottom:16px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <div class="card-label" style="margin:0">🎯 Upcoming events</div>
-            <button class="btn btn-sm" onclick="openModal('addEvent')">+ Add event</button>
-          </div>
-          <div id="training-events"></div>
-        </div>
-      </div>
-
-      <!-- Fuel tab: nutrition plan for the training block -->
-      <div class="sub-page" id="workout-fuel" role="tabpanel">
-        <div class="page-intro" style="margin-bottom:16px">
-          <div style="font-size:13px;color:var(--text2)">Optional nutrition and recovery guidance. These notes do not determine Daily Basics completion.</div>
-        </div>
-        <div id="training-fuel"></div>
-      </div>
-
-      <!-- Body tab: weight, photos, measurements -->
-      <div class="sub-page" id="workout-body" role="tabpanel">
-        <div class="grid-3" style="margin-bottom:20px" id="training-body-stats"></div>
-        <div class="grid-2" style="margin-bottom:16px">
-          <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-              <div class="card-label" style="margin:0">⚖️ Weight trend</div>
-              <button class="btn btn-sm" onclick="openModal('logMetric','weight')">+ Log</button>
-            </div>
-            <div class="chart-wrap"><canvas id="training-weight-chart"></canvas></div>
-          </div>
-          <div class="card">
-            <div class="card-label">Weight log</div>
-            <div id="training-weight-log"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Calendar: planned and logged movement by month -->
-      <div class="sub-page" id="workout-calendar" role="tabpanel">
-        <section class="card training-calendar-card" aria-labelledby="training-calendar-title">
-          <div id="training-calendar"></div>
-        </section>
-      </div>
-
-      <!-- History: session log -->
-      <div class="sub-page" id="workout-history" role="tabpanel">
-        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap" id="muscle-filters"></div>
-        <div id="all-workouts"></div>
-      </div>
-
-    </div><!-- end page-workout -->
-
-    <!-- ══ WORKOUT ══ -->
+    </div>
     <div class="page" id="page-winter-arc">
       <section class="winter-arc-session-page" aria-labelledby="winter-arc-page-title">
-        <header class="winter-arc-page-header">
-          <button type="button" class="winter-arc-back" id="winter-arc-back" onclick="closeWinterArcPage()" aria-label="Back to training">← <span>Training</span></button>
-          <div class="winter-arc-page-heading">
-            <span id="winter-arc-page-kicker">WORKOUT</span>
-            <h1 id="winter-arc-page-title">Session</h1>
-          </div>
-        </header>
+        <header class="winter-arc-page-header"><button type="button" class="winter-arc-back" id="winter-arc-back" onclick="closeWinterArcPage()" aria-label="Back to Movement">← <span>Movement</span></button><div class="winter-arc-page-heading"><span id="winter-arc-page-kicker">WORKOUT</span><h1 id="winter-arc-page-title">Session</h1></div></header>
         <div id="winter-arc-content" class="winter-arc-page-content"></div>
       </section>
     </div>
-
-    <!-- ══ FINANCE ══ -->
     <div class="page" id="page-finance">
-      <div class="page-header">
-        <div class="header-row">
-          <div style="display:flex;align-items:center;gap:12px">
-            <div class="page-emoji-tile">💸</div>
-            <div><h1>Finance</h1><p>Your monthly plan · Your long-term progress</p></div>
-          </div>
+      <div class="v75-page"><header class="v75-page-header"><div><span class="v75-kicker">FINANCE</span><h1>Payday plan</h1><p>Record debt payments and savings transfers in one place.</p></div></header><div id="v75-finance"></div></div>
+    </div>
+    <div class="page" id="page-insights">
+      <div class="v75-page"><header class="v75-page-header"><div><span class="v75-kicker">INSIGHTS</span><h1>The last four weeks</h1><p>Useful changes from the records you already keep.</p></div></header><div id="v75-insights"></div></div>
+    </div>
+    <div class="page" id="page-more">
+      <div class="v75-page"><header class="v75-page-header"><div><span class="v75-kicker">MORE</span><h1>Plan and settings</h1><p>Year Ahead, Monthly Reset, and app settings.</p></div></header>
+        <div class="v75-segmented" aria-label="More sections">
+          <button id="more-tab-goals" class="active" aria-pressed="true" onclick="switchMoreTab('goals',this)">Year Ahead</button>
+          <button id="more-tab-reset" aria-pressed="false" onclick="switchMoreTab('reset',this)">Monthly Reset</button>
+          <button id="more-tab-settings" aria-pressed="false" onclick="switchMoreTab('settings',this)">Settings</button>
         </div>
-      </div>
-      <div class="page-tabs">
-        <button class="page-tab active" onclick="subNav('finance','plan')">🧭 Plan</button>
-        <button class="page-tab" onclick="subNav('finance','progress')">📈 Progress</button>
-      </div>
-
-      <!-- PLAN — monthly blueprint -->
-      <div class="sub-page active" id="finance-plan">
-        <!-- Monthly math-check hero -->
-        <div id="fin-math-hero" style="margin-bottom:16px"></div>
-
-        <!-- Income + Fixed expenses side by side -->
-        <div class="grid-2" style="margin-bottom:16px;gap:16px">
-          <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-              <div style="font-size:15px;font-weight:600">💚 Income <span style="font-size:12px;font-weight:400;color:var(--text2)">monthly</span></div>
-              <button class="btn btn-sm btn-accent" onclick="openModal('addIncome')">+ New</button>
-            </div>
-            <div id="income-list"></div>
-            <div id="income-total" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);text-align:right"></div>
-          </div>
-          <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-              <div style="font-size:15px;font-weight:600">🔴 Fixed expenses <span style="font-size:12px;font-weight:400;color:var(--text2)">monthly</span></div>
-              <button class="btn btn-sm btn-accent" onclick="openModal('addExpense')">+ New</button>
-            </div>
-            <div id="expenses-list"></div>
-            <div id="expenses-total" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);text-align:right"></div>
-          </div>
-        </div>
-
-        <!-- Allocations: debt + savings this month -->
-        <div class="card" style="margin-bottom:16px">
-          <div class="card-label">📮 Allocations this month</div>
-          <div id="fin-allocations"></div>
-        </div>
-      </div>
-
-      <!-- PROGRESS — long-term view -->
-      <div class="sub-page" id="finance-progress">
-        <!-- Net worth hero -->
-        <div class="card" style="margin-bottom:16px">
-          <div class="card-label">🪴 Net worth</div>
-          <div id="fin-networth-hero"></div>
-          <div class="chart-wrap" style="margin-top:14px"><canvas id="networthTrendChart"></canvas></div>
-        </div>
-
-        <!-- Inner sub-tabs -->
-        <div class="page-tabs" style="margin-bottom:16px">
-          <button class="page-tab active" onclick="switchProgressTab('savings',this)">🎯 Savings</button>
-          <button class="page-tab" onclick="switchProgressTab('accounts',this)">🏦 Accounts</button>
-          <button class="page-tab" onclick="switchProgressTab('debts',this)">💳 Debts</button>
-        </div>
-
-        <!-- Savings goals -->
-        <div class="progress-tab active" id="progress-tab-savings">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-            <div id="progress-savings-summary" style="font-size:12px;color:var(--text2)"></div>
-            <button class="btn btn-sm btn-accent" onclick="openModal('addSavingsGoal')">+ Add goal</button>
-          </div>
-          <div id="savings-goals-list"></div>
-        </div>
-
-        <!-- Accounts -->
-        <div class="progress-tab" id="progress-tab-accounts">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-            <div id="progress-accounts-summary" style="font-size:12px;color:var(--text2)"></div>
-            <button class="btn btn-sm btn-accent" onclick="openModal('addAccount')">+ Add account</button>
-          </div>
-          <div id="bank-accounts-list" style="margin-bottom:10px"></div>
-          <div id="investments-list"></div>
-        </div>
-
-        <!-- Debts -->
-        <div class="progress-tab" id="progress-tab-debts">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-            <div id="progress-debts-summary" style="font-size:12px;color:var(--text2)"></div>
-            <div style="display:flex;gap:6px">
-              <button class="btn btn-sm btn-accent" onclick="openModal('logDebtPayment')">+ Log payment</button>
-              <button class="btn btn-sm btn-accent" onclick="openModal('addDebt')">+ Add debt</button>
-            </div>
-          </div>
-          <div id="debt-summary-stats" style="margin-bottom:16px"></div>
-          <div class="grid-2" style="align-items:start">
-            <div id="debts-list"></div>
-            <div id="debt-plan-panel"></div>
-          </div>
-        </div>
+        <section id="more-goals" class="v75-more-panel active" aria-labelledby="more-tab-goals"><div id="v75-goals"></div></section>
+        <section id="more-reset" class="v75-more-panel" aria-labelledby="more-tab-reset" hidden><div id="v75-reset"></div></section>
+        <section id="more-settings" class="v75-more-panel" aria-labelledby="more-tab-settings" hidden><div id="v75-settings"></div></section>
       </div>
     </div>
+  </main>
 
-    <!-- ══ REVIEWS ══ -->
-    <div class="page" id="page-review">
-      <!-- HERO -->
-      <div class="review-hero">
-        <div class="review-hero-inner">
-          <div class="review-eyebrow" id="review-eyebrow">Monthly reflection</div>
-          <h1 class="review-hero-title" id="review-hero-month">—</h1>
-          <p class="review-hero-prompt" id="review-hero-prompt">—</p>
-          <div class="review-hero-controls">
-            <select id="monthly-month-select" onchange="renderMonthlyReview()" class="review-select"></select>
-            <button class="btn" onclick="draftReviewWithAI()" id="review-ai-btn">✨ Draft with AI</button>
-            <button class="btn btn-accent" onclick="saveMonthlyReview()">Save review ✓</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- TIMELINE -->
-      <div id="review-timeline" class="review-timeline"></div>
-
-      <!-- STEP 1: LOOK BACK (auto stats) -->
-      <div class="review-step">
-        <div class="review-step-head">
-          <span class="review-step-num">01</span>
-          <div>
-            <div class="review-step-title">Look back</div>
-            <div class="review-step-sub">What the data says about this month</div>
-          </div>
-        </div>
-        <div class="review-auto-grid" id="monthly-auto-stats"></div>
-      </div>
-
-      <!-- STEP 2: RATE & REFLECT -->
-      <div class="review-step">
-        <div class="review-step-head">
-          <span class="review-step-num">02</span>
-          <div>
-            <div class="review-step-title">Rate &amp; reflect</div>
-            <div class="review-step-sub">Six life areas. One word at a time.</div>
-          </div>
-        </div>
-        <div class="card"><div class="card-label">How did each area feel?</div><div id="monthly-ratings"></div></div>
-        <div id="smart-prompts" class="smart-prompts"></div>
-        <div class="grid-2" style="margin-top:14px">
-          <div class="card"><div class="card-label">🏆 Wins this month</div>
-            <div class="review-prompt"><div class="review-prompt-q">What are you most proud of?</div>
-            <textarea id="monthly-wins" class="review-textarea" placeholder="List your wins, big or small..."></textarea></div>
-            <div class="review-prompt"><div class="review-prompt-q">What habit served you well?</div>
-            <textarea id="monthly-best-habit" class="review-textarea" placeholder="e.g. Morning gym kept my energy up..."></textarea></div>
-          </div>
-          <div class="card"><div class="card-label">📚 Lessons &amp; growth</div>
-            <div class="review-prompt"><div class="review-prompt-q">What didn't go to plan? Why?</div>
-            <textarea id="monthly-lessons" class="review-textarea" placeholder="Be honest — what would you do differently?"></textarea></div>
-            <div class="review-prompt"><div class="review-prompt-q">One thing you'd tell yourself on day 1?</div>
-            <textarea id="monthly-advice" class="review-textarea" placeholder="Hindsight wisdom..."></textarea></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- STEP 3: LOOK FORWARD -->
-      <div class="review-step">
-        <div class="review-step-head">
-          <span class="review-step-num">03</span>
-          <div>
-            <div class="review-step-title">Look forward</div>
-            <div class="review-step-sub">Set the tone for the month ahead</div>
-          </div>
-        </div>
-        <div class="grid-2">
-          <div class="card"><div class="card-label">🎯 One focus &amp; 3 micro-goals</div>
-            <div class="review-prompt"><div class="review-prompt-q">If next month had one theme, what would it be?</div>
-            <textarea id="monthly-focus" class="review-textarea" placeholder="e.g. Discipline over motivation"></textarea></div>
-            <div class="review-prompt"><div class="review-prompt-q">Start · Stop · Continue</div>
-            <textarea id="monthly-ssc" class="review-textarea" placeholder="Start: ...&#10;Stop: ...&#10;Continue: ..."></textarea></div>
-          </div>
-          <div class="card"><div class="card-label">💭 Honest check-in</div>
-            <div class="review-prompt"><div class="review-prompt-q">How are you <em>really</em> feeling right now?</div>
-            <textarea id="monthly-feeling" class="review-textarea" placeholder="Be real with yourself..."></textarea></div>
-            <div class="review-prompt"><div class="review-prompt-q">What do you need more of?</div>
-            <textarea id="monthly-need" class="review-textarea" placeholder="Rest, focus, fun, connection..."></textarea></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- TRENDS -->
-      <div class="review-step">
-        <div class="review-step-head">
-          <span class="review-step-num">◆</span>
-          <div>
-            <div class="review-step-title">Trends</div>
-            <div class="review-step-sub">How ratings have moved over the last 6 months</div>
-          </div>
-        </div>
-        <div class="card">
-          <div id="review-trends"></div>
-        </div>
-      </div>
-
-      <div id="past-monthly-reviews"></div>
-    </div>
-
-    <!-- ══ RELATIONSHIPS ══ -->
-    <div class="page" id="page-relationships">
-      <div class="page-header"><div class="header-row"><div style="display:flex;align-items:center;gap:12px"><div class="page-emoji-tile">💞</div><div><h1>Relationships</h1><p>Stay connected with the people who matter most</p></div></div><button class="btn btn-accent" onclick="openModal('addRelationship')">+ Add Person</button></div></div>
-      <div class="filter-row" id="rel-filters">
-        <button class="filter-btn active" onclick="filterRel('all',this)">All</button>
-        <button class="filter-btn" onclick="filterRel('Partner',this)">Partner</button>
-        <button class="filter-btn" onclick="filterRel('Family',this)">Family</button>
-        <button class="filter-btn" onclick="filterRel('Friend',this)">Friends</button>
-      </div>
-      <div id="relationships-container"></div>
-    </div>
-
-    <!-- ══ GRATITUDE ══ -->
-    <div class="page" id="page-gratitude">
-      <div class="page-header"><div class="header-row"><div style="display:flex;align-items:center;gap:12px"><div class="page-emoji-tile">🙏</div><div><h1>Gratitude & Wins</h1><p>Celebrate the small victories.</p></div></div><button class="btn btn-accent" onclick="openModal('addGratitude')">+ Add Entry</button></div></div>
-      <div class="grid-2" style="margin-bottom:16px">
-        <div class="card"><div class="card-label">This week</div><div id="gratitude-wins"></div></div>
-        <div class="card"><div class="card-label">Gratitude streak</div><div id="gratitude-stats"></div></div>
-      </div>
-      <div class="card" id="gratitude-flashback-card" style="display:none;margin-bottom:16px"><div id="gratitude-flashback"></div></div>
-      <div class="card" id="gratitude-heatmap-card" style="margin-bottom:16px"><div class="card-label">🗓️ Entry heatmap — the trailing 12 months</div><div id="gratitude-heatmap"></div></div>
-      <div class="card"><div class="card-label">All entries</div><div id="gratitude-all"></div></div>
-    </div>
-
-    <!-- ══ LISTS (Watch + Wish) ══ -->
-    <div class="page" id="page-lists">
-      <div class="page-header"><div class="header-row"><div style="display:flex;align-items:center;gap:12px"><div class="page-emoji-tile">🎬</div><div><h1>Lists</h1><p>What to watch and what to wait on</p></div></div><button class="btn btn-accent" id="lists-add-btn" onclick="openModal('addWatchItem')">+ Add</button></div></div>
-
-      <div class="page-tabs">
-        <button class="page-tab active" onclick="subNav('lists','watch')">🎬 Watch list</button>
-        <button class="page-tab" onclick="subNav('lists','wish')">🛍️ Wishlist</button>
-      </div>
-
-      <!-- Watch list -->
-      <div class="sub-page active" id="lists-watch">
-        <div class="filter-row" id="watch-filters">
-          <button class="filter-btn active" onclick="filterWatch('all',this)">All</button>
-          <button class="filter-btn" onclick="filterWatch('want',this)">Want to watch</button>
-          <button class="filter-btn" onclick="filterWatch('watching',this)">Watching</button>
-          <button class="filter-btn" onclick="filterWatch('done',this)">Done</button>
-          <button class="filter-btn" onclick="filterWatch('Movie',this)">Movies</button>
-          <button class="filter-btn" onclick="filterWatch('Series',this)">Series</button>
-        </div>
-        <div id="watchlist-container"></div>
-      </div>
-
-      <!-- Wishlist -->
-      <div class="sub-page" id="lists-wish">
-        <div class="filter-row" id="wish-filters">
-          <button class="filter-btn active" onclick="filterWish('all',this)">All</button>
-          <button class="filter-btn" onclick="filterWish('waiting',this)">Waiting</button>
-          <button class="filter-btn" onclick="filterWish('approved',this)">Approved</button>
-          <button class="filter-btn" onclick="filterWish('purchased',this)">Purchased</button>
-        </div>
-        <div id="wish-stats" style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap"></div>
-        <div id="wishlist-container"></div>
-      </div>
-    </div>
-
-    <!-- ══ TASKS ARCHIVE ══ -->
-    <div class="page" id="page-tasks">
-      <div class="page-header">
-        <div class="header-row">
-          <div>
-            <h1>Tasks archive</h1>
-            <p>Every task, grouped by day. Tasks reset on the dashboard overnight — this is the full history.</p>
-          </div>
-        </div>
-      </div>
-      <div id="tasks-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px"></div>
-      <div id="tasks-archive"></div>
-    </div>
-
-    <!-- ══ SKINCARE ══ -->
-    <div class="page" id="page-skincare">
-      <div class="page-header">
-        <div class="header-row">
-          <div style="display:flex;align-items:center;gap:12px">
-            <div style="width:100px;height:100px;border-radius:20px;background:linear-gradient(135deg,#fce4ec,#f3e5f5);display:flex;align-items:center;justify-content:center;font-size:48px;flex-shrink:0">✨</div>
-            <div><h1>Skincare</h1><p>My Glow Routine · Combination · PIH · Brightening</p></div>
-          </div>
-        </div>
-      </div>
-      <div class="page-tabs">
-        <button class="page-tab active" onclick="subNav('skincare','today')">✨ Today</button>
-        <button class="page-tab" onclick="subNav('skincare','routine')">📋 Routine</button>
-        <button class="page-tab" onclick="subNav('skincare','guide')">📖 Guide</button>
-      </div>
-
-      <!-- Today -->
-      <div class="sub-page active" id="skincare-today"></div>
-
-      <!-- Routine (editable) -->
-      <div class="sub-page" id="skincare-routine">
-        <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
-          <div style="padding:16px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px">
-            <span style="font-size:28px">☀️</span>
-            <div><div style="font-size:16px;font-weight:600;font-family:var(--serif)">Morning Routine</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Protect · Brighten · Hydrate</div></div>
-          </div>
-          <div id="skincare-am-steps"></div>
-        </div>
-        <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
-          <div style="padding:16px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px">
-            <span style="font-size:28px">🌙</span>
-            <div><div style="font-size:16px;font-weight:600;font-family:var(--serif)">Evening Routine</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Fade · Repair · Recover</div></div>
-          </div>
-          <div id="skincare-pm-steps"></div>
-        </div>
-        <div class="card" style="margin-bottom:16px">
-          <div class="card-label">🧪 Actives library</div>
-          <div class="modal-sub" style="padding:0 0 10px 0;font-size:12px">Your treatments — what you rotate through. Adding a retinol later? Just hit "Add active" when it arrives.</div>
-          <div id="skincare-actives-list"></div>
-        </div>
-        <div class="card" style="margin-bottom:16px">
-          <div class="card-label">📋 Weekly night schedule</div>
-          <div id="skincare-night-schedule"></div>
-        </div>
-      </div>
-
-      <!-- Guide (static reference) -->
-      <div class="sub-page" id="skincare-guide">
-        <div class="card" style="margin-bottom:16px">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-            <span style="font-size:28px">🪨</span>
-            <div><div style="font-size:16px;font-weight:600;font-family:var(--serif)">Gua Sha Guide</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Drain · Depuff · Glow</div></div>
-          </div>
-          <div style="font-size:12px;color:var(--text2);line-height:1.7;padding:12px 16px;background:var(--bg3);border-radius:var(--radius-sm)">Gua sha stimulates lymphatic drainage, reduces puffiness and boosts circulation — giving you that natural glow. Do this 3–4× per week in your evening routine, after toner and oil but before serums. Never drag on dry skin.</div>
-        </div>
-        <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
-          <div style="padding:12px 20px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600">Step 1 — Prep Your Skin</div>
-          <div id="skincare-guasha-prep"></div>
-        </div>
-        <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
-          <div style="padding:12px 20px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600">Step 2 — The Moves</div>
-          <div id="skincare-guasha-moves"></div>
-        </div>
-        <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
-          <div style="padding:12px 20px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600">Step 3 — Continue Routine</div>
-          <div style="padding:12px 20px;font-size:12px;color:var(--text2);line-height:1.7">Apply serums and moisturiser as normal: Simple HA → Topicals Faded → NMF Moisturiser → Dr. Organic oil to seal. Your skin will absorb everything beautifully after gua sha.</div>
-        </div>
-        <div class="card" style="margin-bottom:16px">
-          <div class="card-label">Golden Rules</div>
-          <div style="font-size:12px;color:var(--text2);line-height:2;margin-top:6px">
-            ✦ Never use on dry skin — always have slip from oil or serum<br>
-            ✦ Light pressure is enough — you're draining lymph, not scraping<br>
-            ✦ Each stroke should be slow and deliberate, not rushed<br>
-            ✦ Clean your gua sha after every use with soap and water<br>
-            ✦ Some redness after is normal — it fades within minutes<br>
-            ✦ Never use over active breakouts or broken skin<br>
-            ✦ Results build over weeks — consistency is everything
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-label">⏱ Realistic results</div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:8px">
-            <div class="card-sm" style="border-left:3px solid var(--gold)"><div style="font-size:13px;font-weight:600">4–6 weeks</div><div style="font-size:11px;color:var(--text2);margin-top:4px">Skin texture starts improving</div></div>
-            <div class="card-sm" style="border-left:3px solid var(--accent)"><div style="font-size:13px;font-weight:600">8–12 weeks</div><div style="font-size:11px;color:var(--text2);margin-top:4px">PIH visibly fading</div></div>
-            <div class="card-sm" style="border-left:3px solid var(--teal)"><div style="font-size:13px;font-weight:600">6 months</div><div style="font-size:11px;color:var(--text2);margin-top:4px">Significant, consistent results</div></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div><!-- end .main -->
-</div><!-- end .app -->
-
-<!-- MODAL -->
-<div class="modal-bg" id="modal" style="display:none" onclick="modalBgClick(event)" role="dialog" aria-modal="true">
-  <div class="modal" id="modal-content"></div>
+  <nav class="mobile-command-nav v75-mobile-nav" aria-label="Primary navigation">
+    <button type="button" class="mobile-command-item active" data-page="dashboard" aria-current="page" onclick="nav('dashboard')"><span class="mobile-command-mark">⌂</span><span>Dashboard</span></button>
+    <button type="button" class="mobile-command-item" data-page="workout" onclick="nav('workout')"><span class="mobile-command-mark">MV</span><span>Movement</span></button>
+    <button type="button" class="mobile-command-item" data-page="finance" onclick="nav('finance')"><span class="mobile-command-mark">£</span><span>Finance</span></button>
+    <button type="button" class="mobile-command-item" data-page="insights" onclick="nav('insights')"><span class="mobile-command-mark">IN</span><span>Insights</span></button>
+    <button type="button" class="mobile-command-item" data-page="more" onclick="nav('more')"><span class="mobile-command-mark">•••</span><span>More</span></button>
+  </nav>
 </div>
-
-
-
-<script src="js/state.js?v=74"></script>
-<script src="js/persistence.js?v=74"></script>
-<script src="js/navigation.js?v=74"></script>
-<script src="js/training-plan-v1.js?v=74"></script>
-<script src="js/dashboard.js?v=74"></script>
-<script src="js/habits.js?v=74"></script>
-<script src="js/workouts.js?v=74"></script>
-<script src="js/winter-arc.js?v=74"></script>
-<script src="js/routine.js?v=74"></script>
-<script src="js/challenge.js?v=74"></script>
-<script src="js/finance.js?v=74"></script>
-<script src="js/reviews.js?v=74"></script>
-<script src="js/relationships.js?v=74"></script>
-<script src="js/gratitude.js?v=74"></script>
-<script src="js/insights.js?v=74"></script>
-<script src="js/skincare.js?v=74"></script>
-<script src="js/modals.js?v=74"></script>
-<script src="js/planner.js?v=74"></script>
-<script src="js/init.js?v=74"></script>
+<div class="modal-bg" id="modal" style="display:none" onclick="modalBgClick(event)" role="dialog" aria-modal="true"><div class="modal" id="modal-content"></div></div>
+<script src="js/state.js?v=75"></script>
+<script src="js/persistence.js?v=75"></script>
+<script src="js/navigation.js?v=75"></script>
+<script src="js/training-plan-v1.js?v=75"></script>
+<script src="js/dashboard.js?v=75"></script>
+<script src="js/habits.js?v=75"></script>
+<script src="js/workouts.js?v=75"></script>
+<script src="js/winter-arc.js?v=75"></script>
+<script src="js/routine.js?v=75"></script>
+<script src="js/challenge.js?v=75"></script>
+<script src="js/finance.js?v=75"></script>
+<script src="js/reviews.js?v=75"></script>
+<script src="js/insights.js?v=75"></script>
+<script src="js/modals.js?v=75"></script>
+<script src="js/planner.js?v=75"></script>
+<script src="js/life-hub-v75.js?v=75"></script>
+<script src="js/init.js?v=75"></script>
 </body>
 </html>

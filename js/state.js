@@ -8,7 +8,7 @@ var db = null, auth = null, syncDoc = null, _syncTimeout = null, _firebaseReady 
 var _authUser = null, _lastCloudUpdatedAt = null, _bootCb = null, _bootDone = false;
 var _authPersistenceReady=Promise.resolve(false),_authPersistenceError=null;
 
-function setSyncStatus(s){var el=document.getElementById('sync-status');if(!el)return;var m={saving:{text:'Syncing...',color:'var(--amber)'},retrying:{text:'Waiting to retry',color:'var(--amber)'},queued:{text:'Queued offline',color:'var(--amber)'},saved:{text:'Synced \u2713',color:'var(--mint)'},conflict:{text:'Review sync',color:'var(--accent)'},storage:{text:'Storage needs attention',color:'var(--amber)'},auth:{text:'Sign in required',color:'var(--amber)'},authPersistence:{text:'Session storage limited',color:'var(--amber)'},rules:{text:'Sync permission blocked',color:'var(--clay)'},data:{text:'Sync data needs attention',color:'var(--clay)'},error:{text:'Sync needs attention',color:'var(--text3)'},idle:{text:'',color:'transparent'}};var x=m[s]||m.idle;el.textContent=x.text;el.style.color=x.color;el.setAttribute('aria-live','polite')}
+function setSyncStatus(s){var el=document.getElementById('sync-status');if(!el)return;var m={saving:{text:'',color:'transparent'},retrying:{text:'Waiting to retry',color:'var(--amber)'},queued:{text:'Queued offline',color:'var(--amber)'},saved:{text:'',color:'transparent'},conflict:{text:'Review sync',color:'var(--accent)'},storage:{text:'Storage needs attention',color:'var(--amber)'},auth:{text:'Sign in required',color:'var(--amber)'},authPersistence:{text:'Session storage limited',color:'var(--amber)'},rules:{text:'Sync permission blocked',color:'var(--clay)'},data:{text:'Sync data needs attention',color:'var(--clay)'},error:{text:'Sync needs attention',color:'var(--text3)'},idle:{text:'',color:'transparent'}};var x=m[s]||m.idle;el.textContent=x.text;el.style.color=x.color;el.setAttribute('aria-live','polite')}
 
 function configureLifeHubAuthPersistence(){
   if(!auth||typeof firebase==='undefined'||!firebase.auth){_authPersistenceReady=Promise.resolve(false);return _authPersistenceReady}
@@ -142,35 +142,17 @@ var DEFAULT_HABIT_START=(function(){var d=new Date();return d.getFullYear()+'-'+
 // (see `STATE = loadState() || DEFAULT_STATE` below). Do not commit real
 // financial, health, or relationship data into this file.
 var DEFAULT_STATE = {
-  goals:[
-    {id:g(),name:'Sample fitness goal',cat:'Fitness',badge:'fit',desc:'Edit or replace this example goal',target:100,unit:'%',direction:'up',deadline:'2026-12-31',progress:0,subGoals:[]},
-    {id:g(),name:'Sample finance goal',cat:'Finance',badge:'fin',desc:'Edit or replace this example goal',target:1000,unit:'\u00a3',direction:'up',deadline:'2026-12-31',progress:0,subGoals:[]},
-  ],
+  goals:[],
   habits:[
-    {id:'steps-towards-10k-v1',name:'8,000 steps',freq:'daily',badge:'fit',icon:'👟',note:'Build up gradually and split walking into comfortable bouts. A lower-step recovery day is not a failure; scale back if symptoms increase.',anchor:'anytime',detailsTitle:'A gentle daily minimum',details:[{name:'Build gradually',spec:'Increase only while the hip stays comfortable'},{name:'Minimum 8,000 steps',spec:'A guide, never something to force through pain'},{name:'Symptoms increase',spec:'Scale back and follow your physiotherapist or GP advice'}],startDate:DEFAULT_HABIT_START,lifecycle:{version:1,inactivePeriods:[]},integrationKeys:['lifehub.steps.8000'],managedBy:'lifehub',managedHabitKey:'daily-basics.steps',managedHabitVersion:1,provenanceVersion:1,logProvenance:{},logs:{}},
-    {id:g(),name:'Skincare AM',freq:'daily',badge:'per',icon:'☀️',note:'',anchor:'morning',startDate:DEFAULT_HABIT_START,lifecycle:{version:1,inactivePeriods:[]},integrationKeys:['lifehub.skincare.am'],provenanceVersion:1,logProvenance:{},logs:{}},
-    {id:g(),name:'Skincare PM',freq:'daily',badge:'per',icon:'🌙',note:'',anchor:'evening',startDate:DEFAULT_HABIT_START,lifecycle:{version:1,inactivePeriods:[]},integrationKeys:['lifehub.skincare.pm'],provenanceVersion:1,logProvenance:{},logs:{}},
+    {id:'steps-towards-10k-v1',name:'8,000 steps',freq:'daily',badge:'fit',icon:'👟',note:'Build up gradually and follow your physiotherapist or GP advice if symptoms increase.',anchor:'anytime',detailsTitle:'A gentle daily minimum',details:[{name:'Daily target',spec:'8,000 steps'}],startDate:DEFAULT_HABIT_START,lifecycle:{version:1,inactivePeriods:[]},integrationKeys:['lifehub.steps.8000'],managedBy:'lifehub',managedHabitKey:'daily-basics.steps',managedHabitVersion:1,provenanceVersion:1,logProvenance:{},logs:{}}
   ],
   workouts:[],
   prs:{},
-  income:[{id:'inc1',name:'Salary',amount:0,icon:'\ud83d\udcbc',note:''}],
-  expenses:[
-    {id:'exp1',name:'Rent',amount:0,icon:'\ud83c\udfe0',note:'',color:'#f9a8d4'},
-    {id:'exp2',name:'Groceries',amount:0,icon:'\ud83d\uded2',note:'',color:'#c084fc'},
-    {id:'exp3',name:'Subscriptions',amount:0,icon:'\ud83d\udcfa',note:'',color:'#fb923c'},
-    {id:'exp4',name:'Transport',amount:0,icon:'\ud83d\ude87',note:'',color:'#f59e0b'},
-    {id:'exp5',name:'Gym',amount:0,icon:'\ud83c\udfcb\ufe0f',note:'',color:'#a0522d'},
-    {id:'exp6',name:'Phone',amount:0,icon:'\ud83d\udcf1',note:'',color:'#818cf8'},
-  ],
-  accounts:[
-    {id:'acc1',name:'Savings',type:'savings',balance:0,color:'#a0522d',icon:'\ud83d\udcc8',institution:''},
-  ],
-  debts:[
-    {id:'dbt1',name:'Sample debt',balance:0,priority:'Medium',color:'#fb7185',note:''},
-  ],
-  savingsGoals:[
-    {id:'sg1',name:'Emergency Fund',target:0,current:0,priority:'Medium',icon:'\ud83d\udea8',color:'#f59e0b',deadline:'2026-12-31',note:''},
-  ],
+  income:[],
+  expenses:[],
+  accounts:[],
+  debts:[],
+  savingsGoals:[],
   metrics:{weight:[],bodyFat:[],steps:[],run:[],moneySaved:[],projectsDone:[]},
   weeklyPlans:{},reviews:{monthly:{},quarterly:{}},
   dailyPriorities:{},
@@ -182,8 +164,8 @@ var DEFAULT_STATE = {
   dailyCheckIns:{},
   // Routine R2: house per stay (Sunday-keyed overrides) and Sunday plan ticks.
   routine:{version:1,stays:{},sundayPlans:{}},
-  // AWS AI Practitioner study tracker (exam Thu 17 Dec 2026).
-  study:{version:1,goal:{id:'aws-aif-c01',label:'AWS AI Practitioner (AIF-C01)',examDate:'2026-12-17',examBooked:false,slot:'14:00',backupSlot:'16:15'},course:{label:'Ultimate AWS Certified AI Practitioner AIF-C01',sectionsTotal:14,sectionsDone:0},sessions:{},practiceScores:[]},
+  // Temporary AWS study commitment. Older course/practice fields are preserved on import.
+  study:{version:2,commitment:{label:'AWS study',startDate:'2026-11-16',endDate:'2026-12-31',targetPerWeek:3,minimumMinutes:30,dueDays:[1,4,5],time:'14:00'},sessions:{},course:{label:'',sectionsTotal:0,sectionsDone:0},practiceScores:[]},
   reading:{sessions:{},activeSessionId:null},
   cycle:{settings:{defaultLengthDays:30},observedStarts:[],estimates:['2026-10-16','2026-11-15','2026-12-15']},
   weeklyCheckIns:{},
@@ -200,9 +182,17 @@ var DEFAULT_STATE = {
   roadmapChecklist:{},
   debtPayments:[],
   plannedPayments:[],
-  // Dated net-worth snapshots, one per day: {date:'YYYY-MM-DD', value:Number}.
+  savingsDeposits:[],
+  paydayCheckIns:{},
+  // Preserved for old imports and historical compatibility; no active UI reads it.
   netWorthSnapshots:[],
-  reminders:[],
+  // Stable v75 schedules. Skincare reminders create no completion records.
+  reminders:[
+    {id:'aws-study',label:'AWS study',emoji:'📘',message:'AWS study is ready when you are. Log your actual minutes in Life Hub.',enabled:true,schedule:{type:'weekly',days:[1,4,5],time:'14:00'},startDate:'2026-11-16',endDate:'2026-12-31'},
+    {id:'skincare-am',label:'Morning skincare',emoji:'☀️',message:'Morning skincare.',enabled:true,schedule:{type:'daily',time:'07:00'}},
+    {id:'skincare-pm',label:'Evening skincare',emoji:'🌙',message:'Evening skincare.',enabled:true,schedule:{type:'daily',time:'22:00'}},
+    {id:'monthly-reset',label:'Monthly Reset',emoji:'🌿',message:'Your Monthly Reset is ready.',enabled:true,schedule:{type:'monthly-last-weekday',weekday:0,time:'11:00'}}
+  ],
   water:{},
   // Hydration preferences: {target:glasses, glassMl:size}.
   waterSettings:{},
@@ -213,6 +203,15 @@ var DEFAULT_STATE = {
   sweep:{},
   // Single record of daily-loop bookkeeping: acknowledgements shown, the last
   // badge value written, push registration status and the net-worth prompt month.
+  // Fresh v75 profiles do not run retired product-seeding migrations.
+  __bodyCompositionPlanV4:true,
+  __rehabHabitV1:true,
+  __injuryReentryV1:true,
+  __challenge75V1:true,
+  __runHabitRetiredV1:true,
+  __tasksMigrated:true,
+  __plannerMigrated:true,
+  __lifeHubV75:true,
   companion:{
     acks:{dayComplete:null,focusSlate:null},
     badge:{value:0,writtenAt:null},

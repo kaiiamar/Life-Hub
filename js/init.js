@@ -102,11 +102,15 @@ loadFromCloud(function(){
   // new; `netWorthSnapshots` and `waterSettings` are written by live code but
   // were never registered here (Data Models → "Registration is required in
   // three places").
-  var migrateKeys=['goals','habits','workouts','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','relationships','gratitude','wishlist','watchlist','debtPayments','reminders','water','dailyPriorities','trainingEvents','trainingPlan','trainingSessions','dailyCheckIns','reading','cycle','weeklyCheckIns','challenges','tasks','commitments','weeklyIntentions','weeklyIntention','sweep','companion','netWorthSnapshots','waterSettings','routine','study'];
+  var migrateKeys=['goals','habits','workouts','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','relationships','gratitude','wishlist','watchlist','debtPayments','plannedPayments','savingsDeposits','paydayCheckIns','reminders','water','dailyPriorities','trainingEvents','trainingPlan','trainingSessions','dailyCheckIns','reading','cycle','weeklyCheckIns','challenges','tasks','commitments','weeklyIntentions','weeklyIntention','sweep','companion','netWorthSnapshots','waterSettings','routine','study'];
   migrateKeys.forEach(function(k){if(!STATE[k])STATE[k]=JSON.parse(JSON.stringify(DEFAULT_STATE[k]||(k==='tasks'?[]:{})))});
   if(!STATE.tasks)STATE.tasks=[];
   if(!STATE.metrics.projectsDone)STATE.metrics.projectsDone=[];
   if(!STATE.reviews.monthly)STATE.reviews.monthly={};
+  if(typeof migrateLifeHubV75==='function'){
+    var v75Migration=migrateLifeHubV75();
+    if(v75Migration.changed&&!saveState({suppressUndo:true})){STATE=v75Migration.before;setSyncStatus('storage');if(typeof _showTrustNotice==='function')_showTrustNotice('The v75 update could not be stored. Existing data was left unchanged.');return}
+  }
   if(typeof migrateDailyBasicsV1==='function'&&!migrateDailyBasicsV1()){
     setSyncStatus('storage');
     if(typeof _showTrustNotice==='function')_showTrustNotice('Daily Basics could not be stored. Existing data was left unchanged.');
@@ -632,11 +636,8 @@ loadFromCloud(function(){
   if(!STATE.roadmapChecklist)STATE.roadmapChecklist={};
   if(!STATE.roadmapDueDates)STATE.roadmapDueDates={};
   finishDataBootstrap();
-  try{renderDashboard()}catch(e){console.error('Render error:',e)}
-  // Today is the landing page: the first screen is the next thing to do.
-  try{renderPlanner()}catch(e){console.error('Render error:',e)}
+  try{nav(typeof initialLifeHubRoute==='function'?initialLifeHubRoute():'dashboard')}catch(e){console.error('Render error:',e)}
   try{updateAppBadge()}catch(e){}
-  try{maybePromptCloseDay()}catch(e){}
   setupReminders();
 });
 startClock();
@@ -672,18 +673,7 @@ function maybePromptCloseDay(){
 // load and after every planner render (see renderPlanner) so it stays in sync
 // with focus/task toggles for free.
 function updateAppBadge(){
-  try{
-    if(!('setAppBadge' in navigator))return;
-    var today=localDateKey(new Date());
-    var n=(STATE.tasks||[]).filter(function(t){return t&&t.focusDate===today&&!t.done}).length;
-    if(n>0){
-      navigator.setAppBadge(n).catch(function(){});
-    }else if('clearAppBadge' in navigator){
-      navigator.clearAppBadge().catch(function(){});
-    }else{
-      navigator.setAppBadge(0).catch(function(){});
-    }
-  }catch(e){}
+  try{if('clearAppBadge' in navigator)navigator.clearAppBadge().catch(function(){});else if('setAppBadge' in navigator)navigator.setAppBadge(0).catch(function(){})}catch(e){}
 }
 
 // Bloom checkmark micro-interaction (Part 4.3.4). Tick handlers re-render their
@@ -728,7 +718,8 @@ function setupReminders(){
   if(!('Notification' in window)){return}
   if(Notification.permission==='granted'){
     subscribeToPush();
-    setupInAppReminders()
+    setupInAppReminders();
+    syncRemindersToBackend();
   }
 }
 function requestNotifPermission(){
@@ -754,24 +745,21 @@ function subscribeToPush(){
     }).catch(function(e){console.log('Push subscribe failed:',e)})
   })
 }
+function reminderEligibleOnLocalDate(reminder,key){
+  if(!reminder||!reminder.enabled||reminder.endDate&&key>reminder.endDate)return false;
+  var schedule=reminder.schedule||{},day=new Date(key+'T12:00:00').getDay();
+  if(schedule.type==='daily')return true;
+  if(schedule.type==='weekly')return Array.isArray(schedule.days)&&schedule.days.indexOf(day)!==-1;
+  if(schedule.type==='monthly-last-weekday'){var date=new Date(key+'T12:00:00'),last=new Date(date.getFullYear(),date.getMonth()+1,0);last.setDate(last.getDate()-((last.getDay()-Number(schedule.weekday||0)+7)%7));return localDateKey(last)===key}
+  return false;
+}
 function syncRemindersToBackend(){
-  if(!NOTIF_API){showCelebrationToast('No backend URL set','⚠️');return}
-  var reminders=getReminders();
-  var enabledCount=reminders.filter(function(r){return r.enabled}).length;
-  lifeHubApiFetch(NOTIF_API+'/api/reminders',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({reminders:reminders})
-  }).then(function(r){return r.json()}).then(function(data){
-    console.log('Reminders synced:',data);
-    if(typeof data.schedules==='string'&&data.schedules.indexOf('skipped')===0){
-      showCelebrationToast('Synced locally only — backend not configured','⚠️');
-    }else if(data.scheduled!==undefined){
-      showCelebrationToast('Synced '+data.scheduled+'/'+enabledCount+' reminders','🔔');
-    }else if(data.error){
-      showCelebrationToast('Sync failed: '+data.error,'⚠️');
-    }
-  }).catch(function(e){console.error('Sync failed:',e);showCelebrationToast('Sync failed — check connection','⚠️')})
+  if(!NOTIF_API)return Promise.resolve(false);
+  var today=localDateKey(new Date()),timeZone='';
+  try{timeZone=Intl.DateTimeFormat().resolvedOptions().timeZone||''}catch(e){}
+  if(!timeZone){console.error('Reminder sync failed: local timezone is unavailable');setSyncStatus('error');return Promise.resolve(false)}
+  var reminders=getReminders().filter(function(r){return (!r.startDate||today>=r.startDate)&&(!r.endDate||today<=r.endDate)});
+  return lifeHubApiFetch(NOTIF_API+'/api/reminders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({timeZone:timeZone,reminders:reminders})}).then(function(r){if(!r.ok)throw new Error('Reminder sync failed');return r.json()}).then(function(){return true}).catch(function(e){console.error('Reminder sync failed:',e);setSyncStatus('error');return false})
 }
 function urlBase64ToUint8Array(base64String){
   var padding='='.repeat((4-base64String.length%4)%4);
@@ -781,34 +769,25 @@ function urlBase64ToUint8Array(base64String){
   return arr
 }
 function getReminders(){
-  if(!STATE.reminders)STATE.reminders=[
-    {id:'morning',label:'Morning habits',emoji:'\u2600\uFE0F',message:'Time to start ticking off those habits!',hour:7,minute:0,enabled:true,condition:'habits'},
-    {id:'water',label:'Water check',emoji:'\uD83D\uDCA7',message:'Keep sipping! Stay hydrated.',hour:13,minute:0,enabled:true,condition:'water'},
-    {id:'gratitude',label:'Gratitude journal',emoji:'\uD83D\uDE4F',message:'Log your win and gratitude for today',hour:21,minute:0,enabled:true,condition:'gratitude'},
-    {id:'sleep',label:'Bedtime reminder',emoji:'\uD83D\uDE34',message:'Time to wind down. 10pm bedtime!',hour:21,minute:30,enabled:true,condition:'none'},
-    {id:'gym',label:'Training option',emoji:'\uD83C\uDFCB\uFE0F',message:'Training is on the plan today. Adjust or log it when useful.',hour:6,minute:0,enabled:false,condition:'none'}
-  ];
-  return STATE.reminders
+  if(!Array.isArray(STATE.reminders)&&typeof LIFE_HUB_V75_REMINDER_DEFAULTS!=='undefined')STATE.reminders=JSON.parse(JSON.stringify(LIFE_HUB_V75_REMINDER_DEFAULTS));
+  var allowed={'aws-study':true,'skincare-am':true,'skincare-pm':true,'monthly-reset':true};
+  return (STATE.reminders||[]).filter(function(item){return item&&allowed[item.id]})
 }
 var _notifFired={};
 var _inAppRemindersStarted=false,_pushSubscribed=false;
 function setupInAppReminders(){
-  if(_inAppRemindersStarted)return; // one timer, however often reminders are (re)enabled
+  if(_inAppRemindersStarted)return;
   _inAppRemindersStarted=true;
   setInterval(function(){
-    if(_pushSubscribed)return; // the backend push covers it; avoid a double ping
-    var now=new Date();var h=now.getHours();var m=now.getMinutes();var today=localDateKey(now);
+    if(_pushSubscribed)return;
+    var now=new Date(),today=localDateKey(now),clock=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
     getReminders().forEach(function(r){
-      if(!r.enabled||h!==r.hour||m!==r.minute)return;
-      var fk=r.id+'-'+today;if(_notifFired[fk])return;
-      var skip=false;
-      if(r.condition==='habits'){if((STATE.habits||[]).filter(function(hab){return hab.logs[today]}).length>0)skip=true}
-      if(r.condition==='water'){if(((STATE.water||{})[today]||0)>=4)skip=true}
-      if(r.condition==='gratitude'){if((STATE.gratitude||[]).some(function(e){return e.date===today}))skip=true}
-      if(!skip){
-        if(Notification.permission==='granted')new Notification(r.emoji+' '+r.label,{body:r.message});
-        _notifFired[fk]=true
-      }
+      if(!reminderEligibleOnLocalDate(r,today)||(r.schedule&&r.schedule.time)!==clock)return;
+      var key='lifehub-reminder:'+r.id+':'+today;
+      try{if(localStorage.getItem(key)==='1')return}catch(e){}
+      if(Notification.permission==='granted')new Notification(r.emoji+' '+r.label,{body:r.message,tag:r.id+':'+today});
+      try{localStorage.setItem(key,'1')}catch(e){}
+      _notifFired[key]=true;
     })
   },60000)
 }

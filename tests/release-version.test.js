@@ -3,22 +3,23 @@ import path from 'node:path';
 import {describe,expect,it} from 'vitest';
 import {ROOT} from './harness.js';
 
-describe('v74 shell release',function(){
+describe('v75 shell release',function(){
   it('keeps every local shell query and service worker version aligned',function(){
     const index=fs.readFileSync(path.join(ROOT,'index.html'),'utf8');
     const serviceWorker=fs.readFileSync(path.join(ROOT,'sw.js'),'utf8');
-    const versions=Array.from(index.matchAll(/(?:src|href)="(?:js\/[^"?]+|style-new\.css)\?v=(\d+)"/g),function(match){return match[1]});
-    expect(versions).toHaveLength(20);
-    expect(new Set(versions)).toEqual(new Set(['74']));
-    expect(serviceWorker).toContain("var VERSION='v74';");
-    expect(index).not.toContain('?v=73');
+    const assets=Array.from(index.matchAll(/(?:src|href)="(js\/[^"?]+|style-new\.css)\?v=(\d+)"/g));
+    expect(assets).toHaveLength(18);
+    expect(new Set(assets.map(function(match){return match[2]}))).toEqual(new Set(['75']));
+    expect(serviceWorker).toContain("var VERSION='v75';");
+    assets.filter(function(match){return match[1].startsWith('js/')}).forEach(function(match){expect(serviceWorker).toContain("'"+match[1]+"'")});
+    expect(index).not.toContain('?v=74');
   });
 
-  it('retains responsive tile and amendment geometry rules',function(){
+  it('contains v75 responsive, focus, and reduced-motion rules',function(){
     const css=fs.readFileSync(path.join(ROOT,'style-new.css'),'utf8');
-    expect(css).toContain('@media(max-width:600px)');
-    expect(css).toMatch(/#planner-today \.challenge75-grid\{grid-template-columns:1fr\}/);
-    expect(css).toMatch(/\.challenge-amend-row\{display:grid;grid-template-columns:34px minmax\(0,1fr\) auto/);
-    expect(css).toMatch(/@media\(max-width:420px\).*?\.challenge-amend-row/s);
+    expect(css).toContain('@media(max-width:390px)');
+    expect(css).toContain('@media(prefers-reduced-motion:reduce)');
+    expect(css).toContain(':focus-visible');
+    expect(css).toContain('.v75-mobile-nav{grid-template-columns:repeat(5,minmax(0,1fr))}');
   });
 });

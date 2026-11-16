@@ -5,7 +5,7 @@
 // supersedes the ?v= query strings on the script/style tags in index.html
 // (those are left in place — harmless). On activate, only stale Life Hub
 // shell/runtime caches are deleted; unrelated origin caches are preserved.
-var VERSION='v74';
+var VERSION='v75';
 var SHELL_PREFIX='lifehub-shell-';
 var RUNTIME_PREFIX='lifehub-runtime-';
 var CACHE=SHELL_PREFIX+VERSION;
@@ -34,12 +34,10 @@ var SHELL=[
   'js/challenge.js',
   'js/finance.js',
   'js/reviews.js',
-  'js/relationships.js',
-  'js/gratitude.js',
   'js/insights.js',
-  'js/skincare.js',
   'js/modals.js',
   'js/planner.js',
+  'js/life-hub-v75.js',
   'js/init.js'
 ];
 

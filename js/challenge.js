@@ -62,7 +62,7 @@ function dailyBasicsStatus(dateKey){
   var occurrence=typeof currentWorkoutOccurrence==='function'?currentWorkoutOccurrence(key):null,session=occurrence&&STATE.trainingSessions&&STATE.trainingSessions[occurrence.id],workoutDone=!!(session&&typeof workoutSessionMatchesOccurrence==='function'&&workoutSessionMatchesOccurrence(session)&&session.status==='completed'&&session.manualCompletion===true&&session.qualifies===true&&session.code!=='REST-SAFETY');
   var glasses=Number((STATE.water||{})[key]||0),glassMl=Number(STATE.waterSettings&&STATE.waterSettings.glassMl||250),waterMl=glasses*glassMl;
   return {date:key,applicable:true,rows:[
-    {id:'steps',label:'Steps',done:steps>=DAILY_STEPS_TARGET||manual,status:(steps>=DAILY_STEPS_TARGET||manual)?'Complete':steps.toLocaleString()+' of 8,000',target:DAILY_STEPS_TARGET,value:steps,action:'steps'},
+    {id:'steps',label:'Steps',done:steps>=DAILY_STEPS_TARGET,status:steps>=DAILY_STEPS_TARGET?'Complete':steps.toLocaleString()+' of 8,000',target:DAILY_STEPS_TARGET,value:steps,action:'steps'},
     {id:'workout',label:'Planned workout',done:workoutDone,status:workoutDone?'Complete':occurrence?occurrence.label:'Not available',target:occurrence&&occurrence.label||'',action:'workout'},
     {id:'water',label:'Water',done:waterMl>=DAILY_WATER_TARGET_ML,status:waterMl>=DAILY_WATER_TARGET_ML?'Complete':waterMl.toLocaleString()+' of 2,000 ml',target:DAILY_WATER_TARGET_ML,value:waterMl,action:'water'}
   ]};

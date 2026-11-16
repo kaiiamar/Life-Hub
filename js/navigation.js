@@ -442,15 +442,15 @@ function nav(page,onComplete){
   function applyNav(){
     document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active')});
     document.querySelectorAll('.nav-item').forEach(function(b){b.classList.remove('active');b.removeAttribute('aria-current')});
-    document.querySelectorAll('.topnav-link').forEach(function(b){b.classList.remove('active')});
+    document.querySelectorAll('.topnav-link').forEach(function(b){b.classList.remove('active');b.removeAttribute('aria-current')});
     document.querySelectorAll('.mobile-command-item').forEach(function(b){b.classList.remove('active');b.removeAttribute('aria-current')});
     pageEl.classList.add('active');
     document.querySelectorAll('.nav-item').forEach(function(b){if(b.getAttribute('onclick')==="nav('"+shellPage+"')"){b.classList.add('active');b.setAttribute('aria-current','page')}});
-    var mainPages=['dashboard','habits','workout','skincare','gratitude'];
+    var mainPages=['dashboard','workout','finance','insights','more'];
     var matched=false;
-    document.querySelectorAll('.topnav-link').forEach(function(b){if(b.getAttribute('data-page')===shellPage){b.classList.add('active');matched=true}});
+    document.querySelectorAll('.topnav-link').forEach(function(b){if(b.getAttribute('data-page')===shellPage){b.classList.add('active');b.setAttribute('aria-current','page');matched=true}});
     document.querySelectorAll('.mobile-command-item[data-page]').forEach(function(b){if(b.getAttribute('data-page')===shellPage){b.classList.add('active');b.setAttribute('aria-current','page')}});
-    var mobileDirect=['planner','dashboard','habits','workout'];
+    var mobileDirect=['dashboard','workout','finance','insights','more'];
     var mobileMore=document.getElementById('mobile-command-more');
     if(mobileMore&&mobileDirect.indexOf(shellPage)===-1){mobileMore.classList.add('active');mobileMore.setAttribute('aria-current','page')}
     // If not a main tab, highlight the More button instead
@@ -566,8 +566,8 @@ window.addEventListener('load',function(){setTimeout(updateTopnavPill,100)});
 window.addEventListener('resize',updateTopnavPill);
 // Re-run after every nav
 var _origNav=window.nav;
-window.nav=function(page){
-  _origNav(page);
+window.nav=function(){
+  _origNav.apply(this,arguments);
   setTimeout(updateTopnavPill,50);
 };
 
