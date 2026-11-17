@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="/Life-Hub/icon-192.jpg">
 <link rel="manifest" href="/Life-Hub/manifest.json">
 <title>Kai's Life Hub</title>
-<link rel="stylesheet" href="style-new.css?v=76">
+<link rel="stylesheet" href="style-new.css?v=77">
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -19,7 +19,7 @@
 <div class="app app-v75">
   <nav class="topnav" id="topnav" aria-label="Primary navigation">
     <div class="topnav-inner">
-      <div class="topnav-brand"><span class="topnav-logo" aria-hidden="true">♡</span><span class="topnav-name">Life Hub</span></div>
+      <div class="topnav-brand cg-brand"><span class="topnav-logo cg-brand-seal" aria-hidden="true"><span>LH</span><i>✦</i></span><span class="topnav-name">Life Hub</span><span class="cg-brand-note">make today count</span></div>
       <div class="topnav-links v75-primary-nav">
         <div class="topnav-pill-indicator" id="topnav-pill"></div>
         <button class="topnav-link active" data-page="dashboard" aria-current="page" data-lifehub-action="nav" data-lifehub-page="dashboard">Dashboard</button>
@@ -28,7 +28,7 @@
         <button class="topnav-link" data-page="insights" data-lifehub-action="nav" data-lifehub-page="insights">Insights</button>
         <button class="topnav-link" data-page="more" data-lifehub-action="nav" data-lifehub-page="more">More</button>
       </div>
-      <div class="topnav-right"><span class="topnav-date" id="top-bar-date"></span><div id="sync-status" class="topnav-sync" aria-live="polite"></div></div>
+      <div class="topnav-right"><span class="topnav-date cg-date-sticker" id="top-bar-date"></span><div id="sync-status" class="topnav-sync" aria-live="polite"></div></div>
       <button class="topnav-hamburger" id="topnav-menu-btn" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false" data-lifehub-action="toggle-sidebar">Menu</button>
     </div>
   </nav>
@@ -45,10 +45,10 @@
   </nav>
 
   <main class="main" id="main-content">
-    <div class="page active" id="page-dashboard"><div id="v75-dashboard" class="v75-page"></div></div>
+    <div class="page active" id="page-dashboard"><div id="v75-dashboard" class="v75-page cg-page cg-page-dashboard"></div></div>
     <div class="page" id="page-workout">
-      <div class="v75-page">
-        <header class="v75-page-header"><div><span class="v75-kicker">MOVEMENT</span><h1>Keep the rotation moving</h1><p>Your next R2 session, this week, and your weight trend.</p></div></header>
+      <div class="v75-page cg-page cg-page-movement">
+        <header class="v75-page-header cg-page-intro"><span class="cg-intro-mark" aria-hidden="true">✦</span><div><span class="v75-kicker cg-cut-label">MOVEMENT</span><h1>Keep the rotation moving</h1><p>Your next R2 session, this week, and your weight trend.</p></div></header>
         <div id="v75-movement"></div>
       </div>
     </div>
@@ -59,13 +59,13 @@
       </section>
     </div>
     <div class="page" id="page-finance">
-      <div class="v75-page"><header class="v75-page-header"><div><span class="v75-kicker">FINANCE</span><h1>Payday plan</h1><p>Record debt payments and savings transfers in one place.</p></div></header><div id="v75-finance"></div></div>
+      <div class="v75-page cg-page cg-page-finance"><header class="v75-page-header cg-page-intro"><span class="cg-intro-mark" aria-hidden="true">◇</span><div><span class="v75-kicker cg-cut-label">FINANCE</span><h1>Payday plan</h1><p>Record debt payments and savings transfers in one place.</p></div></header><div id="v75-finance"></div></div>
     </div>
     <div class="page" id="page-insights">
-      <div class="v75-page"><header class="v75-page-header"><div><span class="v75-kicker">INSIGHTS</span><h1>The last four weeks</h1><p>Useful changes from the records you already keep.</p></div></header><div id="v75-insights"></div></div>
+      <div class="v75-page cg-page cg-page-insights"><header class="v75-page-header cg-page-intro"><span class="cg-intro-mark" aria-hidden="true">✦</span><div><span class="v75-kicker cg-cut-label">INSIGHTS</span><h1>The last four weeks</h1><p>Useful changes from the records you already keep.</p></div></header><div id="v75-insights"></div></div>
     </div>
     <div class="page" id="page-more">
-      <div class="v75-page"><header class="v75-page-header"><div><span class="v75-kicker">MORE</span><h1>Plan and settings</h1><p>Year Ahead, Monthly Reset, and app settings.</p></div></header>
+      <div class="v75-page cg-page cg-page-more"><header class="v75-page-header cg-page-intro"><span class="cg-intro-mark" aria-hidden="true">♡</span><div><span class="v75-kicker cg-cut-label">MORE</span><h1>Plan and settings</h1><p>Year Ahead, Monthly Reset, and app settings.</p></div></header>
         <div class="v75-segmented" aria-label="More sections">
           <button id="more-tab-goals" class="active" aria-pressed="true" data-lifehub-action="more-tab" data-lifehub-tab="goals">Year Ahead</button>
           <button id="more-tab-reset" aria-pressed="false" data-lifehub-action="more-tab" data-lifehub-tab="reset">Monthly Reset</button>
@@ -86,23 +86,23 @@
     <button type="button" class="mobile-command-item" data-page="more" data-lifehub-action="nav" data-lifehub-page="more"><span class="mobile-command-mark">•••</span><span>More</span></button>
   </nav>
 </div>
-<div class="modal-bg" id="modal" style="display:none" data-lifehub-action="modal-background" role="dialog" aria-modal="true"><div class="modal" id="modal-content"></div></div>
-<script src="js/state.js?v=76"></script>
-<script src="js/persistence.js?v=76"></script>
-<script src="js/navigation.js?v=76"></script>
-<script src="js/training-plan-v1.js?v=76"></script>
-<script src="js/dashboard.js?v=76"></script>
-<script src="js/habits.js?v=76"></script>
-<script src="js/workouts.js?v=76"></script>
-<script src="js/winter-arc.js?v=76"></script>
-<script src="js/routine.js?v=76"></script>
-<script src="js/challenge.js?v=76"></script>
-<script src="js/finance.js?v=76"></script>
-<script src="js/reviews.js?v=76"></script>
-<script src="js/insights.js?v=76"></script>
-<script src="js/modals.js?v=76"></script>
-<script src="js/planner.js?v=76"></script>
-<script src="js/life-hub-v75.js?v=76"></script>
-<script src="js/init.js?v=76"></script>
+<div class="modal-bg cg-modal-backdrop" id="modal" style="display:none" data-lifehub-action="modal-background" role="dialog" aria-modal="true"><div class="modal cg-paper-sheet" id="modal-content"></div></div>
+<script src="js/state.js?v=77"></script>
+<script src="js/persistence.js?v=77"></script>
+<script src="js/navigation.js?v=77"></script>
+<script src="js/training-plan-v1.js?v=77"></script>
+<script src="js/dashboard.js?v=77"></script>
+<script src="js/habits.js?v=77"></script>
+<script src="js/workouts.js?v=77"></script>
+<script src="js/winter-arc.js?v=77"></script>
+<script src="js/routine.js?v=77"></script>
+<script src="js/challenge.js?v=77"></script>
+<script src="js/finance.js?v=77"></script>
+<script src="js/reviews.js?v=77"></script>
+<script src="js/insights.js?v=77"></script>
+<script src="js/modals.js?v=77"></script>
+<script src="js/planner.js?v=77"></script>
+<script src="js/life-hub-v75.js?v=77"></script>
+<script src="js/init.js?v=77"></script>
 </body>
 </html>
