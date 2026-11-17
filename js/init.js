@@ -102,7 +102,7 @@ loadFromCloud(function(){
   // new; `netWorthSnapshots` and `waterSettings` are written by live code but
   // were never registered here (Data Models → "Registration is required in
   // three places").
-  var migrateKeys=['goals','habits','workouts','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','relationships','gratitude','wishlist','watchlist','debtPayments','plannedPayments','savingsDeposits','paydayCheckIns','reminders','water','dailyPriorities','trainingEvents','trainingPlan','trainingSessions','dailyCheckIns','reading','cycle','weeklyCheckIns','challenges','tasks','commitments','weeklyIntentions','weeklyIntention','sweep','companion','netWorthSnapshots','waterSettings','routine','study'];
+  var migrateKeys=['goals','habits','workouts','prs','income','expenses','accounts','debts','savingsGoals','metrics','weeklyPlans','reviews','journal','mood','dailyHighlights','relationships','gratitude','wishlist','watchlist','debtPayments','debtCharges','plannedPayments','savingsDeposits','savingsWithdrawals','paydayCheckIns','reminders','water','dailyPriorities','trainingEvents','trainingPlan','trainingSessions','dailyCheckIns','reading','cycle','weeklyCheckIns','challenges','tasks','commitments','weeklyIntentions','weeklyIntention','sweep','companion','netWorthSnapshots','waterSettings','routine','study'];
   migrateKeys.forEach(function(k){if(!STATE[k])STATE[k]=JSON.parse(JSON.stringify(DEFAULT_STATE[k]||(k==='tasks'?[]:{})))});
   if(!STATE.tasks)STATE.tasks=[];
   if(!STATE.metrics.projectsDone)STATE.metrics.projectsDone=[];

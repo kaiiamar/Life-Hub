@@ -104,6 +104,16 @@ describe('v75 review security and compatibility fixes',function(){
     expect(savings.window.document.querySelector('[data-v75-action="savings-plan"]').value).toBe('25');
   });
 
+  it('rejects malformed v76 finance data before migration can repair or erase it',function(){
+    const base=completeState(createHarness({today:'2026-11-16'}).state),{window}=installV75('2026-11-16',base);
+    base.debts=[{id:'debt_safe',name:'Card',balance:10,balancePence:1000,startingBalance:10,startingBalancePence:1000}];base.savingsGoals=[{id:'goal_safe',name:'Buffer',target:100,targetPence:10000,current:10,currentPence:1000}];base.debtPayments=[];base.debtCharges=[];base.savingsDeposits=[];base.savingsWithdrawals=[];base.__lifeHubV76=true;
+    window.DEFAULT_STATE={};window.eval(source('js/persistence.js'));
+    const missingHistory=window.JSON.parse(window.JSON.stringify(base));missingHistory.debtCharges={lost:'history'};const missingBefore=JSON.stringify(missingHistory),missingResult=window.prepareDailyBasicsCandidate(missingHistory,{importMode:true});expect(missingResult.ok).toBe(false);expect(missingResult.code).toBe('current-validation');expect(missingResult.errors.join(' ')).toContain('expected array');expect(JSON.stringify(missingHistory)).toBe(missingBefore);
+    const wrongType=window.JSON.parse(window.JSON.stringify(base));wrongType.debtCharges=[{id:'charge_safe',version:7,type:'payment',debtId:'debt_safe',date:'2026-11-16',amount:1,amountPence:100}];const wrongResult=window.prepareDailyBasicsCandidate(wrongType,{importMode:true});expect(wrongResult.ok).toBe(false);expect(wrongResult.errors.join(' ')).toMatch(/version 2|type.*invalid/);
+    const conflict=window.JSON.parse(window.JSON.stringify(base));conflict.debts[0].balance=11;const conflictResult=window.prepareDailyBasicsCandidate(conflict,{importMode:true});expect(conflictResult.ok).toBe(false);expect(conflictResult.errors.join(' ')).toContain('exactly match canonical pence');
+    const legacy=window.JSON.parse(window.JSON.stringify(base));legacy.__lifeHubV76=false;legacy.savingsWithdrawals={bad:true};const legacyResult=window.prepareDailyBasicsCandidate(legacy,{importMode:true});expect(legacyResult.ok).toBe(false);expect(legacyResult.errors.join(' ')).toContain('expected array');
+  });
+
   it('restores allowlisted retained and retired hash routes at startup',function(){
     function route(hash){
       const h=createHarness();let opened=null;

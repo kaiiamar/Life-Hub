@@ -77,14 +77,13 @@ function lifeHubApiFetch(url,options){
 // sign-in succeeds. Firebase persists the session locally, so returning visits
 // (even offline) resolve immediately without showing the overlay.
 function _ensureSignedIn(cb){
-  if(!auth){cb(null);return}
+  if(!auth){setSyncStatus('auth');_showSignIn('Secure sign-in is unavailable. Life Hub has not loaded your data.');return}
   _bootCb=cb;
   Promise.resolve(_authPersistenceReady).then(function(){
     auth.onAuthStateChanged(function(user){
       _authUser=user||null;
       if(typeof handleLifeHubSyncAuthState==='function')handleLifeHubSyncAuthState(_authUser);
       if(user){
-        try{console.log('LifeHub signed in as',user.email,'uid:',user.uid)}catch(e){}
         _hideSignIn();
         if(!_bootDone){_bootDone=true;if(_bootCb)_bootCb(user)}
       }else{
@@ -102,22 +101,21 @@ function signOutLifeHub(){if(auth)auth.signOut()}
 
 function _signInOverlayEl(){return document.getElementById('lh-signin-overlay')}
 function _hideSignIn(){var e=_signInOverlayEl();if(e)e.style.display='none'}
-function _showSignIn(){
+function _showSignIn(message){
   var e=_signInOverlayEl();
-  if(e){e.style.display='flex';return}
-  var o=document.createElement('div');
-  o.id='lh-signin-overlay';
-  o.style.cssText='position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:rgba(28,18,10,0.82);backdrop-filter:blur(6px);font-family:var(--sans,system-ui,sans-serif)';
-  o.innerHTML=''
-    +'<div style="background:var(--card,#fffdf9);color:var(--text,#2a2018);width:min(360px,90vw);border-radius:18px;padding:28px 24px;box-shadow:0 20px 60px rgba(40,20,10,0.35)">'
-    +'<div style="font-size:22px;font-weight:700;margin-bottom:4px">Life Hub</div>'
-    +'<div style="font-size:13px;color:var(--text2,#7a6a58);margin-bottom:18px">Sign in to load and sync your data.</div>'
-    +'<input id="lh-signin-email" type="email" autocomplete="username" placeholder="Email" style="width:100%;box-sizing:border-box;padding:11px 13px;margin-bottom:10px;border:1.5px solid var(--border,#e5ddd0);border-radius:10px;font-size:14px;background:var(--bg,#fff);color:inherit">'
-    +'<input id="lh-signin-pw" type="password" autocomplete="current-password" placeholder="Password" onkeydown="if(event.key===\'Enter\')lhSignIn()" style="width:100%;box-sizing:border-box;padding:11px 13px;margin-bottom:12px;border:1.5px solid var(--border,#e5ddd0);border-radius:10px;font-size:14px;background:var(--bg,#fff);color:inherit">'
-    +'<div id="lh-signin-err" style="color:#e05252;font-size:12px;min-height:16px;margin-bottom:8px"></div>'
-    +'<button id="lh-signin-btn" onclick="lhSignIn()" style="width:100%;padding:12px;border:none;border-radius:10px;background:var(--moss,#3F5A44);color:#fff;font-size:14px;font-weight:600;cursor:pointer">Sign in</button>'
-    +'</div>';
-  document.body.appendChild(o);
+  if(e){e.style.display='flex';var existingMessage=e.querySelector('[data-signin-message]');if(existingMessage&&message)existingMessage.textContent=message;return}
+  var o=document.createElement('div');o.id='lh-signin-overlay';o.className='lh-signin-overlay';
+  var card=document.createElement('section');card.className='lh-signin-card';card.setAttribute('aria-labelledby','lh-signin-title');
+  var title=document.createElement('h1');title.id='lh-signin-title';title.textContent='Life Hub';card.appendChild(title);
+  var copy=document.createElement('p');copy.setAttribute('data-signin-message','');copy.textContent=message||'Sign in to load and sync your data.';card.appendChild(copy);
+  var emailLabel=document.createElement('label');emailLabel.htmlFor='lh-signin-email';emailLabel.textContent='Email';card.appendChild(emailLabel);
+  var email=document.createElement('input');email.id='lh-signin-email';email.type='email';email.autocomplete='username';card.appendChild(email);
+  var passwordLabel=document.createElement('label');passwordLabel.htmlFor='lh-signin-pw';passwordLabel.textContent='Password';card.appendChild(passwordLabel);
+  var password=document.createElement('input');password.id='lh-signin-pw';password.type='password';password.autocomplete='current-password';card.appendChild(password);
+  var err=document.createElement('p');err.id='lh-signin-err';err.className='lh-signin-error';err.setAttribute('role','alert');card.appendChild(err);
+  var button=document.createElement('button');button.id='lh-signin-btn';button.type='button';button.className='btn btn-accent';button.textContent='Sign in';button.addEventListener('click',lhSignIn);card.appendChild(button);
+  password.addEventListener('keydown',function(event){if(event.key==='Enter')lhSignIn()});
+  o.appendChild(card);document.body.appendChild(o);email.focus();
 }
 function lhSignIn(){
   if(!auth)return;
@@ -181,8 +179,10 @@ var DEFAULT_STATE = {
   watchlist:[],
   roadmapChecklist:{},
   debtPayments:[],
+  debtCharges:[],
   plannedPayments:[],
   savingsDeposits:[],
+  savingsWithdrawals:[],
   paydayCheckIns:{},
   // Preserved for old imports and historical compatibility; no active UI reads it.
   netWorthSnapshots:[],
@@ -212,6 +212,7 @@ var DEFAULT_STATE = {
   __tasksMigrated:true,
   __plannerMigrated:true,
   __lifeHubV75:true,
+  __lifeHubV76:true,
   companion:{
     acks:{dayComplete:null,focusSlate:null},
     badge:{value:0,writtenAt:null},

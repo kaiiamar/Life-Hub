@@ -4,8 +4,8 @@
   "start_url": "/Life-Hub/",
   "scope": "/Life-Hub/",
   "display": "standalone",
-  "background_color": "#FFF7FA",
-  "theme_color": "#B93F77",
+  "background_color": "#FFFAF0",
+  "theme_color": "#C8143D",
   "icons": [
     {
       "src": "/Life-Hub/icon-192.jpg",
